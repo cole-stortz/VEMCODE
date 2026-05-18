@@ -73,7 +73,7 @@ int ArduinoRuntime::impl_analogRead(int pin) {
 }
 
 void ArduinoRuntime::impl_delay(unsigned long ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms / 10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 unsigned long ArduinoRuntime::impl_millis() {
