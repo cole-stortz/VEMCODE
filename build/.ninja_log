@@ -51,3 +51,9 @@
 38	206	8008473015649773	C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/mocs_compilation.cpp	5f5724cef374333f
 207	2700	8008473017332320	CMakeFiles/VirtualBench.dir/src/core/build/compiler.cpp.obj	b720904bff76be32
 2701	3281	8008473042275847	VirtualBench.exe	3458c107b3c3a1c3
+40	194	8008476638572264	VirtualBench_autogen/timestamp	5f5724cef374333f
+40	194	8008476638572264	VirtualBench_autogen/mocs_compilation.cpp	5f5724cef374333f
+40	194	8008476638572264	C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/timestamp	5f5724cef374333f
+40	194	8008476638572264	C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/mocs_compilation.cpp	5f5724cef374333f
+195	3315	8008476640118278	CMakeFiles/VirtualBench.dir/src/ui/mainwindow.cpp.obj	d845094af2647aae
+3316	3932	8008476671330936	VirtualBench.exe	3458c107b3c3a1c3

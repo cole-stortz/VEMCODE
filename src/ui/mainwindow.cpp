@@ -127,7 +127,12 @@ void MainWindow::onRunClicked() {
     Compiler compiler;
     compiler.set_compiler_path("C:/Qt/Tools/mingw1310_64/bin/g++.exe");
     compiler.set_include_path("C:/Users/cdsto/Documents/VirtualBench");
-    compiler.set_output_dir("C:/Users/cdsto/Documents/VirtualBench");
+    // Output DLL to same folder as the sketch
+    std::string sketch_dir = path.toStdString();
+    size_t slash = sketch_dir.find_last_of("/\\");
+    if (slash != std::string::npos)
+        sketch_dir = sketch_dir.substr(0, slash);
+    compiler.set_output_dir(sketch_dir);
 
     CompileResult result = compiler.compile(path.toStdString());
 
