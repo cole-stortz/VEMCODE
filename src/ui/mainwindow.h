@@ -3,17 +3,17 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <QSplitter>
+#include <QTabWidget>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QFileInfo>
+#include <QFile>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
+#include "src/ui/canvaswidget.h"
+#include "src/core/circuit/circuitdetector.h"
 
-// MainWindow is the top-level Qt window.
-// For v0.1 it contains:
-//   - A serial monitor (QPlainTextEdit)
-//   - A pin state label (shows pin 13 HIGH/LOW)
-//   - Run / Stop buttons
-//
-// It owns a SketchThread and connects to its signals to receive
-// serial output and pin changes from the running sketch.
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -22,25 +22,40 @@ public:
     ~MainWindow();
 
 private slots:
-    // Connected to SketchThread signals
     void onSerialOutput(QString text);
     void onPinChanged(int pin, int value);
     void onSketchReloaded();
     void onLoadFailed(QString reason);
-
-    // Button handlers
     void onRunClicked();
     void onStopClicked();
+    void onOpenClicked();
 
 private:
-    void setupUi();
+    void setupToolbar(QWidget* parent, QVBoxLayout* layout);
+    void setupMainArea(QWidget* parent, QVBoxLayout* layout);
+    QWidget* buildEditorPanel();
+    QWidget* buildCanvasPanel();
+    QWidget* buildDebugPanel();
 
-    // Widgets
-    QPlainTextEdit* serialMonitor_  = nullptr;
-    QLabel*         pinStateLabel_  = nullptr;
+    // Toolbar
     QPushButton*    runButton_      = nullptr;
     QPushButton*    stopButton_     = nullptr;
+    QLabel*         boardLabel_     = nullptr;
 
-    // Simulation thread
-    SketchThread*   sketchThread_   = nullptr;
+    // Editor panel (left)
+    QPlainTextEdit* codeEditor_     = nullptr;
+
+    // Canvas panel (top right)
+    CanvasWidget*   canvasWidget_   = nullptr;
+
+    // Debug panel (bottom right)
+    QTabWidget*     debugTabs_      = nullptr;
+    QPlainTextEdit* serialMonitor_  = nullptr;
+
+    // Simulation
+    SketchThread*      sketchThread_  = nullptr;
+    QString            currentSketchPath_;
+
+    // Circuit detection
+    CircuitDetector    detector_;
 };

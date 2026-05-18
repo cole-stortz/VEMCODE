@@ -289,6 +289,12 @@
 			null
 		],
 		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/core/circuit/circuitdetector.h",
+			"MU",
+			"KRYVT5KME4/moc_circuitdetector.cpp",
+			null
+		],
+		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/core/host/sketchhost.h",
 			"MU",
 			"JJ7TYVUXJK/moc_sketchhost.cpp",
@@ -310,6 +316,12 @@
 			"C:/Users/cdsto/Documents/VirtualBench/src/core/runtime/arduinoruntime.h",
 			"MU",
 			"FPG7WSMRJT/moc_arduinoruntime.cpp",
+			null
+		],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.h",
+			"MU",
+			"YPKJ5OE7LN/moc_canvaswidget.cpp",
 			null
 		],
 		[
@@ -402,6 +414,11 @@
 			null
 		],
 		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/core/circuit/circuitdetector.cpp",
+			"MU",
+			null
+		],
+		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/core/host/sketchhost.cpp",
 			"MU",
 			null
@@ -417,6 +434,11 @@
 			null
 		],
 		[ "C:/Users/cdsto/Documents/VirtualBench/src/main.cpp", "MU", null ],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.cpp",
+			"MU",
+			null
+		],
 		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.cpp",
 			"MU",

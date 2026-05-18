@@ -71,6 +71,15 @@ build CMakeFiles/VirtualBench.dir/src/ui/mainwindow.cpp.obj: CXX_COMPILER__Virtu
   OBJECT_FILE_DIR = CMakeFiles\VirtualBench.dir\src\ui
   TARGET_SUPPORT_DIR = CMakeFiles\VirtualBench.dir
 
+build CMakeFiles/VirtualBench.dir/src/ui/canvaswidget.cpp.obj: CXX_COMPILER__VirtualBench_unscanned_ C$:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.cpp || cmake_object_order_depends_target_VirtualBench
+  DEFINES = -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
+  DEP_FILE = CMakeFiles\VirtualBench.dir\src\ui\canvaswidget.cpp.obj.d
+  FLAGS = -std=gnu++17
+  INCLUDES = -IC:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/include -IC:/Users/cdsto/Documents/VirtualBench -IC:/Users/cdsto/Documents/VirtualBench/src -IC:/Users/cdsto/Documents/VirtualBench/src/core/runtime -IC:/Users/cdsto/Documents/VirtualBench/src/core/host -IC:/Users/cdsto/Documents/VirtualBench/src/ui -isystem C:/Qt/6.11.1/mingw_64/include/QtCore -isystem C:/Qt/6.11.1/mingw_64/include -isystem C:/Qt/6.11.1/mingw_64/mkspecs/win32-g++ -isystem C:/Qt/6.11.1/mingw_64/include/QtWidgets -isystem C:/Qt/6.11.1/mingw_64/include/QtGui
+  OBJECT_DIR = CMakeFiles\VirtualBench.dir
+  OBJECT_FILE_DIR = CMakeFiles\VirtualBench.dir\src\ui
+  TARGET_SUPPORT_DIR = CMakeFiles\VirtualBench.dir
+
 build CMakeFiles/VirtualBench.dir/src/core/runtime/arduinoruntime.cpp.obj: CXX_COMPILER__VirtualBench_unscanned_ C$:/Users/cdsto/Documents/VirtualBench/src/core/runtime/arduinoruntime.cpp || cmake_object_order_depends_target_VirtualBench
   DEFINES = -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
   DEP_FILE = CMakeFiles\VirtualBench.dir\src\core\runtime\arduinoruntime.cpp.obj.d
@@ -107,6 +116,15 @@ build CMakeFiles/VirtualBench.dir/src/core/build/compiler.cpp.obj: CXX_COMPILER_
   OBJECT_FILE_DIR = CMakeFiles\VirtualBench.dir\src\core\build
   TARGET_SUPPORT_DIR = CMakeFiles\VirtualBench.dir
 
+build CMakeFiles/VirtualBench.dir/src/core/circuit/circuitdetector.cpp.obj: CXX_COMPILER__VirtualBench_unscanned_ C$:/Users/cdsto/Documents/VirtualBench/src/core/circuit/circuitdetector.cpp || cmake_object_order_depends_target_VirtualBench
+  DEFINES = -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
+  DEP_FILE = CMakeFiles\VirtualBench.dir\src\core\circuit\circuitdetector.cpp.obj.d
+  FLAGS = -std=gnu++17
+  INCLUDES = -IC:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/include -IC:/Users/cdsto/Documents/VirtualBench -IC:/Users/cdsto/Documents/VirtualBench/src -IC:/Users/cdsto/Documents/VirtualBench/src/core/runtime -IC:/Users/cdsto/Documents/VirtualBench/src/core/host -IC:/Users/cdsto/Documents/VirtualBench/src/ui -isystem C:/Qt/6.11.1/mingw_64/include/QtCore -isystem C:/Qt/6.11.1/mingw_64/include -isystem C:/Qt/6.11.1/mingw_64/mkspecs/win32-g++ -isystem C:/Qt/6.11.1/mingw_64/include/QtWidgets -isystem C:/Qt/6.11.1/mingw_64/include/QtGui
+  OBJECT_DIR = CMakeFiles\VirtualBench.dir
+  OBJECT_FILE_DIR = CMakeFiles\VirtualBench.dir\src\core\circuit
+  TARGET_SUPPORT_DIR = CMakeFiles\VirtualBench.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target VirtualBench
@@ -115,7 +133,7 @@ build CMakeFiles/VirtualBench.dir/src/core/build/compiler.cpp.obj: CXX_COMPILER_
 #############################################
 # Link the executable VirtualBench.exe
 
-build VirtualBench.exe: CXX_EXECUTABLE_LINKER__VirtualBench_ CMakeFiles/VirtualBench.dir/VirtualBench_autogen/mocs_compilation.cpp.obj CMakeFiles/VirtualBench.dir/src/main.cpp.obj CMakeFiles/VirtualBench.dir/src/ui/mainwindow.cpp.obj CMakeFiles/VirtualBench.dir/src/core/runtime/arduinoruntime.cpp.obj CMakeFiles/VirtualBench.dir/src/core/host/sketchhost.cpp.obj CMakeFiles/VirtualBench.dir/src/core/host/sketchhostthread.cpp.obj CMakeFiles/VirtualBench.dir/src/core/build/compiler.cpp.obj | C$:/Qt/6.11.1/mingw_64/lib/libQt6Widgets.a C$:/Qt/6.11.1/mingw_64/lib/libQt6Gui.a C$:/Qt/6.11.1/mingw_64/lib/libQt6Core.a C$:/Qt/6.11.1/mingw_64/lib/libQt6EntryPoint.a VirtualBench.exe.manifest || VirtualBench_autogen VirtualBench_autogen_timestamp_deps
+build VirtualBench.exe: CXX_EXECUTABLE_LINKER__VirtualBench_ CMakeFiles/VirtualBench.dir/VirtualBench_autogen/mocs_compilation.cpp.obj CMakeFiles/VirtualBench.dir/src/main.cpp.obj CMakeFiles/VirtualBench.dir/src/ui/mainwindow.cpp.obj CMakeFiles/VirtualBench.dir/src/ui/canvaswidget.cpp.obj CMakeFiles/VirtualBench.dir/src/core/runtime/arduinoruntime.cpp.obj CMakeFiles/VirtualBench.dir/src/core/host/sketchhost.cpp.obj CMakeFiles/VirtualBench.dir/src/core/host/sketchhostthread.cpp.obj CMakeFiles/VirtualBench.dir/src/core/build/compiler.cpp.obj CMakeFiles/VirtualBench.dir/src/core/circuit/circuitdetector.cpp.obj | C$:/Qt/6.11.1/mingw_64/lib/libQt6Widgets.a C$:/Qt/6.11.1/mingw_64/lib/libQt6Gui.a C$:/Qt/6.11.1/mingw_64/lib/libQt6Core.a C$:/Qt/6.11.1/mingw_64/lib/libQt6EntryPoint.a VirtualBench.exe.manifest || VirtualBench_autogen VirtualBench_autogen_timestamp_deps
   LINK_LIBRARIES = C:/Qt/6.11.1/mingw_64/lib/libQt6Widgets.a  C:/Qt/6.11.1/mingw_64/lib/libQt6Gui.a  C:/Qt/6.11.1/mingw_64/lib/libQt6Core.a  -lmpr  -luserenv  -lmingw32  C:/Qt/6.11.1/mingw_64/lib/libQt6EntryPoint.a  -lshell32  -ld3d11  -ldxgi  -ldxguid  -ld3d12  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   MANIFESTS = VirtualBench.exe.manifest
   OBJECT_DIR = CMakeFiles\VirtualBench.dir

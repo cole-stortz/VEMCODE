@@ -23,19 +23,23 @@ set(CMAKE_AUTORCC ON)
 set(SOURCES
     src/main.cpp
     src/ui/mainwindow.cpp
+    src/ui/canvaswidget.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
     src/core/build/compiler.cpp
+    src/core/circuit/circuitdetector.cpp
 )
 
 set(HEADERS
     src/ui/mainwindow.h
+    src/ui/canvaswidget.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h
     src/core/host/sketchhostthread.h
     src/core/build/compiler.h
+    src/core/circuit/circuitdetector.h
 )
 
 # Create the executable
