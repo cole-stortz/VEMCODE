@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include "src/core/host/sketchhostthread.h"
+#include "src/core/build/compiler.h"
 
 // MainWindow is the top-level Qt window.
 // For v0.1 it contains:

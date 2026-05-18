@@ -671,6 +671,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wow64apiset.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wtypes.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wtypesbase.h \
+  C:/Users/cdsto/Documents/VirtualBench/src/core/build/compiler.h \
   C:/Users/cdsto/Documents/VirtualBench/src/core/host/sketchhost.h \
   C:/Users/cdsto/Documents/VirtualBench/src/core/host/sketchhostthread.h \
   C:/Users/cdsto/Documents/VirtualBench/src/core/runtime/arduinoapi.h \

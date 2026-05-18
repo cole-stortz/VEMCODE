@@ -26,6 +26,7 @@ set(SOURCES
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
+    src/core/build/compiler.cpp
 )
 
 set(HEADERS
@@ -34,6 +35,7 @@ set(HEADERS
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h
     src/core/host/sketchhostthread.h
+    src/core/build/compiler.h
 )
 
 # Create the executable

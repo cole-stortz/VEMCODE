@@ -115,22 +115,42 @@ void MainWindow::onLoadFailed(QString reason) {
 // Button handlers
 // -------------------------------------------------------
 void MainWindow::onRunClicked() {
-    // Open a file dialog to pick the sketch DLL
     QString path = QFileDialog::getOpenFileName(
-        this,
-        "Select sketch DLL",
-        QString(),
-        "DLL files (*.dll)"
+        this, "Select sketch", QString(), "C++ files (*.cpp *.ino)"
     );
-
     if (path.isEmpty()) return;
 
     serialMonitor_->clear();
-    statusBar()->showMessage("Running: " + path);
+    statusBar()->showMessage("Compiling: " + path);
     runButton_->setEnabled(false);
-    stopButton_->setEnabled(true);
 
-    sketchThread_->startSketch(path);
+    Compiler compiler;
+    compiler.set_compiler_path("C:/Qt/Tools/mingw1310_64/bin/g++.exe");
+    compiler.set_include_path("C:/Users/cdsto/Documents/VirtualBench");
+    compiler.set_output_dir("C:/Users/cdsto/Documents/VirtualBench");
+
+    CompileResult result = compiler.compile(path.toStdString());
+
+    // Always show raw output so we can see what happened
+    serialMonitor_->appendPlainText("=== Compiler output ===\n");
+    serialMonitor_->appendPlainText(QString::fromStdString(result.raw_output));
+    serialMonitor_->appendPlainText(
+        result.success ? "\n=== Compile succeeded ===\n"
+                       : "\n=== Compile failed ===\n"
+    );
+    serialMonitor_->appendPlainText(
+        "DLL path: " + QString::fromStdString(result.dll_path) + "\n"
+    );
+
+    if (!result.success) {
+        statusBar()->showMessage("Compile failed");
+        runButton_->setEnabled(true);
+        return;
+    }
+
+    statusBar()->showMessage("Running: " + path);
+    stopButton_->setEnabled(true);
+    sketchThread_->startSketch(QString::fromStdString(result.dll_path));
 }
 
 void MainWindow::onStopClicked() {
