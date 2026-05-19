@@ -518,9 +518,54 @@ void MainWindow::onSaveClicked() {
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
         QKeyEvent* key = static_cast<QKeyEvent*>(event);
+
         if (key->key() == Qt::Key_Tab) {
             codeEditor_->insertPlainText("    ");
             return true;
+        }
+
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+            QTextCursor cursor = codeEditor_->textCursor();
+
+            // Get current line text
+            cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+            QString line = cursor.selectedText();
+
+            // Count leading spaces for current indentation
+            int spaces = 0;
+            for (QChar c : line) {
+                if (c == ' ') spaces++;
+                else break;
+            }
+
+            // If line ends with '{', add one indent level
+            QString trimmed = line.trimmed();
+            if (trimmed.endsWith('{'))
+                spaces += 4;
+
+            // Insert newline + indentation
+            cursor = codeEditor_->textCursor();
+            cursor.insertText("\n" + QString(spaces, ' '));
+            codeEditor_->setTextCursor(cursor);
+            return true;
+        }
+
+        // Auto-dedent -- when } is typed on a line with only spaces, remove one indent level
+        if (key->key() == Qt::Key_BraceRight) {
+            QTextCursor cursor = codeEditor_->textCursor();
+
+            // Select entire current line content
+            cursor.movePosition(QTextCursor::StartOfLine);
+            cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+            QString line = cursor.selectedText();
+
+            if (line.trimmed().isEmpty() && line.length() > 0) {
+                int new_indent = qMax(0, (int)line.length() - 4);
+                cursor.removeSelectedText();
+                cursor.insertText(QString(new_indent, ' ') + "}");
+                codeEditor_->setTextCursor(cursor);
+                return true;
+            }
         }
     }
     return QMainWindow::eventFilter(obj, event);
