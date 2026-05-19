@@ -58,3 +58,6 @@ sketches/**/*.tmp.dll
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Notes
+notes/
