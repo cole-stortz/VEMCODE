@@ -8,6 +8,7 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QMutex \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QObject \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QRect \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/QRegularExpression \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QSize \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QSizeF \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QString \
@@ -109,6 +110,7 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qprocessordetection.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qrect.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qrefcount.h \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/qregularexpression.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qscopedpointer.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qscopeguard.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qset.h \
@@ -167,6 +169,8 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QColor \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QMouseEvent \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/QSyntaxHighlighter \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/QTextCharFormat \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qabstracttextdocumentlayout.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qaction.h \
@@ -205,10 +209,12 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qrgba64.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qscreen.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qscreen_platform.h \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/qsyntaxhighlighter.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextcursor.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextdocument.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextformat.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextlayout.h \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextobject.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtextoption.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtgui-config.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qtguiexports.h \
@@ -935,6 +941,8 @@ VirtualBench_autogen/timestamp: \
 	C:/Users/cdsto/Documents/VirtualBench/src/main.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.h \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.cpp \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.cpp \

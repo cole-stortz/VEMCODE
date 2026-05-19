@@ -331,6 +331,12 @@
 			null
 		],
 		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.h",
+			"MU",
+			"YPKJ5OE7LN/moc_codehighlighter.cpp",
+			null
+		],
+		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h",
 			"MU",
 			"YPKJ5OE7LN/moc_mainwindow.cpp",
@@ -453,6 +459,11 @@
 		[ "C:/Users/cdsto/Documents/VirtualBench/src/main.cpp", "MU", null ],
 		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.cpp",
 			"MU",
 			null
 		],

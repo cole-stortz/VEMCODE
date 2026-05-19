@@ -162,11 +162,18 @@ QWidget* MainWindow::buildEditorPanel() {
 
     // Code editor
     codeEditor_ = new QPlainTextEdit();
+    // Attach syntax highlighter
+    highlighter_ = new CodeHighlighter(codeEditor_->document());
     codeEditor_->setStyleSheet(
         "QPlainTextEdit { background: #1e1e1e; color: #d4d4d4;"
         "border: none; font-family: 'Courier New', monospace; font-size: 13px; }"
     );
     codeEditor_->setLineWrapMode(QPlainTextEdit::NoWrap);
+    // Tab width = 4 spaces
+    QFontMetrics metrics(codeEditor_->font());
+    codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
+    // Install event filter for tab handling
+    codeEditor_->installEventFilter(this);
 
     // Default starter sketch
     codeEditor_->setPlainText(
@@ -375,4 +382,15 @@ void MainWindow::onOpenClicked() {
 
     setWindowTitle("VirtualBench — " + QFileInfo(path).fileName());
     statusBar()->showMessage("Opened: " + path);
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
+    if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
+        QKeyEvent* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Tab) {
+            codeEditor_->insertPlainText("    ");
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
 }

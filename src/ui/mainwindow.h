@@ -16,6 +16,7 @@
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
 #include "src/ui/signaltimeline.h"
+#include "src/ui/codehighlighter.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -38,9 +39,12 @@ private slots:
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
     void setupMainArea(QWidget* parent, QVBoxLayout* layout);
+    bool eventFilter(QObject* obj, QEvent* event) override;
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
     QWidget* buildDebugPanel();
+
+    CodeHighlighter* highlighter_ = nullptr;
 
     // Toolbar
     QPushButton*    runButton_      = nullptr;

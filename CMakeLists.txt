@@ -25,6 +25,7 @@ set(SOURCES
     src/ui/mainwindow.cpp
     src/ui/canvaswidget.cpp
     src/ui/signaltimeline.cpp
+    src/ui/codehighlighter.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
@@ -37,6 +38,7 @@ set(HEADERS
     src/ui/mainwindow.h
     src/ui/canvaswidget.h
     src/ui/signaltimeline.h
+    src/ui/codehighlighter.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h
