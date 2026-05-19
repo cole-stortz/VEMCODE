@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QFrame>
 #include <QCoreApplication>
+#include <QTextEdit>
 
 
 MainWindow::MainWindow(QWidget* parent)
@@ -345,6 +346,7 @@ void MainWindow::onRunClicked() {
         serialMonitor_->appendPlainText(QString::fromStdString(result.raw_output));
         statusBar()->showMessage("Compile failed");
         runButton_->setEnabled(true);
+        showCompileErrors(result);  // highlight errors in editor
         return;
     }
 
@@ -352,6 +354,9 @@ void MainWindow::onRunClicked() {
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
+    clearCompileErrors();
+    signalTimeline_->clear();
+    simTimer_.start();
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));
     
     detector_.detect(codeEditor_->toPlainText().toStdString());
@@ -393,4 +398,56 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         }
     }
     return QMainWindow::eventFilter(obj, event);
+}
+
+void MainWindow::clearCompileErrors() {
+    codeEditor_->setExtraSelections({});
+}
+
+void MainWindow::showCompileErrors(const CompileResult& result) {
+    clearCompileErrors();
+
+    QList<QTextEdit::ExtraSelection> selections;
+
+    for (const auto& err : result.errors) {
+        if (!err.is_error) continue;  // skip warnings for now
+
+        // Get the block for this line number
+        int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
+        if (adjusted_line < 1) continue;  // error is in injected header, skip
+        QTextBlock block = codeEditor_->document()->findBlockByLineNumber(
+            adjusted_line - 1);  // Qt lines are 0-indexed
+        if (!block.isValid()) continue;
+
+        QTextEdit::ExtraSelection sel;
+
+        // Red underline for error line
+        sel.format.setBackground(QColor("#3a0000"));
+        sel.format.setProperty(QTextFormat::FullWidthSelection, true);
+        sel.format.setToolTip(QString::fromStdString(err.message));
+        sel.cursor = QTextCursor(block);
+        sel.cursor.select(QTextCursor::LineUnderCursor);
+
+        selections.append(sel);
+    }
+
+    codeEditor_->setExtraSelections(selections);
+
+    // Move cursor to first error line so user sees it
+    if (!result.errors.empty()) {
+        for (const auto& err : result.errors) {
+            if (err.is_error) {
+                int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
+                if (adjusted_line < 1) continue;
+                QTextBlock block = codeEditor_->document()
+                    ->findBlockByLineNumber(adjusted_line - 1);
+                if (block.isValid()) {
+                    QTextCursor cursor(block);
+                    codeEditor_->setTextCursor(cursor);
+                    codeEditor_->centerCursor();
+                    break;
+                }
+            }
+        }
+    }
 }

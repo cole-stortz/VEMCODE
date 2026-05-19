@@ -17,6 +17,7 @@
 #include "src/core/circuit/circuitdetector.h"
 #include "src/ui/signaltimeline.h"
 #include "src/ui/codehighlighter.h"
+#include "src/core/build/preprocessor.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -40,6 +41,10 @@ private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
     void setupMainArea(QWidget* parent, QVBoxLayout* layout);
     bool eventFilter(QObject* obj, QEvent* event) override;
+    
+    void showCompileErrors(const CompileResult& result);
+    void clearCompileErrors();
+
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
     QWidget* buildDebugPanel();

@@ -22,6 +22,9 @@ public:
     // Transform Arduino sketch source into VirtualBench DLL source.
     // Returns the transformed source ready to write to a .cpp file.
     std::string process(const std::string& source);
+    // Number of lines injected at the top of transformed sketches.
+    // Used to offset compiler error line numbers back to the original source.
+    static constexpr int INJECTED_HEADER_LINES = 10;
 
 private:
     // Returns true if source is already in VirtualBench format
