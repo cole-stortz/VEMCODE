@@ -28,7 +28,7 @@ extern "C" __declspec(dllexport)
 void vb_loop() {
     
     btn = api->digitalRead(BUTTON_PIN);
-    if (btn == 0) {
+    if (btn == LOW) {
         api->digitalWrite(LED_PIN, HIGH);
         api->Serial_println("Button pressed — LED ON");
     } else {

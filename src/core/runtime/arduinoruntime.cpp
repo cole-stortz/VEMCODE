@@ -41,9 +41,9 @@ ArduinoAPI ArduinoRuntime::get_api() {
 void ArduinoRuntime::impl_pinMode(int pin, int mode) {
     if (!g_runtime || pin < 0 || pin >= 20) return;
     g_runtime->state_.pin_modes[pin] = mode;
-    const char* mode_str = (mode == 1) ? "OUTPUT" :
-                           (mode == 2) ? "INPUT_PULLUP" : "INPUT";
-    std::cout << ts() << "  pinMode(" << pin << ", " << mode_str << ")\n";
+    //const char* mode_str = (mode == 1) ? "OUTPUT" :
+    //                       (mode == 2) ? "INPUT_PULLUP" : "INPUT";
+    //std::cout << ts() << "  pinMode(" << pin << ", " << mode_str << ")\n";
 }
 
 void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
@@ -96,7 +96,7 @@ void ArduinoRuntime::impl_Serial_begin(int baud) {
     if (!g_runtime) return;
     g_runtime->state_.serial_started = true;
     g_runtime->state_.serial_baud    = baud;
-    std::cout << ts() << "  Serial.begin(" << baud << ")\n";
+    //std::cout << ts() << "  Serial.begin(" << baud << ")\n";
 }
 
 void ArduinoRuntime::impl_Serial_print(const char* s) {
