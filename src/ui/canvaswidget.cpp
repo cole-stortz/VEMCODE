@@ -33,6 +33,11 @@ static const QColor COLOR_BUTTON_ACTIVE  ("#44ff88");
 static const QColor COLOR_BUZZER_ACTIVE  ("#ff8844");
 static const QColor COLOR_SERVO_ACTIVE   ("#44aaff");
 static const QColor COLOR_GENERIC_ACTIVE ("#aaaaaa");
+static const QColor COLOR_SWITCH_ACTIVE      ("#44ff88");
+static const QColor COLOR_POT_ACTIVE         ("#44ffcc");
+static const QColor COLOR_LIGHT_ACTIVE       ("#ffff44");
+static const QColor COLOR_TEMP_ACTIVE        ("#ff6644");
+static const QColor COLOR_ANALOG_ACTIVE      ("#aaaaaa");
 
 // Component inactive colors (default state)
 static const QColor COLOR_LED_INACTIVE        ("#3a3000");
@@ -42,6 +47,10 @@ static const QColor COLOR_SERVO_INACTIVE      ("#001a3a");
 static const QColor COLOR_POT_INACTIVE        ("#1a1a3a");
 static const QColor COLOR_LCD_INACTIVE        ("#001a1a");
 static const QColor COLOR_GENERIC_INACTIVE    ("#2a2a2a");
+static const QColor COLOR_SWITCH_INACTIVE    ("#003a15");
+static const QColor COLOR_LIGHT_INACTIVE     ("#3a3a00");
+static const QColor COLOR_TEMP_INACTIVE      ("#3a1500");
+static const QColor COLOR_ANALOG_INACTIVE    ("#2a2a2a");
 
 // Component text colors
 static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
@@ -66,19 +75,16 @@ CanvasWidget::CanvasWidget(QWidget* parent)
 void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     scene_->clear();
     pinItems_.clear();
+    switchStates_.clear();
+    buttonStates_.clear();
+    analogValues_.clear();
+    dragPin_ = -1;
 
     drawBoard();
 
-    int index = 0;
-    int total = 0;
-    for (const auto& c : components)
-        if (c.pin >= 0) total++;
-
     for (const auto& comp : components) {
-        if (comp.pin >= 0) {
-            drawComponent(comp, index, total);
-            index++;
-        }
+        if (comp.pin >= 0)
+            drawComponent(comp);
     }
 }
 
@@ -146,13 +152,12 @@ void CanvasWidget::drawBoard() {
     }
 }
 
-void CanvasWidget::drawComponent(
-    const DetectedComponent& comp, int index, int total)
+void CanvasWidget::drawComponent(const DetectedComponent& comp)
 {
     // Output components go on right side, input on left
-    bool is_output = (comp.type == ComponentType::LED      ||
-                      comp.type == ComponentType::Buzzer   ||
-                      comp.type == ComponentType::Servo    ||
+    bool is_output = (comp.type == ComponentType::LED          ||
+                      comp.type == ComponentType::Buzzer       ||
+                      comp.type == ComponentType::Servo        ||
                       comp.type == ComponentType::GenericOutput);
 
     int comp_w = 100;
@@ -160,12 +165,20 @@ void CanvasWidget::drawComponent(
 
     QPointF pin_pos = pinLocation(comp.pin);
 
-    // Space components vertically with even spacing
-    float spacing = (float)BOARD_H / (total + 1);
-    float comp_y  = BOARD_Y + spacing * (index + 1) - comp_h / 2.0f;
-    float comp_x  = is_output
-                    ? BOARD_X + BOARD_W + 80
-                    : BOARD_X - comp_w - 80;
+    // Determine which side and column
+    bool is_analog_input = (comp.pin >= 14);
+
+    float comp_x;
+    if (is_output) {
+        comp_x = BOARD_X + BOARD_W + 80;
+    } else if (is_analog_input) {
+        comp_x = BOARD_X - comp_w - 180;  // outer column -- all analog
+    } else {
+        comp_x = BOARD_X - comp_w - 80;   // inner column -- digital inputs
+    }
+    // Align Y with the actual pin position on the board
+    // Output components use even spacing, inputs align with their pin
+    float comp_y = pin_pos.y() - comp_h / 2.0f;
 
     // Component box -- created at local origin so child text items position correctly
     QGraphicsRectItem* rect = new QGraphicsRectItem(0, 0, comp_w, comp_h);
@@ -179,12 +192,34 @@ void CanvasWidget::drawComponent(
     pinItems_[comp.pin] = rect;
     pinTypes_[comp.pin] = comp.type;
 
+    // Button -- click/release injects LOW/HIGH
     if (comp.type == ComponentType::Button) {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
         rect->setAcceptHoverEvents(true);
         rect->setCursor(Qt::PointingHandCursor);
-        rect->setToolTip(QString("Click to press, release to let go"));
+        rect->setToolTip("Click to press, release to let go");
+    }
+
+    // Switch -- click toggles state
+    if (comp.type == ComponentType::Switch) {
+        buttonStates_[comp.pin] = false;
+        rect->setFlag(QGraphicsItem::ItemIsSelectable);
+        rect->setAcceptHoverEvents(true);
+        rect->setCursor(Qt::PointingHandCursor);
+        rect->setToolTip("Click to toggle");
+    }
+
+    // Potentiometer -- drag to set analog value (coming soon)
+    if (comp.type == ComponentType::Potentiometer) {
+        rect->setToolTip("Drag to set analog value (0-1023)");
+    }
+
+    // Sensor types -- show current analog value (read only for now)
+    if (comp.type == ComponentType::LightSensor  ||
+        comp.type == ComponentType::TempSensor   ||
+        comp.type == ComponentType::AnalogSensor) {
+        rect->setToolTip("Analog input — value: 0");
     }
 
     // Component label -- child of rect so clicks on text find the rect
@@ -203,15 +238,23 @@ void CanvasWidget::drawComponent(
         nameText->setPos(6, 24);
     }
 
-    // Wire from component edge to pin on board
+    // Wire start point -- right edge of component for inputs, left edge for outputs
     QPointF wire_start = is_output
         ? QPointF(comp_x, comp_y + comp_h / 2.0)
         : QPointF(comp_x + comp_w, comp_y + comp_h / 2.0);
 
-    // Route wire: horizontal then vertical to pin
-    QPointF mid = QPointF(pin_pos.x(), wire_start.y());
-    drawWire(wire_start, mid);
-    drawWire(mid, pin_pos);
+    // Wire routing
+    if (is_analog_input) {
+        QPointF mid1 = QPointF(BOARD_X - 80, wire_start.y());
+        QPointF mid2 = QPointF(pin_pos.x(), wire_start.y());
+        drawWire(wire_start, mid1);
+        drawWire(mid1, mid2);
+        drawWire(mid2, pin_pos);
+    } else {
+        QPointF mid = QPointF(pin_pos.x(), wire_start.y());
+        drawWire(wire_start, mid);
+        drawWire(mid, pin_pos);
+    }
 }
 
 void CanvasWidget::mousePressEvent(QMouseEvent* event) {
@@ -233,16 +276,45 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
         emit buttonPressed(pin, 0); // LOW = pressed for INPUT_PULLUP
         return;
     }
+
+    // Switch -- toggle state on each click, stays until clicked again
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Switch) {
+        bool new_state = !switchStates_.value(pin, false);
+        switchStates_[pin] = new_state;
+        dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
+            QBrush(componentColor(ComponentType::Switch, new_state)));
+        // HIGH when on, LOW when off (opposite of INPUT_PULLUP button)
+        emit buttonPressed(pin, new_state ? 1 : 0);
+        return;
+    }
+
+    // Potentiometer -- start drag
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Potentiometer) {
+        dragPin_        = pin;
+        dragStartY_     = event->pos().y();
+        dragStartValue_ = analogValues_.value(pin, 512);
+        dynamic_cast<QGraphicsRectItem*>(item)->setCursor(Qt::SizeVerCursor);
+        return;
+    }
+
     QGraphicsView::mousePressEvent(event);
 }
 
 void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
+    // Reset potentiometer drag
+    if (dragPin_ >= 0) {
+        dragPin_ = -1;
+        QGraphicsView::mouseReleaseEvent(event);
+        return;
+    }
+
+    // Button release -- existing logic
     for (auto pin : buttonStates_.keys()) {
         if (buttonStates_[pin]) {
             buttonStates_[pin] = false;
             pinItems_[pin]->setBrush(
                 QBrush(componentColor(ComponentType::Button, false)));
-            emit buttonPressed(pin, 1); // HIGH = released for INPUT_PULLUP
+            emit buttonPressed(pin, 1);
         }
     }
     QGraphicsView::mouseReleaseEvent(event);
@@ -273,16 +345,25 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
     static const std::map<ComponentType, QColor> activeColors = {
         { ComponentType::LED,           COLOR_LED_ACTIVE     },
         { ComponentType::Button,        COLOR_BUTTON_ACTIVE  },
+        { ComponentType::Switch,        COLOR_SWITCH_ACTIVE  },
         { ComponentType::Buzzer,        COLOR_BUZZER_ACTIVE  },
         { ComponentType::Servo,         COLOR_SERVO_ACTIVE   },
+        { ComponentType::Potentiometer, COLOR_POT_ACTIVE     },
+        { ComponentType::LightSensor,   COLOR_LIGHT_ACTIVE   },
+        { ComponentType::TempSensor,    COLOR_TEMP_ACTIVE    },
+        { ComponentType::AnalogSensor,  COLOR_ANALOG_ACTIVE  },
     };
 
     static const std::map<ComponentType, QColor> inactiveColors = {
         { ComponentType::LED,           COLOR_LED_INACTIVE   },
         { ComponentType::Button,        COLOR_BUTTON_INACTIVE},
+        { ComponentType::Switch,        COLOR_SWITCH_INACTIVE},
         { ComponentType::Buzzer,        COLOR_BUZZER_INACTIVE},
         { ComponentType::Servo,         COLOR_SERVO_INACTIVE },
         { ComponentType::Potentiometer, COLOR_POT_INACTIVE   },
+        { ComponentType::LightSensor,   COLOR_LIGHT_INACTIVE },
+        { ComponentType::TempSensor,    COLOR_TEMP_INACTIVE  },
+        { ComponentType::AnalogSensor,  COLOR_ANALOG_INACTIVE},
         { ComponentType::LCD,           COLOR_LCD_INACTIVE   },
     };
 
@@ -290,4 +371,34 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
     auto it = colors.find(type);
     return it != colors.end() ? it->second
                               : (active ? COLOR_GENERIC_ACTIVE : COLOR_GENERIC_INACTIVE);
+}
+
+void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
+    if (dragPin_ < 0) { QGraphicsView::mouseMoveEvent(event); return; }
+
+    // Map vertical drag to 0-1023
+    // Drag up = higher value, drag down = lower value
+    int delta = dragStartY_ - event->pos().y();
+    int new_value = qBound(0, dragStartValue_ + delta * 4, 1023);
+
+    analogValues_[dragPin_] = new_value;
+
+    // Update component color intensity based on value
+    auto it = pinItems_.find(dragPin_);
+    if (it != pinItems_.end()) {
+        float ratio = new_value / 1023.0f;
+        QColor active = componentColor(ComponentType::Potentiometer, true);
+        QColor inactive = componentColor(ComponentType::Potentiometer, false);
+        // Interpolate between inactive and active color based on value
+        int r = inactive.red()   + ratio * (active.red()   - inactive.red());
+        int g = inactive.green() + ratio * (active.green() - inactive.green());
+        int b = inactive.blue()  + ratio * (active.blue()  - inactive.blue());
+        it.value()->setBrush(QBrush(QColor(r, g, b)));
+
+        // Update tooltip to show current value
+        it.value()->setToolTip(
+            QString("Value: %1 / 1023").arg(new_value));
+    }
+
+    emit potentiometerChanged(dragPin_, new_value);
 }

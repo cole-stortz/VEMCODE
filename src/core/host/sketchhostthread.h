@@ -31,6 +31,8 @@ public:
 
     void injectPin(int pin, int value); 
 
+    void injectAnalog(int pin, int value);
+
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);

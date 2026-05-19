@@ -279,6 +279,11 @@ QWidget* MainWindow::buildCanvasPanel() {
     canvasWidget_ = new CanvasWidget();
     layout->addWidget(canvasWidget_);
 
+    connect(canvasWidget_, &CanvasWidget::potentiometerChanged,
+        this, [this](int pin, int value) {
+            sketchThread_->injectAnalog(pin, value);
+        });
+
     // Wire button clicks on canvas to pin injection in simulation
     connect(canvasWidget_, &CanvasWidget::buttonPressed,
             this, [this](int pin, int value) {

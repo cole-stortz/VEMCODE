@@ -7,9 +7,13 @@
 enum class ComponentType {
     LED,
     Button,
+    Switch,
     Buzzer,
     Servo,
     Potentiometer,
+    LightSensor,
+    TempSensor,
+    AnalogSensor,   // generic fallback
     LCD,
     GenericOutput,
     GenericInput,

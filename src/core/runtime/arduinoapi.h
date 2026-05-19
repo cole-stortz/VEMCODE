@@ -40,6 +40,15 @@ namespace vb {
     constexpr int HIGH         = 1;
 }
 
+// Analog pin constants -- global scope so they work in #define statements
+// These map to the internal pin numbers used by the runtime (14-19)
+constexpr int A0 = 14;
+constexpr int A1 = 15;
+constexpr int A2 = 16;
+constexpr int A3 = 17;
+constexpr int A4 = 18;
+constexpr int A5 = 19;
+
 // Sketch DLL must export these three symbols:
 //   void vb_init(ArduinoAPI* api)   -- called once after LoadLibrary
 //   void vb_setup()                 -- called once (maps to Arduino setup())

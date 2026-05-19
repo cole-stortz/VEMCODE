@@ -27,6 +27,14 @@ public:
 
     void inject_pin(int pin, int value);
 
+    void inject_analog(int pin, int value) {
+        // Convert internal pin number to analog index
+        // A0=14, A1=15... → index 0,1...
+        int analog_index = (pin >= 14) ? pin - 14 : pin;
+        if (analog_index >= 0 && analog_index < 8)
+            state_.analog_values[analog_index] = value;
+    }
+
 private:
     RuntimeState state_;
 

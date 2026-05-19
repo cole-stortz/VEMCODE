@@ -69,8 +69,10 @@ void ArduinoRuntime::impl_analogWrite(int pin, int value) {
 }
 
 int ArduinoRuntime::impl_analogRead(int pin) {
-    if (!g_runtime || pin < 0 || pin >= 8) return 0; // check if analog pins are outside the arduino range
-    return g_runtime->state_.analog_values[pin]; // return the pin value
+    if (!g_runtime) return 0;
+    int analog_index = (pin >= 14) ? pin - 14 : pin;
+    if (analog_index < 0 || analog_index >= 8) return 0;
+    return g_runtime->state_.analog_values[analog_index];
 }
 
 void ArduinoRuntime::impl_delay(unsigned long ms) {

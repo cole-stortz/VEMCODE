@@ -41,6 +41,9 @@ public:
     // Direct access to the runtime for reading pin state, serial output, etc.
     ArduinoRuntime& runtime() { return runtime_; }
 
+    void inject_analog(int pin, int value) {
+        runtime_.inject_analog(pin, value);
+    }
 
 private:
     SketchDLL      dll_;

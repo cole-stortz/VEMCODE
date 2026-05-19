@@ -3,17 +3,30 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <map>
 
 void CircuitDetector::detect(const std::string& source) {
     reset();
 
-    // Phase 1 -- build symbol table from #defines
-    auto defines = parse_defines(source);
-
-    // Phase 2 -- find pinMode calls and resolve pin numbers
+    auto defines  = parse_defines(source);
     auto pinmodes = parse_pinmodes(source, defines);
 
     // Phase 3 -- infer component type from name and mode
+    static const std::map<ComponentType, std::string> type_labels = {
+        { ComponentType::LED,           "LED"           },
+        { ComponentType::Button,        "Button"        },
+        { ComponentType::Switch,        "Switch"        },
+        { ComponentType::Buzzer,        "Buzzer"        },
+        { ComponentType::Servo,         "Servo"         },
+        { ComponentType::Potentiometer, "Potentiometer" },
+        { ComponentType::LightSensor,   "Light Sensor"  },
+        { ComponentType::TempSensor,    "Temp Sensor"   },
+        { ComponentType::AnalogSensor,  "Analog Sensor" },
+        { ComponentType::LCD,           "LCD"           },
+        { ComponentType::GenericOutput, "Output"        },
+        { ComponentType::GenericInput,  "Input"         },
+    };
+
     for (const auto& pm : pinmodes) {
         DetectedComponent comp;
         comp.pin       = pm.pin;
@@ -21,45 +34,60 @@ void CircuitDetector::detect(const std::string& source) {
         comp.type      = infer_type(pm.pin_name, pm.mode);
         comp.confirmed = false;
 
-        // Build a human readable label
-        std::string type_str;
-        switch (comp.type) {
-            case ComponentType::LED:          type_str = "LED";          break;
-            case ComponentType::Button:       type_str = "Button";       break;
-            case ComponentType::Buzzer:       type_str = "Buzzer";       break;
-            case ComponentType::Servo:        type_str = "Servo";        break;
-            case ComponentType::Potentiometer:type_str = "Potentiometer";break;
-            case ComponentType::LCD:          type_str = "LCD";          break;
-            case ComponentType::GenericOutput:type_str = "Output";       break;
-            case ComponentType::GenericInput: type_str = "Input";        break;
-            default:                          type_str = "Component";    break;
-        }
+        auto label_it = type_labels.find(comp.type);
+        std::string type_str = (label_it != type_labels.end())
+            ? label_it->second : "Component";
 
-        if (comp.pin >= 0)
-            comp.label = type_str + " (pin " + std::to_string(comp.pin) + ")";
-        else
-            comp.label = type_str;
+        comp.label = comp.pin >= 0
+            ? type_str + " (pin " + std::to_string(comp.pin) + ")"
+            : type_str;
 
-        // Avoid duplicates -- same pin already detected
         bool duplicate = false;
-        for (const auto& existing : components_) {
-            if (existing.pin == comp.pin && existing.pin >= 0) {
-                duplicate = true;
-                break;
-            }
-        }
+        for (const auto& existing : components_)
+            if (existing.pin == comp.pin && existing.pin >= 0)
+                { duplicate = true; break; }
         if (!duplicate)
             components_.push_back(comp);
     }
 
-    // Check for Serial.begin() -- not pin-based
+    // Phase 2b -- detect components from analogRead calls
+    std::regex analog_re(R"((?:api->)?analogRead\s*\(\s*(\w+)\s*\))");
+    auto ab = std::sregex_iterator(source.begin(), source.end(), analog_re);
+    auto ae = std::sregex_iterator();
+
+    for (auto it = ab; it != ae; ++it) {
+        std::smatch m = *it;
+        std::string token = m[1].str();
+        int pin = resolve_pin(token, defines);
+        if (pin < 0) continue;
+
+        bool duplicate = false;
+        for (const auto& existing : components_)
+            if (existing.pin == pin) { duplicate = true; break; }
+        if (duplicate) continue;
+
+        DetectedComponent comp;
+        comp.pin       = pin;
+        comp.pin_name  = defines.count(token) ? token : "";
+        comp.type      = infer_type(token, "INPUT");
+        comp.confirmed = false;
+
+        auto label_it = type_labels.find(comp.type);
+        comp.label = (label_it != type_labels.end()
+                      ? label_it->second : "Analog")
+                     + " (pin " + std::to_string(pin) + ")";
+
+        components_.push_back(comp);
+    }
+
+    // Check for Serial.begin()
     if (source.find("Serial.begin") != std::string::npos ||
         source.find("Serial_begin") != std::string::npos) {
         DetectedComponent serial;
-        serial.type      = ComponentType::Serial;
-        serial.pin       = -1;
-        serial.pin_name  = "Serial";
-        serial.label     = "Serial monitor";
+        serial.type     = ComponentType::Serial;
+        serial.pin      = -1;
+        serial.pin_name = "Serial";
+        serial.label    = "Serial monitor";
         serial.confirmed = false;
         components_.push_back(serial);
     }
@@ -141,8 +169,11 @@ ComponentType CircuitDetector::infer_type(
     if (contains_any(upper, {"LED", "LIGHT", "LAMP", "INDICATOR"}))
         return ComponentType::LED;
 
-    if (contains_any(upper, {"BTN", "BUTTON", "SWITCH", "SW", "KEY"}))
+    if (contains_any(upper, {"BTN", "BUTTON", "KEY"}))
         return ComponentType::Button;
+
+    if (contains_any(upper, {"SWITCH", "SW", "TOGGLE"}))
+        return ComponentType::Switch;
 
     if (contains_any(upper, {"BUZZER", "BUZZ", "SPEAKER", "TONE", "PIEZO"}))
         return ComponentType::Buzzer;
@@ -150,9 +181,17 @@ ComponentType CircuitDetector::infer_type(
     if (contains_any(upper, {"SERVO", "MOTOR", "SRV"}))
         return ComponentType::Servo;
 
-    if (contains_any(upper, {"POT", "SENSOR", "ANALOG", "ADC", "PHOTO",
-                              "TEMP", "LIGHT_SENSOR", "LDR"}))
+    if (contains_any(upper, {"POT", "POTENTIOMETER", "DIAL"}))
         return ComponentType::Potentiometer;
+
+    if (contains_any(upper, {"PHOTO", "LDR", "LIGHT_SENSOR", "PHOTORESISTOR"}))
+        return ComponentType::LightSensor;
+
+    if (contains_any(upper, {"TEMP", "TEMPERATURE", "THERMISTOR"}))
+        return ComponentType::TempSensor;
+
+    if (contains_any(upper, {"SENSOR", "ANALOG", "ADC"}))
+        return ComponentType::AnalogSensor;
 
     if (contains_any(upper, {"LCD", "DISPLAY", "SCREEN", "OLED"}))
         return ComponentType::LCD;
