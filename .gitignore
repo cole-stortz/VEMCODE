@@ -1,51 +1,39 @@
-# Build output
-build/
-app/*.dll
-app/*.exe
-app/*.manifest
-app/*.a
-app/generic/
-app/iconengines/
-app/imageformats/
-app/networkinformation/
-app/platforms/
-app/styles/
-app/tls/
-app/translations/
-app/D3Dcompiler_47.dll
-app/opengl32sw.dll
+# Root build directory only (leading slash = root only)
+/build/
 
-# Compiled sketch artifacts
-*.dll
-*.tmp.dll
-*.exe
-*.obj
-*.o
-*.a
+# App runtime files -- keep sketches folder but ignore binaries
+/app/*.dll
+/app/*.exe
+/app/*.manifest
+/app/*.a
+/app/generic/
+/app/iconengines/
+/app/imageformats/
+/app/networkinformation/
+/app/platforms/
+/app/styles/
+/app/tls/
+/app/translations/
 
-# CMake
+# Compiled sketch artifacts inside sketches folders
+sketches/**/*.dll
+sketches/**/*.tmp.dll
+app/sketches/**/*.dll
+app/sketches/**/*.tmp.dll
+app/sketches/**/_vb_temp.cpp
+
+# Test binaries only
+testfiles/*.exe
+testfiles/*.dll
+
+# CMake generated (root build only -- covered by /build/ above)
 CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
-!CMakeLists.txt
 
 # Qt generated
 *_autogen/
-moc_*.cpp
-qrc_*.cpp
-ui_*.h
 .qmake.stash
 
-# Temp files
-testfiles/test_*.exe
-testfiles/test_*.dll
-sketches/**/*.dll
-sketches/**/*.tmp.dll
-/sketch.dll
-
-# IDE
+# IDE -- keep c_cpp_properties.json but ignore personal settings
 .vscode/settings.json
 .idea/
 *.vcxproj
@@ -58,6 +46,3 @@ sketches/**/*.tmp.dll
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Notes
-notes/
