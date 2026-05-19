@@ -1,6 +1,7 @@
 #include "src/ui/mainwindow.h"
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
+#include "src/core/build/preprocessor.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -342,11 +343,56 @@ void MainWindow::onRunClicked() {
     CompileResult result = compiler.compile(sketch_path);
 
     if (!result.success) {
+        QString raw = QString::fromStdString(result.raw_output);
+
+        // Replace path:LINE: with "line LINE:" for error lines with numbers
+        QRegularExpression path_re(
+            QRegularExpression::escape(QDir::tempPath() + "/_vb_temp.cpp:") +
+            "(?=(\\d))"
+        );
+        raw.replace(path_re, "line ");
+
+        // Strip path from context lines like "In function..." -- no line number
+        QRegularExpression context_re(
+            QRegularExpression::escape(QDir::tempPath() + "/_vb_temp.cpp:")
+        );
+        raw.replace(context_re, "");
+
+        // Adjust line numbers -- subtract injected header offset
+        QRegularExpression line_num_re(R"(line (\d+):)");
+        QString adjusted_raw;
+        int last_pos = 0;
+        QRegularExpressionMatchIterator it = line_num_re.globalMatch(raw);
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            int raw_line = match.captured(1).toInt();
+            int adj_line = raw_line - Preprocessor::INJECTED_HEADER_LINES;
+            adjusted_raw += raw.mid(last_pos, match.capturedStart() - last_pos);
+            adjusted_raw += QString("line %1:").arg(qMax(1, adj_line));
+            last_pos = match.capturedEnd();
+        }
+        adjusted_raw += raw.mid(last_pos);
+        raw = adjusted_raw;
+
+        // Strip gcc source context line numbers (e.g. "16 | api->pinMode...")
+        QRegularExpression context_line_re(R"(\n\s*\d+\s*\|)");
+        raw.replace(context_line_re, "\n   |");
+
+        // Restore Serial.method() names -- preprocessor converted dots to underscores
+        raw.replace("Serial_println(", "Serial.println(");
+        raw.replace("Serial_print(", "Serial.print(");
+        raw.replace("Serial_begin(", "Serial.begin(");
+        raw.replace("Serial_available(", "Serial.available(");
+        raw.replace("Serial_read(", "Serial.read(");
+
+        // Strip api-> from error context -- user never wrote this
+        raw.replace("api->", "");
+
         serialMonitor_->appendPlainText("=== Compile errors ===\n");
-        serialMonitor_->appendPlainText(QString::fromStdString(result.raw_output));
+        serialMonitor_->appendPlainText(raw);
         statusBar()->showMessage("Compile failed");
         runButton_->setEnabled(true);
-        showCompileErrors(result);  // highlight errors in editor
+        showCompileErrors(result);
         return;
     }
 
