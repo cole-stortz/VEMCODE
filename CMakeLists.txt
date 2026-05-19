@@ -28,6 +28,7 @@ set(SOURCES
     src/ui/codehighlighter.cpp
     src/ui/linenumberarea.cpp
     src/ui/variablewatch.cpp
+    src/ui/settingsdialog.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
@@ -43,6 +44,7 @@ set(HEADERS
     src/ui/codehighlighter.h
     src/ui/linenumberarea.h
     src/ui/variablewatch.h
+    src/ui/settingsdialog.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h

@@ -12,6 +12,7 @@
 #include <QElapsedTimer>
 #include <QDir>
 #include <QShortcut>
+#include <Qsettings>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
@@ -21,6 +22,7 @@
 #include "src/core/build/preprocessor.h"
 #include "src/ui/linenumberarea.h"
 #include "src/ui/variablewatch.h"
+#include "src/ui/settingsdialog.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -40,6 +42,7 @@ private slots:
     void onRunClicked();
     void onStopClicked();
     void onOpenClicked();
+    void onSettingsClicked();
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -80,4 +83,8 @@ private:
 
     // Circuit detection
     CircuitDetector    detector_;
+
+    // Settings
+    QString compilerPath_;
+    QString projectRoot_;
 };

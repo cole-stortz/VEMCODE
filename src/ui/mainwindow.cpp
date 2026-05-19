@@ -90,6 +90,24 @@ MainWindow::MainWindow(QWidget* parent)
     layout->setSpacing(0);
     setCentralWidget(central);
 
+    // Load saved settings or show first-run dialog
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+    compilerPath_ = settings.value("compiler/path", "").toString();
+    projectRoot_  = settings.value("compiler/project_root", "").toString();
+
+    // First run -- no settings saved yet
+    if (compilerPath_.isEmpty() || projectRoot_.isEmpty()) {
+        SettingsDialog dialog(this);
+        if (dialog.exec() == QDialog::Accepted) {
+            compilerPath_ = dialog.compilerPath();
+            projectRoot_  = dialog.projectRoot();
+            settings.setValue("compiler/path", compilerPath_);
+            settings.setValue("compiler/project_root", projectRoot_);
+        }
+    }
+
     setupToolbar(central, layout);
     setupMainArea(central, layout);  // variableWatch_ gets created here
 
@@ -158,6 +176,12 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
+
+    QPushButton* settingsButton = new QPushButton("Settings", toolbar);
+    settingsButton->setFixedHeight(26);
+    settingsButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
+    toolbarLayout->addWidget(settingsButton);
 
     toolbarLayout->addStretch();
 
@@ -350,8 +374,8 @@ void MainWindow::onRunClicked() {
     }
 
     Compiler compiler;
-    compiler.set_compiler_path("C:/Qt/Tools/mingw1310_64/bin/g++.exe");
-    compiler.set_include_path("C:/Users/cdsto/Documents/VirtualBench");
+    compiler.set_compiler_path(compilerPath_.toStdString());
+    compiler.set_include_path(projectRoot_.toStdString());
 
     // Output DLL to same folder as sketch
     std::string sketch_path = currentSketchPath_.toStdString();
@@ -542,3 +566,20 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
     }
 }
 
+void MainWindow::onSettingsClicked() {
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+
+    SettingsDialog dialog(this);
+    dialog.setCompilerPath(compilerPath_);
+    dialog.setProjectRoot(projectRoot_);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        compilerPath_ = dialog.compilerPath();
+        projectRoot_  = dialog.projectRoot();
+        settings.setValue("compiler/path", compilerPath_);
+        settings.setValue("compiler/project_root", projectRoot_);
+        statusBar()->showMessage("Settings saved");
+    }
+}
