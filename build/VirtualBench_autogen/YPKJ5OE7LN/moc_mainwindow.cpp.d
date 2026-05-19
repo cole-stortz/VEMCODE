@@ -1,5 +1,6 @@
 C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_mainwindow.cpp: C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h \
   C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/moc_predefs.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/QDir \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QElapsedTimer \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QFile \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QFileInfo \
@@ -60,6 +61,8 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qdatetime.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qdeadlinetimer.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qdebug.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qdir.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qdirlisting.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qelapsedtimer.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qendian.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qeventloop.h \

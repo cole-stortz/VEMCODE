@@ -29,6 +29,7 @@ set(SOURCES
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
     src/core/build/compiler.cpp
+    src/core/build/preprocessor.cpp
     src/core/circuit/circuitdetector.cpp
 )
 
@@ -41,6 +42,7 @@ set(HEADERS
     src/core/host/sketchhost.h
     src/core/host/sketchhostthread.h
     src/core/build/compiler.h
+    src/core/build/preprocessor.h
     src/core/circuit/circuitdetector.h
 )
 

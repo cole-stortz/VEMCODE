@@ -1,5 +1,6 @@
 #include "src/core/build/compiler.h"
-
+#include "src/core/build/preprocessor.h"
+#include <fstream>
 #include <sstream>
 #include <regex>
 #include <cstdio>
@@ -30,6 +31,22 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 
     result.dll_path = output_dir_ + "/" + sketch_name + ".dll";
 
+    // Read the sketch source
+    std::ifstream sketch_file(sketch_path);
+    std::string source((std::istreambuf_iterator<char>(sketch_file)),
+                        std::istreambuf_iterator<char>());
+    sketch_file.close();
+
+    // Preprocess -- transform Arduino syntax to VirtualBench format
+    Preprocessor preprocessor;
+    std::string transformed = preprocessor.process(source);
+
+    // Write transformed source to a temp file for compilation
+    std::string temp_path = output_dir_ + "/_vb_temp.cpp";
+    std::ofstream temp_file(temp_path);
+    temp_file << transformed;
+    temp_file.close();
+
     // Build the g++ command
     // -shared          = build a DLL not an exe
     // -I include_path_ = find arduinoapi.h from project root
@@ -41,7 +58,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         << " -static-libgcc"
         << " -static-libstdc++"
         << " -o \"" << result.dll_path << "\""
-        << " \"" << sketch_path << "\""
+        << " \"" << temp_path << "\""          // <- temp file not original
         << " -I\"" << include_path_ << "\""
         << " -std=c++17";
 

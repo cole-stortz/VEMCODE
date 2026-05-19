@@ -170,27 +170,18 @@ QWidget* MainWindow::buildEditorPanel() {
 
     // Default starter sketch
     codeEditor_->setPlainText(
-        "#include \"src/core/runtime/arduinoapi.h\"\n"
-        "#include <string>\n"
-        "using namespace vb;\n\n"
-        "static ArduinoAPI* api = nullptr;\n"
-        "static int counter = 0;\n\n"
-        "extern \"C\" __declspec(dllexport)\n"
-        "void vb_init(ArduinoAPI* a) { api = a; }\n\n"
-        "extern \"C\" __declspec(dllexport)\n"
-        "void vb_setup() {\n"
-        "    api->Serial_begin(9600);\n"
-        "    api->pinMode(13, OUTPUT);\n"
+        "#define LED_PIN 13\n\n"
+        "void setup() {\n"
+        "    Serial.begin(9600);\n"
+        "    pinMode(LED_PIN, OUTPUT);\n"
+        "    Serial.println(\"VirtualBench ready\");\n"
         "}\n\n"
-        "extern \"C\" __declspec(dllexport)\n"
-        "void vb_loop() {\n"
-        "    api->digitalWrite(13, HIGH);\n"
-        "    api->delay(1000);\n"
-        "    api->digitalWrite(13, LOW);\n"
-        "    api->delay(1000);\n"
-        "    counter++;\n"
-        "    std::string msg = \"Blink #\" + std::to_string(counter);\n"
-        "    api->Serial_println(msg.c_str());\n"
+        "void loop() {\n"
+        "    digitalWrite(LED_PIN, HIGH);\n"
+        "    delay(1000);\n"
+        "    digitalWrite(LED_PIN, LOW);\n"
+        "    delay(1000);\n"
+        "    Serial.println(\"Blink\");\n"
         "}\n"
     );
 
@@ -303,9 +294,16 @@ void MainWindow::onLoadFailed(QString reason) {
 // Button handlers
 // -------------------------------------------------------
 void MainWindow::onRunClicked() {
+    // If no file is open, save editor content to a temp file and run that
     if (currentSketchPath_.isEmpty()) {
-        onOpenClicked();
-        if (currentSketchPath_.isEmpty()) return;
+        QString temp_path = QDir::tempPath() + "/vb_sketch.cpp";
+        QFile temp_file(temp_path);
+        if (temp_file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            temp_file.write(codeEditor_->toPlainText().toUtf8());
+            temp_file.close();
+        }
+        currentSketchPath_ = temp_path;
+        setWindowTitle("VirtualBench — unsaved sketch");
     }
 
     serialMonitor_->clear();

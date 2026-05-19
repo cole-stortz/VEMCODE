@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QElapsedTimer>
+#include <QDir>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
