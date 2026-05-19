@@ -9,10 +9,12 @@
 #include <QVBoxLayout>
 #include <QFileInfo>
 #include <QFile>
+#include <QElapsedTimer>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
+#include "src/ui/signaltimeline.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -20,6 +22,8 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
+    SignalTimeline* signalTimeline_ = nullptr;
+    QElapsedTimer   simTimer_;
 
 private slots:
     void onSerialOutput(QString text);

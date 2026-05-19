@@ -255,12 +255,10 @@ QWidget* MainWindow::buildDebugPanel() {
     );
     debugTabs_->addTab(serialMonitor_, "Serial monitor");
 
-    // Tab 2 -- Signal timeline (placeholder)
-    QLabel* timelinePlaceholder = new QLabel("Signal timeline — coming soon");
-    timelinePlaceholder->setAlignment(Qt::AlignCenter);
-    timelinePlaceholder->setStyleSheet("background: #1e1e1e; color: #444;");
-    debugTabs_->addTab(timelinePlaceholder, "Signal timeline");
-
+    // Tab 2 -- Signal timeline
+    signalTimeline_ = new SignalTimeline();
+    debugTabs_->addTab(signalTimeline_, "Signal timeline");
+    
     // Tab 3 -- Variable watch (placeholder)
     QLabel* watchPlaceholder = new QLabel("Variable watch — coming soon");
     watchPlaceholder->setAlignment(Qt::AlignCenter);
@@ -283,6 +281,7 @@ void MainWindow::onSerialOutput(QString text) {
 void MainWindow::onPinChanged(int pin, int value) {
     canvasWidget_->updatePin(pin, value);
     detector_.confirm_pin(pin);
+    signalTimeline_->addEvent(pin, value, simTimer_.elapsed());
     statusBar()->showMessage(
         QString("Pin %1 -> %2").arg(pin).arg(value ? "HIGH" : "LOW")
     );
@@ -344,6 +343,8 @@ void MainWindow::onRunClicked() {
         return;
     }
 
+    signalTimeline_->clear();
+    simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));

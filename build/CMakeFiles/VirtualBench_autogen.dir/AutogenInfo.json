@@ -329,6 +329,12 @@
 			"MU",
 			"YPKJ5OE7LN/moc_mainwindow.cpp",
 			null
+		],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.h",
+			"MU",
+			"YPKJ5OE7LN/moc_signaltimeline.cpp",
+			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
@@ -441,6 +447,11 @@
 		],
 		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.cpp",
 			"MU",
 			null
 		]

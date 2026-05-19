@@ -1,4 +1,5 @@
 VirtualBench_autogen/timestamp: \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/QElapsedTimer \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QFile \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QFileInfo \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QList \
@@ -10,6 +11,7 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QSizeF \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QString \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/QThread \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/QVector \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/q17memory.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/q20bit.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/q20functional.h \
@@ -57,6 +59,7 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qdatetime.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qdeadlinetimer.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qdebug.h \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/qelapsedtimer.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qendian.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qeventloop.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qexceptionhandling.h \
@@ -155,9 +158,11 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qutf8stringview.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qvariant.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qvarlengtharray.h \
+	C:/Qt/6.11.1/mingw_64/include/QtCore/qvector.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qversiontagging.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qxptype_traits.h \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/QColor \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QMouseEvent \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qabstracttextdocumentlayout.h \
@@ -927,6 +932,8 @@ VirtualBench_autogen/timestamp: \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.cpp \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.h \
 	C:/msys64/ucrt64/share/cmake/Modules/CMakeCXXInformation.cmake \
 	C:/msys64/ucrt64/share/cmake/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake \
 	C:/msys64/ucrt64/share/cmake/Modules/CMakeCommonLanguageInclude.cmake \

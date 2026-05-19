@@ -32,9 +32,9 @@ void vb_setup() {
 extern "C" __declspec(dllexport)
 void vb_loop() {
     api->digitalWrite(LED_PIN, HIGH);
-    api->delay(200);
+    api->delay(100);
     api->digitalWrite(LED_PIN, LOW);
-    api->delay(200);
+    api->delay(100);
 
     counter++;
     std::string msg = "Blink #" + std::to_string(counter) + " - pin 13 toggled";
