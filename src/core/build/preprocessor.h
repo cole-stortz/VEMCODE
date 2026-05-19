@@ -43,4 +43,7 @@ private:
     std::string replace_all(const std::string& source,
                             const std::string& from,
                             const std::string& to);
+
+    // Quick check to see if loop delay exists, add delay(10) if missing
+    std::string inject_safety_delay(const std::string& source);
 };

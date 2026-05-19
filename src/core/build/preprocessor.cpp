@@ -2,9 +2,6 @@
 #include <regex>
 #include <sstream>
 
-// -------------------------------------------------------
-// process() -- main entry point
-// -------------------------------------------------------
 std::string Preprocessor::process(const std::string& source) {
     // If already in VirtualBench format, pass through unchanged
     if (is_already_transformed(source))
@@ -13,24 +10,16 @@ std::string Preprocessor::process(const std::string& source) {
     std::string result = source;
     result = replace_api_calls(result);
     result = wrap_functions(result);
+    result = inject_safety_delay(result);  // add this step
     result = inject_header(result);
     return result;
 }
 
-// -------------------------------------------------------
-// is_already_transformed() -- detect VirtualBench format
-// -------------------------------------------------------
 bool Preprocessor::is_already_transformed(const std::string& source) {
     return source.find("vb_init") != std::string::npos ||
            source.find("ArduinoAPI") != std::string::npos;
 }
 
-// -------------------------------------------------------
-// replace_api_calls() -- replaces Arduino API with api->
-//
-// Order matters -- longer/more specific patterns first
-// to avoid partial replacements (e.g. Serial.println before Serial.print)
-// -------------------------------------------------------
 std::string Preprocessor::replace_api_calls(const std::string& source) {
     std::string s = source;
 
@@ -63,10 +52,6 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     return s;
 }
 
-// -------------------------------------------------------
-// wrap_functions() -- renames setup() and loop() to
-// vb_setup() and vb_loop() with DLL export decorators
-// -------------------------------------------------------
 std::string Preprocessor::wrap_functions(const std::string& source) {
     std::string s = source;
 
@@ -83,11 +68,6 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
 
     return s;
 }
-
-// -------------------------------------------------------
-// inject_header() -- prepends boilerplate at the top
-// -------------------------------------------------------
-
 
 std::string Preprocessor::inject_header(const std::string& source) {
     std::string header =
@@ -110,9 +90,6 @@ std::string Preprocessor::inject_header(const std::string& source) {
     return header + source;
 }
 
-// -------------------------------------------------------
-// replace_all() -- replaces every occurrence of from with to
-// -------------------------------------------------------
 std::string Preprocessor::replace_all(const std::string& source,
                                        const std::string& from,
                                        const std::string& to) {
@@ -130,5 +107,20 @@ std::string Preprocessor::replace_all(const std::string& source,
         result.append(to);
         pos = found + from.size();
     }
+    return result;
+}
+
+std::string Preprocessor::inject_safety_delay(const std::string& source) {
+    // If loop already has a delay, no need to inject
+    bool has_delay = source.find("api->delay(") != std::string::npos;
+    if (has_delay) return source;
+
+    // Find the last closing brace -- that's the end of vb_loop()
+    size_t last_brace = source.rfind('}');
+    if (last_brace == std::string::npos) return source;
+
+    // Insert safety delay just before the last closing brace
+    std::string result = source;
+    result.insert(last_brace, "    api->delay(10);\n");
     return result;
 }
