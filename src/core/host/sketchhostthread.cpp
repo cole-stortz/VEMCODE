@@ -60,3 +60,7 @@ void SketchThread::run() {
         }
     }
 }
+void SketchThread::injectPin(int pin, int value) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_pin(pin, value);
+}

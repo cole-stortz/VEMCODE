@@ -89,3 +89,7 @@ FILETIME SketchHost::get_file_time(const std::string& path) {
 bool SketchHost::file_time_changed(FILETIME a, FILETIME b) {
     return CompareFileTime(&a, &b) != 0;
 }
+
+void SketchHost::inject_pin(int pin, int value) {
+    runtime_.inject_pin(pin, value);
+}

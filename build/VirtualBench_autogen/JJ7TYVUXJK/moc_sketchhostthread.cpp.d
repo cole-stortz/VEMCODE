@@ -1,5 +1,6 @@
 C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/JJ7TYVUXJK/moc_sketchhostthread.cpp: C:/Users/cdsto/Documents/VirtualBench/src/core/host/sketchhostthread.h \
   C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/moc_predefs.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/QMutex \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QString \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QThread \
   C:/Qt/6.11.1/mingw_64/include/QtCore/q17memory.h \
@@ -56,6 +57,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/JJ7TYVUXJK/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qmetacontainer.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qmetatype.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qminmax.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qmutex.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qnamespace.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qnumeric.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qobject.h \
@@ -98,6 +100,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/JJ7TYVUXJK/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtnoop.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtpreprocessorsupport.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtresource.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qtsan_impl.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qttranslation.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qttypetraits.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtversion.h \

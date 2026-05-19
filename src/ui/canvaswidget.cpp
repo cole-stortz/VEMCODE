@@ -7,6 +7,7 @@
 #include <QBrush>
 #include <QFont>
 #include <cmath>
+#include <map>
 
 CanvasWidget::CanvasWidget(QWidget* parent)
     : QGraphicsView(parent)
@@ -15,7 +16,7 @@ CanvasWidget::CanvasWidget(QWidget* parent)
     setScene(scene_);
     setRenderHint(QPainter::Antialiasing);
     setStyleSheet("background: #1a1a1a; border: none;");
-    setDragMode(QGraphicsView::ScrollHandDrag);
+    setDragMode(QGraphicsView::NoDrag);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
     // Draw empty board on startup
@@ -140,35 +141,43 @@ void CanvasWidget::drawComponent(
                     ? BOARD_X + BOARD_W + 80        // right side
                     : BOARD_X - comp_w - 80;        // left side
 
-    // Component box
-    QGraphicsRectItem* rect = scene_->addRect(
-        comp_x, comp_y, comp_w, comp_h,
-        QPen(componentColor(comp.type, false).darker(150), 1),
-        QBrush(componentColor(comp.type, false))
-    );
+    // Component box -- created at local origin so child text items position correctly
+    QGraphicsRectItem* rect = new QGraphicsRectItem(0, 0, comp_w, comp_h);
+    rect->setPen(QPen(componentColor(comp.type, false).darker(150), 1));
+    rect->setBrush(QBrush(componentColor(comp.type, false)));
+    rect->setPos(comp_x, comp_y);
+    scene_->addItem(rect);
 
     // Store component type in item data for updatePin()
     rect->setData(0, static_cast<int>(comp.type));
     pinItems_[comp.pin] = rect;
 
-    // Component label
-    QGraphicsTextItem* typeText = scene_->addText(
-        QString::fromStdString(comp.label)
-    );
-    typeText->setDefaultTextColor(QColor("#cccccc"));
-    typeText->setFont(QFont("Courier New", 8));
-    typeText->setPos(comp_x + 6, comp_y + 6);
+    pinTypes_[comp.pin] = comp.type;
 
-    // Pin name label (e.g. LED_PIN)
-    if (!comp.pin_name.empty()) {
-        QGraphicsTextItem* nameText = scene_->addText(
-            QString::fromStdString(comp.pin_name)
-        );
-        nameText->setDefaultTextColor(QColor("#888888"));
-        nameText->setFont(QFont("Courier New", 7));
-        nameText->setPos(comp_x + 6, comp_y + 24);
+    if (comp.type == ComponentType::Button) {
+        buttonStates_[comp.pin] = false;
+        rect->setFlag(QGraphicsItem::ItemIsSelectable);
+        rect->setAcceptHoverEvents(true);
+        rect->setCursor(Qt::PointingHandCursor);
+        rect->setToolTip(QString("Click to press, release to let go"));
     }
 
+    // Component label
+    // Component label -- child of rect so clicks on text find the rect
+    QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);
+    typeText->setPlainText(QString::fromStdString(comp.label));
+    typeText->setDefaultTextColor(QColor("#cccccc"));
+    typeText->setFont(QFont("Courier New", 8));
+    typeText->setPos(6, 6);  // relative to rect
+
+    // Pin name label
+    if (!comp.pin_name.empty()) {
+        QGraphicsTextItem* nameText = new QGraphicsTextItem(rect);
+        nameText->setPlainText(QString::fromStdString(comp.pin_name));
+        nameText->setDefaultTextColor(QColor("#888888"));
+        nameText->setFont(QFont("Courier New", 7));
+        nameText->setPos(6, 24);  // relative to rect
+    }
     // Wire from component edge to pin on board
     QPointF wire_start = is_output
         ? QPointF(comp_x, comp_y + comp_h / 2.0)
@@ -179,6 +188,41 @@ void CanvasWidget::drawComponent(
     drawWire(wire_start, mid);
     drawWire(mid, pin_pos);
 }
+
+void CanvasWidget::mousePressEvent(QMouseEvent* event) {
+    QGraphicsItem* item = itemAt(event->pos());
+
+    // Walk up parent chain -- click may land on text label on top of rect
+    while (item && !dynamic_cast<QGraphicsRectItem*>(item))
+        item = item->parentItem();
+
+    if (!item) { QGraphicsView::mousePressEvent(event); return; }
+
+    int pin = pinItems_.key(
+        dynamic_cast<QGraphicsRectItem*>(item), -1);
+
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Button) {
+        buttonStates_[pin] = true;
+        dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
+            QBrush(componentColor(ComponentType::Button, true)));
+        emit buttonPressed(pin, 0);
+        return;
+    }
+    QGraphicsView::mousePressEvent(event);
+}
+
+void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
+    for (auto pin : buttonStates_.keys()) {
+        if (buttonStates_[pin]) {
+            buttonStates_[pin] = false;
+            pinItems_[pin]->setBrush(
+                QBrush(componentColor(ComponentType::Button, false)));
+            emit buttonPressed(pin, 1); // HIGH = released for INPUT_PULLUP
+        }
+    }
+    QGraphicsView::mouseReleaseEvent(event);
+}
+
 
 // -------------------------------------------------------
 // drawWire()
@@ -214,23 +258,23 @@ QPointF CanvasWidget::pinLocation(int pin) {
 // componentColor() -- returns fill color for a component
 // -------------------------------------------------------
 QColor CanvasWidget::componentColor(ComponentType type, bool active) {
-    if (active) {
-        switch (type) {
-            case ComponentType::LED:    return QColor("#ffdd44");
-            case ComponentType::Buzzer: return QColor("#ff8844");
-            case ComponentType::Servo:  return QColor("#44aaff");
-            case ComponentType::Button: return QColor("#44ff88");
-            default:                    return QColor("#aaaaaa");
-        }
-    }
-    // Inactive colors -- dim versions
-    switch (type) {
-        case ComponentType::LED:          return QColor("#3a3000");
-        case ComponentType::Button:       return QColor("#003a15");
-        case ComponentType::Buzzer:       return QColor("#3a1a00");
-        case ComponentType::Servo:        return QColor("#001a3a");
-        case ComponentType::Potentiometer:return QColor("#1a1a3a");
-        case ComponentType::LCD:          return QColor("#001a1a");
-        default:                          return QColor("#2a2a2a");
-    }
+    static const std::map<ComponentType, QColor> activeColors = {
+        { ComponentType::LED,           QColor("#ffdd44") },
+        { ComponentType::Buzzer,        QColor("#ff8844") },
+        { ComponentType::Servo,         QColor("#44aaff") },
+        { ComponentType::Button,        QColor("#44ff88") },
+    };
+
+    static const std::map<ComponentType, QColor> inactiveColors = {
+        { ComponentType::LED,           QColor("#3a3000") },
+        { ComponentType::Button,        QColor("#003a15") },
+        { ComponentType::Buzzer,        QColor("#3a1a00") },
+        { ComponentType::Servo,         QColor("#001a3a") },
+        { ComponentType::Potentiometer, QColor("#1a1a3a") },
+        { ComponentType::LCD,           QColor("#001a1a") },
+    };
+
+    const auto& colors = active ? activeColors : inactiveColors;
+    auto it = colors.find(type);
+    return it != colors.end() ? it->second : QColor(active ? "#aaaaaa" : "#2a2a2a");
 }

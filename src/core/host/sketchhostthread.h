@@ -3,6 +3,7 @@
 #include <QThread>
 #include <QString>
 #include <atomic>
+#include <QMutex>
 
 // SketchThread runs SketchHost on a background thread so the simulation
 // never blocks the Qt UI thread.
@@ -28,6 +29,8 @@ public:
     // Stop the simulation loop and wait for the thread to finish.
     void stopSketch();
 
+    void injectPin(int pin, int value); 
+
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);
@@ -49,4 +52,5 @@ private:
     SketchHost    host_;
     QString       dll_path_;
     std::atomic<bool> running_{false};
+    QMutex        inject_mutex_;    
 };

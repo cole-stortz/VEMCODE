@@ -112,3 +112,8 @@ void ArduinoRuntime::impl_Serial_println(const char* s) {
     else
         std::cout << ts() << "  Serial >> " << s << "\n";
 }
+
+void ArduinoRuntime::inject_pin(int pin, int value) {
+    if (pin >= 0 && pin < 20)
+        state_.pin_values[pin] = value;
+}

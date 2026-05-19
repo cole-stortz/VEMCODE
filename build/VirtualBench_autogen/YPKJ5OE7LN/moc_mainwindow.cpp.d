@@ -4,6 +4,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/QFileInfo \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QList \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QMap \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/QMutex \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QObject \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QRect \
   C:/Qt/6.11.1/mingw_64/include/QtCore/QSize \
@@ -89,6 +90,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qmetacontainer.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qmetatype.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qminmax.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qmutex.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qnamespace.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qnativeinterface.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qnumeric.h \
@@ -143,6 +145,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtnoop.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtpreprocessorsupport.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtresource.h \
+  C:/Qt/6.11.1/mingw_64/include/QtCore/qtsan_impl.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qttranslation.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qttypetraits.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qtversion.h \
@@ -156,6 +159,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtCore/qversiontagging.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/QMouseEvent \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qabstracttextdocumentlayout.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qaction.h \

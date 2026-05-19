@@ -36,8 +36,11 @@ public:
     // Reload if the file changed. Returns true if a reload happened.
     bool reload_if_changed();
 
+    void inject_pin(int pin, int value);
+
     // Direct access to the runtime for reading pin state, serial output, etc.
     ArduinoRuntime& runtime() { return runtime_; }
+
 
 private:
     SketchDLL      dll_;

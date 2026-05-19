@@ -218,6 +218,12 @@ QWidget* MainWindow::buildCanvasPanel() {
     canvasWidget_ = new CanvasWidget();
     layout->addWidget(canvasWidget_);
 
+    // Wire button clicks on canvas to pin injection in simulation
+    connect(canvasWidget_, &CanvasWidget::buttonPressed,
+            this, [this](int pin, int value) {
+                sketchThread_->injectPin(pin, value);
+            });
+
     return panel;
 }
 

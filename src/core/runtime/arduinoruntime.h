@@ -24,6 +24,8 @@ public:
     std::function<void(const std::string&)> on_serial_output;
     std::function<void(int pin, int value)> on_pin_changed;
 
+    void inject_pin(int pin, int value);
+
 private:
     RuntimeState state_;
 
