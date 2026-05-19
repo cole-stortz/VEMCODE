@@ -2,5 +2,6 @@
 #include "JJ7TYVUXJK/moc_sketchhostthread.cpp"
 #include "YPKJ5OE7LN/moc_canvaswidget.cpp"
 #include "YPKJ5OE7LN/moc_codehighlighter.cpp"
+#include "YPKJ5OE7LN/moc_linenumberarea.cpp"
 #include "YPKJ5OE7LN/moc_mainwindow.cpp"
 #include "YPKJ5OE7LN/moc_signaltimeline.cpp"

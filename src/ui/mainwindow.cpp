@@ -163,7 +163,7 @@ QWidget* MainWindow::buildEditorPanel() {
     layout->addWidget(header);
 
     // Code editor
-    codeEditor_ = new QPlainTextEdit();
+    codeEditor_ = new EditorWithLines();
     // Attach syntax highlighter
     highlighter_ = new CodeHighlighter(codeEditor_->document());
     codeEditor_->setStyleSheet(
@@ -176,6 +176,10 @@ QWidget* MainWindow::buildEditorPanel() {
     codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
     // Install event filter for tab handling
     codeEditor_->installEventFilter(this);
+
+    // Line numbers
+    lineNumbers_ = new LineNumberArea(codeEditor_);
+    lineNumbers_->show();
 
     // Default starter sketch
     codeEditor_->setPlainText(

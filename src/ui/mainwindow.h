@@ -18,6 +18,7 @@
 #include "src/ui/signaltimeline.h"
 #include "src/ui/codehighlighter.h"
 #include "src/core/build/preprocessor.h"
+#include "src/ui/linenumberarea.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -51,13 +52,15 @@ private:
 
     CodeHighlighter* highlighter_ = nullptr;
 
+    LineNumberArea* lineNumbers_ = nullptr;
+
     // Toolbar
     QPushButton*    runButton_      = nullptr;
     QPushButton*    stopButton_     = nullptr;
     QLabel*         boardLabel_     = nullptr;
 
     // Editor panel (left)
-    QPlainTextEdit* codeEditor_     = nullptr;
+    EditorWithLines* codeEditor_    = nullptr;
 
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;

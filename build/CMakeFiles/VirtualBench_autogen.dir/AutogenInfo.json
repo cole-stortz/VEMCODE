@@ -337,6 +337,12 @@
 			null
 		],
 		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/linenumberarea.h",
+			"MU",
+			"YPKJ5OE7LN/moc_linenumberarea.cpp",
+			null
+		],
+		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h",
 			"MU",
 			"YPKJ5OE7LN/moc_mainwindow.cpp",
@@ -464,6 +470,11 @@
 		],
 		[
 			"C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.cpp",
+			"MU",
+			null
+		],
+		[
+			"C:/Users/cdsto/Documents/VirtualBench/src/ui/linenumberarea.cpp",
 			"MU",
 			null
 		],

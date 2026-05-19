@@ -169,7 +169,9 @@ VirtualBench_autogen/timestamp: \
 	C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QColor \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QMouseEvent \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/QPainter \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QSyntaxHighlighter \
+	C:/Qt/6.11.1/mingw_64/include/QtGui/QTextBlock \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QTextCharFormat \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform \
 	C:/Qt/6.11.1/mingw_64/include/QtGui/qabstracttextdocumentlayout.h \
@@ -943,6 +945,8 @@ VirtualBench_autogen/timestamp: \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/canvaswidget.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/codehighlighter.h \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/linenumberarea.cpp \
+	C:/Users/cdsto/Documents/VirtualBench/src/ui/linenumberarea.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.cpp \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/mainwindow.h \
 	C:/Users/cdsto/Documents/VirtualBench/src/ui/signaltimeline.cpp \
