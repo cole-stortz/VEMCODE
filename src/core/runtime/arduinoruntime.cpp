@@ -35,85 +35,93 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.Serial_begin   = impl_Serial_begin;
     api.Serial_print   = impl_Serial_print;
     api.Serial_println = impl_Serial_println;
+    api.watch_variable = impl_watch_variable;
     return api;
 }
 
 void ArduinoRuntime::impl_pinMode(int pin, int mode) {
     if (!g_runtime || pin < 0 || pin >= 20) return;
     g_runtime->state_.pin_modes[pin] = mode;
-    //const char* mode_str = (mode == 1) ? "OUTPUT" :
-    //                       (mode == 2) ? "INPUT_PULLUP" : "INPUT";
-    //std::cout << ts() << "  pinMode(" << pin << ", " << mode_str << ")\n";
+    if (mode == 2)
+        g_runtime->state_.pin_values[pin] = 1;
 }
 
 void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
-    if (!g_runtime || pin < 0 || pin >= 20) return;
-    bool changed = (g_runtime->state_.pin_values[pin] != value);
-    g_runtime->state_.pin_values[pin] = value;
-    if (!changed) return;
-    if (g_runtime->on_pin_changed)
-        g_runtime->on_pin_changed(pin, value);
+    if (!g_runtime || pin < 0 || pin >= 20) return; // return if pins are outside the arduino range
+    bool changed = (g_runtime->state_.pin_values[pin] != value); // Check to see if the value has changed
+    g_runtime->state_.pin_values[pin] = value; // Set the value
+    if (!changed) return; // If didnt change return
+    if (g_runtime->on_pin_changed) 
+        g_runtime->on_pin_changed(pin, value); // Set the changed pin value
     else
         std::cout << ts() << "  pin " << pin
                   << " -> " << (value ? "HIGH" : "LOW") << "\n";
 }
 
 int ArduinoRuntime::impl_digitalRead(int pin) {
-    if (!g_runtime || pin < 0 || pin >= 20) return 0;
-    return g_runtime->state_.pin_values[pin];
+    if (!g_runtime || pin < 0 || pin >= 20) return 0; // return if digital pins are outside the arduino range
+    return g_runtime->state_.pin_values[pin]; // Return the pin value
 }
 
+// TODO: add on_analog_changed callback when potentiometer component is implemented
 void ArduinoRuntime::impl_analogWrite(int pin, int value) {
     std::cout << ts() << "  analogWrite(" << pin << ", " << value << ")\n";
 }
 
 int ArduinoRuntime::impl_analogRead(int pin) {
-    if (!g_runtime || pin < 0 || pin >= 8) return 0;
-    return g_runtime->state_.analog_values[pin];
+    if (!g_runtime || pin < 0 || pin >= 8) return 0; // check if analog pins are outside the arduino range
+    return g_runtime->state_.analog_values[pin]; // return the pin value
 }
 
 void ArduinoRuntime::impl_delay(unsigned long ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms)); // simple delay
 }
 
 unsigned long ArduinoRuntime::impl_millis() {
-    if (!g_runtime) return 0;
+    if (!g_runtime) return 0; // if not running return
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() -
-        g_runtime->state_.start_time).count();
-    return (unsigned long)ms;
+        g_runtime->state_.start_time).count(); // start millisecond timer
+    return (unsigned long)ms; // return time
 }
 
 unsigned long ArduinoRuntime::impl_micros() {
-    if (!g_runtime) return 0;
+    if (!g_runtime) return 0; // if not running return
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() -
-        g_runtime->state_.start_time).count();
-    return (unsigned long)us;
+        g_runtime->state_.start_time).count(); // start microsecond timer
+    return (unsigned long)us; // return time
 }
 
 void ArduinoRuntime::impl_Serial_begin(int baud) {
-    if (!g_runtime) return;
-    g_runtime->state_.serial_started = true;
+    if (!g_runtime) return; // if not running return
+    g_runtime->state_.serial_started = true; // simple set values
     g_runtime->state_.serial_baud    = baud;
     //std::cout << ts() << "  Serial.begin(" << baud << ")\n";
 }
 
 void ArduinoRuntime::impl_Serial_print(const char* s) {
-    if (g_runtime && g_runtime->on_serial_output)
+    if (g_runtime && g_runtime->on_serial_output) // send output to device
         g_runtime->on_serial_output(std::string(s));
     else
-        std::cout << ts() << "  Serial >> " << s;
+        std::cout << ts() << "  Serial >> " << s; // output to console
 }
 
 void ArduinoRuntime::impl_Serial_println(const char* s) {
-    if (g_runtime && g_runtime->on_serial_output)
+    if (g_runtime && g_runtime->on_serial_output) // send output to device
         g_runtime->on_serial_output(std::string(s) + "\n");
     else
-        std::cout << ts() << "  Serial >> " << s << "\n";
+        std::cout << ts() << "  Serial >> " << s << "\n"; // send to console
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
-    if (pin >= 0 && pin < 20)
-        state_.pin_values[pin] = value;
+    if (pin >= 0 && pin < 20) 
+        state_.pin_values[pin] = value; // set pin state if in range
+}
+
+void ArduinoRuntime::impl_watch_variable(const char* name, int value) {
+    if (g_runtime && g_runtime->on_variable_changed)
+        g_runtime->on_variable_changed(std::string(name), value);
+    else
+        std::cout << ts() << "  watch: " << name << " = " << value << "\n";
 }

@@ -23,6 +23,7 @@ public:
     // If not set, impl_* functions fall back to std::cout (useful for testing).
     std::function<void(const std::string&)> on_serial_output;
     std::function<void(int pin, int value)> on_pin_changed;
+    std::function<void(const std::string&, int)> on_variable_changed;
 
     void inject_pin(int pin, int value);
 
@@ -40,4 +41,5 @@ private:
     static void          impl_Serial_begin   (int baud);
     static void          impl_Serial_print   (const char* s);
     static void          impl_Serial_println (const char* s);
+    static void          impl_watch_variable (const char* name, int value);
 };

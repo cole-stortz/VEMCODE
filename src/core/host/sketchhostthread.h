@@ -44,6 +44,9 @@ signals:
     // Emitted if the DLL fails to load
     void loadFailed(QString reason);
 
+    // Check to see if a variable changed for watch vairable
+    void variableChanged(QString name, int value);
+
 protected:
     // QThread entry point -- runs on the background thread
     void run() override;

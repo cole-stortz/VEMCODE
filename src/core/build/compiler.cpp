@@ -13,9 +13,6 @@ Compiler::Compiler()
 {
 }
 
-// -------------------------------------------------------
-// compile() -- builds sketch.cpp into sketch.dll
-// -------------------------------------------------------
 CompileResult Compiler::compile(const std::string& sketch_path) {
     CompileResult result;
 
@@ -81,10 +78,6 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     return result;  
 }
 
-// -------------------------------------------------------
-// run_command() -- runs a shell command and captures output
-// Uses Windows CreateProcess for reliable capture
-// -------------------------------------------------------
 std::string Compiler::run_command(const std::string& cmd) {
     std::string output;
 
@@ -143,13 +136,7 @@ std::string Compiler::run_command(const std::string& cmd) {
     return output;
 }
 
-// -------------------------------------------------------
-// parse_errors() -- turns g++ stderr into CompileError structs
-//
-// g++ error format:
-//   filename.cpp:line:col: error: message
-//   filename.cpp:line:col: warning: message
-// -------------------------------------------------------
+
 std::vector<CompileError> Compiler::parse_errors(const std::string& output) {
     std::vector<CompileError> errors;
 

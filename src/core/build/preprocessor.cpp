@@ -35,8 +35,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     std::string s = source;
 
     // Serial -- must do println before print to avoid partial match
-    s = replace_all(s, "Serial.println(",  "api->Serial_println(");
-    s = replace_all(s, "Serial.print(",    "api->Serial_print(");
+    s = replace_all(s, "Serial.println(", "Serial_println(");
+    s = replace_all(s, "Serial.print(",   "Serial_print(");
     s = replace_all(s, "Serial.begin(",    "api->Serial_begin(");
     s = replace_all(s, "Serial.available(","api->Serial_available(");
     s = replace_all(s, "Serial.read(",     "api->Serial_read(");
@@ -58,6 +58,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_all(s, "tone(",            "api->tone(");
     s = replace_all(s, "noTone(",          "api->noTone(");
 
+    // Watch Variable
+    s = replace_all(s, "watch_variable(", "api->watch_variable(");
     return s;
 }
 
@@ -85,6 +87,8 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
 // -------------------------------------------------------
 // inject_header() -- prepends boilerplate at the top
 // -------------------------------------------------------
+
+
 std::string Preprocessor::inject_header(const std::string& source) {
     std::string header =
         "#include \"src/core/runtime/arduinoapi.h\"\n"
@@ -93,7 +97,15 @@ std::string Preprocessor::inject_header(const std::string& source) {
         "using namespace vb;\n\n"
         "static ArduinoAPI* api = nullptr;\n\n"
         "extern \"C\" __declspec(dllexport)\n"
-        "void vb_init(ArduinoAPI* a) { api = a; }\n\n";
+        "void vb_init(ArduinoAPI* a) { api = a; }\n\n"
+        "// Serial overloads -- convert any type to string then call through\n"
+        "template<typename T>\n"
+        "inline void Serial_println(T v) { api->Serial_println(std::to_string(v).c_str()); }\n"
+        "inline void Serial_println(const char* s) { api->Serial_println(s); }\n"
+        "template<typename T>\n"
+        "inline void Serial_print(T v) { api->Serial_print(std::to_string(v).c_str()); }\n"
+        "inline void Serial_print(const char* s) { api->Serial_print(s); }\n"
+        "\n";
 
     return header + source;
 }

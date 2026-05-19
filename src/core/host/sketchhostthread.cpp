@@ -1,5 +1,6 @@
 #include "src/core/host/sketchhostthread.h"
 
+
 SketchThread::SketchThread(QObject* parent)
     : QThread(parent)
 {
@@ -19,10 +20,6 @@ void SketchThread::stopSketch() {
     wait();   // blocks until run() returns
 }
 
-// -------------------------------------------------------
-// run() -- executes on the background thread
-// This is the simulation loop.
-// -------------------------------------------------------
 void SketchThread::run() {
     // Wire up the runtime callbacks BEFORE loading the sketch.
     // We replace the std::cout calls with Qt signal emissions.
@@ -38,6 +35,11 @@ void SketchThread::run() {
     runtime.on_pin_changed = [this](int pin, int value) {
         emit pinChanged(pin, value);
     };
+
+    // Check to see if a variable changed and emit that signal
+    runtime.on_variable_changed = [this](const std::string& name, int value) {
+        emit variableChanged(QString::fromStdString(name), value);
+    };  
 
     // Load the sketch DLL
     if (!host_.load(dll_path_.toStdString())) {

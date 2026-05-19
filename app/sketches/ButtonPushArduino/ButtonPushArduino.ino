@@ -14,7 +14,7 @@ void loop() {
         Serial.println("BUTTON PUSH");
         digitalWrite(LED_PIN, HIGH);
     } else {
-        Serial.println("BUTTON RELEASE");
+        //Serial.println("BUTTON RELEASE");
         digitalWrite(LED_PIN, LOW);
     }
     delay(10);

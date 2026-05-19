@@ -20,6 +20,7 @@
 #include "src/ui/codehighlighter.h"
 #include "src/core/build/preprocessor.h"
 #include "src/ui/linenumberarea.h"
+#include "src/ui/variablewatch.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -29,6 +30,7 @@ public:
     ~MainWindow();
     SignalTimeline* signalTimeline_ = nullptr;
     QElapsedTimer   simTimer_;
+    VariableWatch* variableWatch_ = nullptr;
 
 private slots:
     void onSerialOutput(QString text);

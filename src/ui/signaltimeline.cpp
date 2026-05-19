@@ -11,9 +11,6 @@ SignalTimeline::SignalTimeline(QWidget* parent)
     setMinimumHeight(80);
 }
 
-// -------------------------------------------------------
-// addEvent() -- records a pin state change
-// -------------------------------------------------------
 void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
     if (!tracks_.contains(pin)) {
         tracks_[pin] = QVector<PinEvent>();
@@ -29,9 +26,6 @@ void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
     update();
 }
 
-// -------------------------------------------------------
-// clear() -- resets all recorded data
-// -------------------------------------------------------
 void SignalTimeline::clear() {
     tracks_.clear();
     pin_order_.clear();
@@ -39,9 +33,6 @@ void SignalTimeline::clear() {
     update();
 }
 
-// -------------------------------------------------------
-// paintEvent() -- draws the waveforms
-// -------------------------------------------------------
 void SignalTimeline::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);  // crisp digital lines
@@ -146,9 +137,6 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
     }
 }
 
-// -------------------------------------------------------
-// wheelEvent() -- horizontal scroll + zoom
-// -------------------------------------------------------
 void SignalTimeline::wheelEvent(QWheelEvent* event) {
     if (event->modifiers() & Qt::ControlModifier) {
         // Ctrl+wheel = zoom
@@ -162,9 +150,6 @@ void SignalTimeline::wheelEvent(QWheelEvent* event) {
     update();
 }
 
-// -------------------------------------------------------
-// trackColor() -- consistent color per pin
-// -------------------------------------------------------
 QColor SignalTimeline::trackColor(int pin) {
     static const QVector<QColor> colors = {
         QColor("#4ec94e"),  // green

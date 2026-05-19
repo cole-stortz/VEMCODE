@@ -4,9 +4,6 @@
 #include <algorithm>
 #include <cctype>
 
-// -------------------------------------------------------
-// detect() -- main entry point, runs all three phases
-// -------------------------------------------------------
 void CircuitDetector::detect(const std::string& source) {
     reset();
 
@@ -68,9 +65,6 @@ void CircuitDetector::detect(const std::string& source) {
     }
 }
 
-// -------------------------------------------------------
-// confirm_pin() -- marks a component confirmed at runtime
-// -------------------------------------------------------
 void CircuitDetector::confirm_pin(int pin) {
     for (auto& comp : components_) {
         if (comp.pin == pin)
@@ -82,10 +76,8 @@ void CircuitDetector::reset() {
     components_.clear();
 }
 
-// -------------------------------------------------------
 // Phase 1 -- parse #defines into a symbol table
 // Handles: #define NAME VALUE and #define NAME (VALUE)
-// -------------------------------------------------------
 std::map<std::string, std::string> CircuitDetector::parse_defines(
     const std::string& source)
 {
@@ -104,9 +96,7 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
     return defines;
 }
 
-// -------------------------------------------------------
 // Phase 2 -- find pinMode(pin, mode) calls
-// -------------------------------------------------------
 std::vector<CircuitDetector::PinModeCall> CircuitDetector::parse_pinmodes(
     const std::string& source,
     const std::map<std::string, std::string>& defines)
@@ -142,9 +132,7 @@ std::vector<CircuitDetector::PinModeCall> CircuitDetector::parse_pinmodes(
     return calls;
 }
 
-// -------------------------------------------------------
 // Phase 3 -- infer component type from define name + mode
-// -------------------------------------------------------
 ComponentType CircuitDetector::infer_type(
     const std::string& name, const std::string& mode)
 {
@@ -176,9 +164,6 @@ ComponentType CircuitDetector::infer_type(
     return ComponentType::GenericInput;
 }
 
-// -------------------------------------------------------
-// Helpers
-// -------------------------------------------------------
 int CircuitDetector::resolve_pin(
     const std::string& token,
     const std::map<std::string, std::string>& defines)

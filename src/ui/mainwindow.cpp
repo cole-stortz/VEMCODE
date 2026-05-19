@@ -15,6 +15,67 @@
 #include <QInputDialog>
 #include <QDir>
 
+// -------------------------------------------------------
+// UI color palette -- change these to retheme the app
+// -------------------------------------------------------
+
+// Toolbar
+static const QString STYLE_TOOLBAR =
+    "QWidget { background: #1e1e1e; border-bottom: 1px solid #333; }";
+static const QString STYLE_TITLE =
+    "color: #cccccc; font-size: 13px; font-weight: bold;"
+    "border: none; background: transparent;";
+static const QString STYLE_BOARD_LABEL =
+    "color: #666; font-size: 11px; border: none; background: transparent;";
+
+// Buttons
+static const QString STYLE_BTN_RUN =
+    "QPushButton { background: #2d7a2d; color: #ffffff; border: none;"
+    "border-radius: 4px; font-size: 12px; font-weight: bold; }"
+    "QPushButton:hover { background: #3a9a3a; }"
+    "QPushButton:disabled { background: #2a2a2a; color: #555; }";
+static const QString STYLE_BTN_STOP =
+    "QPushButton { background: #7a2d2d; color: #ffffff; border: none;"
+    "border-radius: 4px; font-size: 12px; font-weight: bold; }"
+    "QPushButton:hover { background: #9a3a3a; }"
+    "QPushButton:disabled { background: #2a2a2a; color: #555; }";
+static const QString STYLE_BTN_OUTLINE =
+    "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
+    "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
+    "QPushButton:hover { background: #2a2a2a; color: #ffffff; }";
+
+// Splitter
+static const QString STYLE_SPLITTER =
+    "QSplitter::handle { background: #333; }";
+
+// Panel headers
+static const QString STYLE_PANEL_HEADER =
+    "background: #252526; color: #888; font-size: 10px;"
+    "font-weight: bold; border-bottom: 1px solid #333;";
+
+// Code editor
+static const QString STYLE_EDITOR =
+    "QPlainTextEdit { background: #1e1e1e; color: #d4d4d4;"
+    "border: none; font-family: 'Courier New', monospace; font-size: 13px; }";
+
+// Serial monitor
+static const QString STYLE_SERIAL =
+    "QPlainTextEdit { background: #1e1e1e; color: #4ec94e;"
+    "border: none; font-family: 'Courier New', monospace; font-size: 12px; }";
+
+// Debug tab bar
+static const QString STYLE_TABS =
+    "QTabWidget::pane { border: none; background: #1e1e1e; }"
+    "QTabBar::tab { background: #252526; color: #888; padding: 4px 14px;"
+    "font-size: 11px; border: none; border-right: 1px solid #333; }"
+    "QTabBar::tab:selected { background: #1e1e1e; color: #cccccc; }"
+    "QTabBar::tab:hover { background: #2a2a2a; color: #aaaaaa; }";
+
+
+// Error highlight
+static const QColor COLOR_ERROR_BG("#3a0000");
+
+// -------------------------------------------------------
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -30,7 +91,7 @@ MainWindow::MainWindow(QWidget* parent)
     setCentralWidget(central);
 
     setupToolbar(central, layout);
-    setupMainArea(central, layout);
+    setupMainArea(central, layout);  // variableWatch_ gets created here
 
     // Simulation thread
     sketchThread_ = new SketchThread(this);
@@ -42,11 +103,13 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSketchReloaded);
     connect(sketchThread_, &SketchThread::loadFailed,
             this, &MainWindow::onLoadFailed);
-    
+    connect(sketchThread_, &SketchThread::variableChanged,  
+            variableWatch_, &VariableWatch::onVariableChanged);
+
     // Ctrl+S to save
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
-    
+
     statusBar()->showMessage("Ready");
 }
 
@@ -56,79 +119,50 @@ MainWindow::~MainWindow() {
 }
 
 // -------------------------------------------------------
-// Toolbar -- Run, Stop, Open, board label
+// Toolbar -- Run, Stop, Open, Save, board label
 // -------------------------------------------------------
 void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
-    QWidget*     toolbar     = new QWidget(parent);
+    QWidget*     toolbar      = new QWidget(parent);
     QHBoxLayout* toolbarLayout = new QHBoxLayout(toolbar);
     toolbarLayout->setContentsMargins(8, 6, 8, 6);
     toolbarLayout->setSpacing(6);
-    toolbar->setStyleSheet(
-        "QWidget { background: #1e1e1e; border-bottom: 1px solid #333; }"
-    );
+    toolbar->setStyleSheet(STYLE_TOOLBAR);
     toolbar->setFixedHeight(42);
 
-    // App title
     QLabel* title = new QLabel("VirtualBench", toolbar);
-    title->setStyleSheet("color: #cccccc; font-size: 13px; font-weight: bold;"
-                         "border: none; background: transparent;");
+    title->setStyleSheet(STYLE_TITLE);
     toolbarLayout->addWidget(title);
-
     toolbarLayout->addSpacing(8);
 
-    // Run button
     runButton_ = new QPushButton("Run", toolbar);
     runButton_->setFixedSize(64, 26);
-    runButton_->setStyleSheet(
-        "QPushButton { background: #2d7a2d; color: #ffffff; border: none;"
-        "border-radius: 4px; font-size: 12px; font-weight: bold; }"
-        "QPushButton:hover { background: #3a9a3a; }"
-        "QPushButton:disabled { background: #2a2a2a; color: #555; }"
-    );
+    runButton_->setStyleSheet(STYLE_BTN_RUN);
     connect(runButton_, &QPushButton::clicked, this, &MainWindow::onRunClicked);
     toolbarLayout->addWidget(runButton_);
 
-    // Stop button
     stopButton_ = new QPushButton("Stop", toolbar);
     stopButton_->setFixedSize(64, 26);
     stopButton_->setEnabled(false);
-    stopButton_->setStyleSheet(
-        "QPushButton { background: #7a2d2d; color: #ffffff; border: none;"
-        "border-radius: 4px; font-size: 12px; font-weight: bold; }"
-        "QPushButton:hover { background: #9a3a3a; }"
-        "QPushButton:disabled { background: #2a2a2a; color: #555; }"
-    );
+    stopButton_->setStyleSheet(STYLE_BTN_STOP);
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
 
-    // Open sketch button
     QPushButton* openButton = new QPushButton("Open sketch", toolbar);
     openButton->setFixedHeight(26);
-    openButton->setStyleSheet(
-        "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
-        "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
-        "QPushButton:hover { background: #2a2a2a; color: #ffffff; }"
-    );
+    openButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
 
-    // Save sketch button
     QPushButton* saveButton = new QPushButton("Save sketch", toolbar);
     saveButton->setFixedHeight(26);
-    saveButton->setStyleSheet(
-        "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
-        "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
-        "QPushButton:hover { background: #2a2a2a; color: #ffffff; }"
-    );
+    saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
 
     toolbarLayout->addStretch();
 
-    // Board label
     boardLabel_ = new QLabel("Arduino Uno — ATmega328P", toolbar);
-    boardLabel_->setStyleSheet("color: #666; font-size: 11px; border: none;"
-                               "background: transparent;");
+    boardLabel_->setStyleSheet(STYLE_BOARD_LABEL);
     toolbarLayout->addWidget(boardLabel_);
 
     layout->addWidget(toolbar);
@@ -140,22 +174,17 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, parent);
     mainSplitter->setHandleWidth(1);
-    mainSplitter->setStyleSheet("QSplitter::handle { background: #333; }");
-
-    // Left -- editor panel
+    mainSplitter->setStyleSheet(STYLE_SPLITTER);
     mainSplitter->addWidget(buildEditorPanel());
 
-    // Right -- vertical splitter: canvas on top, debug on bottom
     QSplitter* rightSplitter = new QSplitter(Qt::Vertical, mainSplitter);
     rightSplitter->setHandleWidth(1);
-    rightSplitter->setStyleSheet("QSplitter::handle { background: #333; }");
+    rightSplitter->setStyleSheet(STYLE_SPLITTER);
     rightSplitter->addWidget(buildCanvasPanel());
     rightSplitter->addWidget(buildDebugPanel());
     rightSplitter->setSizes({420, 200});
 
     mainSplitter->addWidget(rightSplitter);
-
-    // Left panel ~380px, right panel gets the rest
     mainSplitter->setSizes({380, 900});
 
     layout->addWidget(mainSplitter);
@@ -170,31 +199,21 @@ QWidget* MainWindow::buildEditorPanel() {
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    // Panel header
     QLabel* header = new QLabel("  SKETCH EDITOR");
     header->setFixedHeight(24);
-    header->setStyleSheet(
-        "background: #252526; color: #888; font-size: 10px;"
-        "font-weight: bold; border-bottom: 1px solid #333;"
-    );
+    header->setStyleSheet(STYLE_PANEL_HEADER);
     layout->addWidget(header);
 
-    // Code editor
     codeEditor_ = new EditorWithLines();
-    // Attach syntax highlighter
     highlighter_ = new CodeHighlighter(codeEditor_->document());
-    codeEditor_->setStyleSheet(
-        "QPlainTextEdit { background: #1e1e1e; color: #d4d4d4;"
-        "border: none; font-family: 'Courier New', monospace; font-size: 13px; }"
-    );
+    codeEditor_->setStyleSheet(STYLE_EDITOR);
     codeEditor_->setLineWrapMode(QPlainTextEdit::NoWrap);
+
     // Tab width = 4 spaces
     QFontMetrics metrics(codeEditor_->font());
     codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
-    // Install event filter for tab handling
     codeEditor_->installEventFilter(this);
 
-    // Line numbers
     lineNumbers_ = new LineNumberArea(codeEditor_);
     lineNumbers_->show();
 
@@ -220,7 +239,7 @@ QWidget* MainWindow::buildEditorPanel() {
 }
 
 // -------------------------------------------------------
-// Canvas panel (top right) -- placeholder for now
+// Canvas panel (top right)
 // -------------------------------------------------------
 QWidget* MainWindow::buildCanvasPanel() {
     QWidget*     panel  = new QWidget();
@@ -230,10 +249,7 @@ QWidget* MainWindow::buildCanvasPanel() {
 
     QLabel* header = new QLabel("  CIRCUIT CANVAS");
     header->setFixedHeight(24);
-    header->setStyleSheet(
-        "background: #252526; color: #888; font-size: 10px;"
-        "font-weight: bold; border-bottom: 1px solid #333;"
-    );
+    header->setStyleSheet(STYLE_PANEL_HEADER);
     layout->addWidget(header);
 
     canvasWidget_ = new CanvasWidget();
@@ -258,33 +274,19 @@ QWidget* MainWindow::buildDebugPanel() {
     layout->setSpacing(0);
 
     debugTabs_ = new QTabWidget();
-    debugTabs_->setStyleSheet(
-        "QTabWidget::pane { border: none; background: #1e1e1e; }"
-        "QTabBar::tab { background: #252526; color: #888; padding: 4px 14px;"
-        "font-size: 11px; border: none; border-right: 1px solid #333; }"
-        "QTabBar::tab:selected { background: #1e1e1e; color: #cccccc; }"
-        "QTabBar::tab:hover { background: #2a2a2a; color: #aaaaaa; }"
-    );
+    debugTabs_->setStyleSheet(STYLE_TABS);
 
-    // Tab 1 -- Serial monitor
     serialMonitor_ = new QPlainTextEdit();
     serialMonitor_->setReadOnly(true);
     serialMonitor_->setMaximumBlockCount(2000);
-    serialMonitor_->setStyleSheet(
-        "QPlainTextEdit { background: #1e1e1e; color: #4ec94e;"
-        "border: none; font-family: 'Courier New', monospace; font-size: 12px; }"
-    );
+    serialMonitor_->setStyleSheet(STYLE_SERIAL);
     debugTabs_->addTab(serialMonitor_, "Serial monitor");
 
-    // Tab 2 -- Signal timeline
     signalTimeline_ = new SignalTimeline();
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
-    
-    // Tab 3 -- Variable watch (placeholder)
-    QLabel* watchPlaceholder = new QLabel("Variable watch — coming soon");
-    watchPlaceholder->setAlignment(Qt::AlignCenter);
-    watchPlaceholder->setStyleSheet("background: #1e1e1e; color: #444;");
-    debugTabs_->addTab(watchPlaceholder, "Variable watch");
+
+    variableWatch_ = new VariableWatch();
+    debugTabs_->addTab(variableWatch_, "Variable watch");
 
     layout->addWidget(debugTabs_);
     return panel;
@@ -341,12 +343,10 @@ void MainWindow::onRunClicked() {
     runButton_->setEnabled(false);
 
     // Save editor content to disk before compiling
-    if (!currentSketchPath_.isEmpty()) {
-        QFile file(currentSketchPath_);
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            file.write(codeEditor_->toPlainText().toUtf8());
-            file.close();
-        }
+    QFile file(currentSketchPath_);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(codeEditor_->toPlainText().toUtf8());
+        file.close();
     }
 
     Compiler compiler;
@@ -366,16 +366,15 @@ void MainWindow::onRunClicked() {
     if (!result.success) {
         QString raw = QString::fromStdString(result.raw_output);
 
-        // Replace path:LINE: with "line LINE:" for error lines with numbers
+        QString temp_file_path = QString::fromStdString(sketch_dir + "/_vb_temp.cpp");
+
         QRegularExpression path_re(
-            QRegularExpression::escape(QDir::tempPath() + "/_vb_temp.cpp:") +
-            "(?=(\\d))"
+            QRegularExpression::escape(temp_file_path + ":") + "(?=(\\d))"
         );
         raw.replace(path_re, "line ");
 
-        // Strip path from context lines like "In function..." -- no line number
         QRegularExpression context_re(
-            QRegularExpression::escape(QDir::tempPath() + "/_vb_temp.cpp:")
+            QRegularExpression::escape(temp_file_path + ":")
         );
         raw.replace(context_re, "");
 
@@ -400,13 +399,13 @@ void MainWindow::onRunClicked() {
         raw.replace(context_line_re, "\n   |");
 
         // Restore Serial.method() names -- preprocessor converted dots to underscores
-        raw.replace("Serial_println(", "Serial.println(");
-        raw.replace("Serial_print(", "Serial.print(");
-        raw.replace("Serial_begin(", "Serial.begin(");
-        raw.replace("Serial_available(", "Serial.available(");
-        raw.replace("Serial_read(", "Serial.read(");
+        raw.replace("Serial_println(",  "Serial.println(");
+        raw.replace("Serial_print(",    "Serial.print(");
+        raw.replace("Serial_begin(",    "Serial.begin(");
+        raw.replace("Serial_available(","Serial.available(");
+        raw.replace("Serial_read(",     "Serial.read(");
 
-        // Strip api-> from error context -- user never wrote this
+        // Strip api-> -- user never wrote this
         raw.replace("api->", "");
 
         serialMonitor_->appendPlainText("=== Compile errors ===\n");
@@ -417,15 +416,14 @@ void MainWindow::onRunClicked() {
         return;
     }
 
+    clearCompileErrors();
     signalTimeline_->clear();
+    variableWatch_->clear();
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
-    clearCompileErrors();
-    signalTimeline_->clear();
-    simTimer_.start();
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));
-    
+
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
 }
@@ -439,12 +437,8 @@ void MainWindow::onStopClicked() {
 
 void MainWindow::onOpenClicked() {
     QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
-
     QString path = QFileDialog::getOpenFileName(
-        this,
-        "Open sketch",
-        sketches_root,  // start here instead of empty string
-        "C++ files (*.cpp *.ino)"
+        this, "Open sketch", sketches_root, "C++ files (*.cpp *.ino)"
     );
     if (path.isEmpty()) return;
 
@@ -460,6 +454,38 @@ void MainWindow::onOpenClicked() {
     statusBar()->showMessage("Opened: " + path);
 }
 
+void MainWindow::onSaveClicked() {
+    bool ok;
+    QString name = QInputDialog::getText(
+        this, "Save sketch", "Sketch name:",
+        QLineEdit::Normal, "my_sketch", &ok
+    );
+    if (!ok || name.trimmed().isEmpty()) return;
+
+    name = name.trimmed().replace(" ", "_");
+
+    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketch_dir    = sketches_root + "/" + name;
+    QDir().mkpath(sketch_dir);
+
+    QString file_path = sketch_dir + "/" + name + ".cpp";
+    QFile file(file_path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to save: " + file_path);
+        return;
+    }
+    file.write(codeEditor_->toPlainText().toUtf8());
+    file.close();
+
+    // Update current path so Run compiles this file going forward
+    currentSketchPath_ = file_path;
+    setWindowTitle("VirtualBench — " + name + ".cpp");
+    statusBar()->showMessage("Saved: " + file_path);
+}
+
+// -------------------------------------------------------
+// Editor helpers
+// -------------------------------------------------------
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
         QKeyEvent* key = static_cast<QKeyEvent*>(event);
@@ -481,83 +507,38 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
     QList<QTextEdit::ExtraSelection> selections;
 
     for (const auto& err : result.errors) {
-        if (!err.is_error) continue;  // skip warnings for now
+        if (!err.is_error) continue;
 
-        // Get the block for this line number
         int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
-        if (adjusted_line < 1) continue;  // error is in injected header, skip
+        if (adjusted_line < 1) continue;
         QTextBlock block = codeEditor_->document()->findBlockByLineNumber(
-            adjusted_line - 1);  // Qt lines are 0-indexed
+            adjusted_line - 1);
         if (!block.isValid()) continue;
 
         QTextEdit::ExtraSelection sel;
-
-        // Red underline for error line
-        sel.format.setBackground(QColor("#3a0000"));
+        sel.format.setBackground(COLOR_ERROR_BG);
         sel.format.setProperty(QTextFormat::FullWidthSelection, true);
         sel.format.setToolTip(QString::fromStdString(err.message));
         sel.cursor = QTextCursor(block);
         sel.cursor.select(QTextCursor::LineUnderCursor);
-
         selections.append(sel);
     }
 
     codeEditor_->setExtraSelections(selections);
 
-    // Move cursor to first error line so user sees it
-    if (!result.errors.empty()) {
-        for (const auto& err : result.errors) {
-            if (err.is_error) {
-                int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
-                if (adjusted_line < 1) continue;
-                QTextBlock block = codeEditor_->document()
-                    ->findBlockByLineNumber(adjusted_line - 1);
-                if (block.isValid()) {
-                    QTextCursor cursor(block);
-                    codeEditor_->setTextCursor(cursor);
-                    codeEditor_->centerCursor();
-                    break;
-                }
+    // Move cursor to first error line
+    for (const auto& err : result.errors) {
+        if (err.is_error) {
+            int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
+            if (adjusted_line < 1) continue;
+            QTextBlock block = codeEditor_->document()
+                ->findBlockByLineNumber(adjusted_line - 1);
+            if (block.isValid()) {
+                codeEditor_->setTextCursor(QTextCursor(block));
+                codeEditor_->centerCursor();
+                break;
             }
         }
     }
-}
-
-void MainWindow::onSaveClicked() {
-    // Ask for a sketch name
-    bool ok;
-    QString name = QInputDialog::getText(
-        this,
-        "Save sketch",
-        "Sketch name:",
-        QLineEdit::Normal,
-        "my_sketch",
-        &ok
-    );
-
-    if (!ok || name.trimmed().isEmpty()) return;
-
-    // Sanitize name -- remove spaces and special characters
-    name = name.trimmed().replace(" ", "_");
-
-    // Create sketches/name/ folder
-    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
-    QString sketch_dir    = sketches_root + "/" + name;
-    QDir().mkpath(sketch_dir);
-
-    // Write the file
-    QString file_path = sketch_dir + "/" + name + ".cpp";
-    QFile file(file_path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        statusBar()->showMessage("Failed to save: " + file_path);
-        return;
-    }
-    file.write(codeEditor_->toPlainText().toUtf8());
-    file.close();
-
-    // Update current path so Run compiles this file going forward
-    currentSketchPath_ = file_path;
-    setWindowTitle("VirtualBench — " + name + ".cpp");
-    statusBar()->showMessage("Saved: " + file_path);
 }
 
