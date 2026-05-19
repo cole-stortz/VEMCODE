@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QElapsedTimer>
 #include <QDir>
+#include <QShortcut>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
@@ -45,6 +46,8 @@ private:
     
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
+
+    void onSaveClicked();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();

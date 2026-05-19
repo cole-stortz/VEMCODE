@@ -171,6 +171,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtGui/QColor \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QMouseEvent \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QPainter \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/QShortcut \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QSyntaxHighlighter \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QTextBlock \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QTextCharFormat \
@@ -212,6 +213,7 @@ C:/Users/cdsto/Documents/VirtualBench/build/VirtualBench_autogen/YPKJ5OE7LN/moc_
   C:/Qt/6.11.1/mingw_64/include/QtGui/qrgba64.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qscreen.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qscreen_platform.h \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/qshortcut.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qsyntaxhighlighter.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qtextcursor.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qtextdocument.h \

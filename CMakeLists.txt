@@ -52,6 +52,9 @@ set(HEADERS
 
 # Create the executable
 qt_add_executable(VirtualBench ${SOURCES} ${HEADERS})
+set_target_properties(VirtualBench PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/app
+)
 
 # Include paths -- everything resolves from the project root
 target_include_directories(VirtualBench PRIVATE

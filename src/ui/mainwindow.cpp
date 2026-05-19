@@ -12,6 +12,8 @@
 #include <QFrame>
 #include <QCoreApplication>
 #include <QTextEdit>
+#include <QInputDialog>
+#include <QDir>
 
 
 MainWindow::MainWindow(QWidget* parent)
@@ -40,7 +42,11 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSketchReloaded);
     connect(sketchThread_, &SketchThread::loadFailed,
             this, &MainWindow::onLoadFailed);
-
+    
+    // Ctrl+S to save
+    QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
+    connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
+    
     statusBar()->showMessage("Ready");
 }
 
@@ -105,6 +111,17 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     );
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
+
+    // Save sketch button
+    QPushButton* saveButton = new QPushButton("Save sketch", toolbar);
+    saveButton->setFixedHeight(26);
+    saveButton->setStyleSheet(
+        "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
+        "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
+        "QPushButton:hover { background: #2a2a2a; color: #ffffff; }"
+    );
+    connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
+    toolbarLayout->addWidget(saveButton);
 
     toolbarLayout->addStretch();
 
@@ -421,14 +438,18 @@ void MainWindow::onStopClicked() {
 }
 
 void MainWindow::onOpenClicked() {
+    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+
     QString path = QFileDialog::getOpenFileName(
-        this, "Open sketch", QString(), "C++ files (*.cpp *.ino)"
+        this,
+        "Open sketch",
+        sketches_root,  // start here instead of empty string
+        "C++ files (*.cpp *.ino)"
     );
     if (path.isEmpty()) return;
 
     currentSketchPath_ = path;
 
-    // Load the file content into the editor
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
@@ -501,3 +522,42 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
         }
     }
 }
+
+void MainWindow::onSaveClicked() {
+    // Ask for a sketch name
+    bool ok;
+    QString name = QInputDialog::getText(
+        this,
+        "Save sketch",
+        "Sketch name:",
+        QLineEdit::Normal,
+        "my_sketch",
+        &ok
+    );
+
+    if (!ok || name.trimmed().isEmpty()) return;
+
+    // Sanitize name -- remove spaces and special characters
+    name = name.trimmed().replace(" ", "_");
+
+    // Create sketches/name/ folder
+    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketch_dir    = sketches_root + "/" + name;
+    QDir().mkpath(sketch_dir);
+
+    // Write the file
+    QString file_path = sketch_dir + "/" + name + ".cpp";
+    QFile file(file_path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to save: " + file_path);
+        return;
+    }
+    file.write(codeEditor_->toPlainText().toUtf8());
+    file.close();
+
+    // Update current path so Run compiles this file going forward
+    currentSketchPath_ = file_path;
+    setWindowTitle("VirtualBench — " + name + ".cpp");
+    statusBar()->showMessage("Saved: " + file_path);
+}
+
