@@ -178,6 +178,22 @@ std::string Preprocessor::inject_header(const std::string& source) {
         "// Serial overloads for String type -- must come after String class definition\n"
         "inline void Serial_println(const String& s) { api->Serial_println(s.c_str()); }\n"
         "inline void Serial_print(const String& s)   { api->Serial_print(s.c_str()); }\n"
+        "\n"
+        "// Arduino math functions\n"
+        "inline long map(long x, long in_min, long in_max, long out_min, long out_max) {\n"
+        "    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;\n"
+        "}\n"
+        "inline long constrain(long x, long lo, long hi) {\n"
+        "    return x < lo ? lo : x > hi ? hi : x;\n"
+        "}\n"
+        "inline long   vb_abs(long x)         { return x < 0 ? -x : x; }\n"
+        "inline long   vb_min(long a, long b) { return a < b ? a : b; }\n"
+        "inline long   vb_max(long a, long b) { return a > b ? a : b; }\n"
+        "inline long   random(long max)       { return rand() % max; }\n"
+        "inline long   random(long min, long max) { return min + rand() % (max - min); }\n"
+        "#define abs(x) vb_abs(x)\n"
+        "#define min(a,b) vb_min(a,b)\n"
+        "#define max(a,b) vb_max(a,b)\n"
         "\n";
 
     return header + source;
