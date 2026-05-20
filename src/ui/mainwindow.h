@@ -43,6 +43,9 @@ private slots:
     void onStopClicked();
     void onOpenClicked();
     void onSettingsClicked();
+    void onSaveClicked();
+    void onNewSketch();
+    void onRecentSketches();
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -51,8 +54,6 @@ private:
     
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
-
-    void onSaveClicked();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();

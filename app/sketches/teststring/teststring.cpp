@@ -16,5 +16,6 @@ void loop() {
     watch_variable("pot", pot);
     watch_variable("mapped", mapped);
     watch_variable("clamped", clamped);
+    Serial.println(pot);
     delay(100);
 }

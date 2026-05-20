@@ -165,6 +165,12 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
 
+    QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
+    newsketchButton->setFixedHeight(26);
+    newsketchButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(newsketchButton, &QPushButton::clicked, this, &MainWindow::onNewSketch);
+    toolbarLayout->addWidget(newsketchButton);
+
     QPushButton* openButton = new QPushButton("Open sketch", toolbar);
     openButton->setFixedHeight(26);
     openButton->setStyleSheet(STYLE_BTN_OUTLINE);
@@ -632,4 +638,45 @@ void MainWindow::onSettingsClicked() {
         settings.setValue("compiler/project_root", projectRoot_);
         statusBar()->showMessage("Settings saved");
     }
+}
+
+void MainWindow::onNewSketch() {
+    bool ok;
+    QString name = QInputDialog::getText(
+        this, "Save sketch", "Sketch name:",
+        QLineEdit::Normal, "my_sketch", &ok
+    );
+    if (!ok || name.trimmed().isEmpty()) return;
+
+    name = name.trimmed().replace(" ", "_");
+
+    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketch_dir    = sketches_root + "/" + name;
+    QDir().mkpath(sketch_dir);
+
+    QString file_path = sketch_dir + "/" + name + ".cpp";
+    QFile file(file_path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to save: " + file_path);
+        return;
+    }
+    file.write(codeEditor_->toPlainText().toUtf8());
+    file.close();
+
+    // Update current path so Run compiles this file going forward
+    currentSketchPath_ = file_path;
+    setWindowTitle("VirtualBench — " + name + ".cpp");
+    statusBar()->showMessage("Saved: " + file_path);
+
+    // Default starter sketch
+    codeEditor_->setPlainText(
+        "\nvoid setup() {\n"
+        "}\n\n"
+        "void loop() {\n"
+        "}\n"
+    );
+}
+
+void MainWindow::onRecentSketches() {
+
 }
