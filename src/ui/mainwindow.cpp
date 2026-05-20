@@ -14,6 +14,8 @@
 #include <QTextEdit>
 #include <QInputDialog>
 #include <QDir>
+#include <QMenu>
+#include <QAction>
 
 // -------------------------------------------------------
 // UI color palette -- change these to retheme the app
@@ -176,6 +178,12 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     openButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
+
+    QPushButton* recentButton = new QPushButton("Recent", toolbar);
+    recentButton->setFixedHeight(26);
+    recentButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
+    toolbarLayout->addWidget(recentButton);
 
     QPushButton* saveButton = new QPushButton("Save sketch", toolbar);
     saveButton->setFixedHeight(26);
@@ -487,6 +495,7 @@ void MainWindow::onOpenClicked() {
 
     setWindowTitle("VirtualBench — " + QFileInfo(path).fileName());
     statusBar()->showMessage("Opened: " + path);
+    addToRecentSketches(path);
 }
 
 void MainWindow::onSaveClicked() {
@@ -516,6 +525,7 @@ void MainWindow::onSaveClicked() {
     currentSketchPath_ = file_path;
     setWindowTitle("VirtualBench — " + name + ".cpp");
     statusBar()->showMessage("Saved: " + file_path);
+    addToRecentSketches(file_path);
 }
 
 // -------------------------------------------------------
@@ -643,7 +653,7 @@ void MainWindow::onSettingsClicked() {
 void MainWindow::onNewSketch() {
     bool ok;
     QString name = QInputDialog::getText(
-        this, "Save sketch", "Sketch name:",
+        this, "New sketch", "Sketch name:",
         QLineEdit::Normal, "my_sketch", &ok
     );
     if (!ok || name.trimmed().isEmpty()) return;
@@ -654,29 +664,75 @@ void MainWindow::onNewSketch() {
     QString sketch_dir    = sketches_root + "/" + name;
     QDir().mkpath(sketch_dir);
 
+    // Default template
+    QString default_sketch =
+        "#define LED_PIN 13\n\n"
+        "void setup() {\n"
+        "    Serial.begin(9600);\n"
+        "}\n\n"
+        "void loop() {\n"
+        "}\n";
+
+    // Write template to disk
     QString file_path = sketch_dir + "/" + name + ".cpp";
     QFile file(file_path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        statusBar()->showMessage("Failed to save: " + file_path);
+        statusBar()->showMessage("Failed to create: " + file_path);
         return;
     }
-    file.write(codeEditor_->toPlainText().toUtf8());
+    file.write(default_sketch.toUtf8());
     file.close();
 
-    // Update current path so Run compiles this file going forward
+    // Load into editor and update state
+    codeEditor_->setPlainText(default_sketch);
     currentSketchPath_ = file_path;
     setWindowTitle("VirtualBench — " + name + ".cpp");
-    statusBar()->showMessage("Saved: " + file_path);
-
-    // Default starter sketch
-    codeEditor_->setPlainText(
-        "\nvoid setup() {\n"
-        "}\n\n"
-        "void loop() {\n"
-        "}\n"
-    );
+    statusBar()->showMessage("Created: " + file_path);
+    addToRecentSketches(file_path);
 }
 
 void MainWindow::onRecentSketches() {
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+    QStringList recent = settings.value("recent/sketches").toStringList();
 
+    if (recent.isEmpty()) {
+        statusBar()->showMessage("No recent sketches");
+        return;
+    }
+
+    QMenu menu(this);
+    for (const QString& path : recent) {
+        QAction* action = menu.addAction(QFileInfo(path).fileName());
+        action->setToolTip(path);
+        connect(action, &QAction::triggered, this, [this, path]() {
+            if (!QFile::exists(path)) {
+                statusBar()->showMessage("File not found: " + path);
+                return;
+            }
+            currentSketchPath_ = path;
+            QFile file(path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
+                file.close();
+            }
+            setWindowTitle("VirtualBench — " + QFileInfo(path).fileName());
+            statusBar()->showMessage("Opened: " + path);
+            addToRecentSketches(path);
+        });
+    }
+    menu.exec(QCursor::pos());
+}
+
+void MainWindow::addToRecentSketches(const QString& path) {
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+    QStringList recent = settings.value("recent/sketches").toStringList();
+    recent.removeAll(path);
+    recent.prepend(path);
+    while (recent.size() > 5)
+        recent.removeLast();
+    settings.setValue("recent/sketches", recent);
 }

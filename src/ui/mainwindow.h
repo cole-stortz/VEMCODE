@@ -46,6 +46,7 @@ private slots:
     void onSaveClicked();
     void onNewSketch();
     void onRecentSketches();
+    void addToRecentSketches(const QString& path);
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
