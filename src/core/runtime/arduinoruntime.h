@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 #include <string>
+#include <atomic>
 
 struct RuntimeState {
     int  pin_modes[20]    = {};
@@ -36,6 +37,8 @@ public:
     }
     float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
     void set_speed_multiplier(float speed);
+
+    std::atomic<bool> stop_requested_ = false;
 
 private:
     RuntimeState state_;

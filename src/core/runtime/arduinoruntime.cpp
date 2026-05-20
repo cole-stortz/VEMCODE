@@ -4,6 +4,8 @@
 #include <thread>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
+#include <QtGlobal>
 
 static ArduinoRuntime* g_runtime = nullptr;
 
@@ -78,7 +80,15 @@ int ArduinoRuntime::impl_analogRead(int pin) {
 void ArduinoRuntime::impl_delay(unsigned long ms) {
     if (!g_runtime) return;
     unsigned long scaled = (unsigned long)(ms * g_runtime->speed_multiplier_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(scaled));
+    
+    // Sleep in 10ms chunks so stop requests are handled quickly
+    unsigned long elapsed = 0;
+    while (elapsed < scaled) {
+        if (g_runtime->stop_requested_) return;
+        unsigned long chunk = qMin(10UL, scaled - elapsed);
+        std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
+        elapsed += chunk;
+    }
 }
 
 unsigned long ArduinoRuntime::impl_millis() {

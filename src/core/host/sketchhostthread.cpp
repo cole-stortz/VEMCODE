@@ -17,7 +17,10 @@ void SketchThread::startSketch(const QString& dll_path) {
 
 void SketchThread::stopSketch() {
     running_ = false;
-    wait();   // blocks until run() returns
+    // Signal any sleeping delay to wake up
+    host_.runtime().stop_requested_ = true;
+    wait();
+    host_.runtime().stop_requested_ = false;
 }
 
 void SketchThread::run() {
