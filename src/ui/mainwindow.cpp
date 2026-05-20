@@ -84,7 +84,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
     setWindowTitle("VirtualBench");
-    resize(1280, 800);
+    resize(1280, 720);
     setMinimumSize(900, 600);
 
     QWidget*     central = new QWidget(this);
@@ -240,7 +240,7 @@ void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     rightSplitter->setStyleSheet(STYLE_SPLITTER);
     rightSplitter->addWidget(buildCanvasPanel());
     rightSplitter->addWidget(buildDebugPanel());
-    rightSplitter->setSizes({420, 200});
+    rightSplitter->setSizes({300, 220});
 
     mainSplitter->addWidget(rightSplitter);
     mainSplitter->setSizes({380, 900});
@@ -337,13 +337,45 @@ QWidget* MainWindow::buildDebugPanel() {
     layout->setSpacing(0);
 
     debugTabs_ = new QTabWidget();
+    debugTabs_->setMinimumHeight(100);
     debugTabs_->setStyleSheet(STYLE_TABS);
+
+    QWidget* serialPanel = new QWidget();
+    QVBoxLayout* serialLayout = new QVBoxLayout(serialPanel);
+    serialLayout->setContentsMargins(0, 0, 0, 0);
+    serialLayout->setSpacing(0);
 
     serialMonitor_ = new QPlainTextEdit();
     serialMonitor_->setReadOnly(true);
     serialMonitor_->setMaximumBlockCount(2000);
     serialMonitor_->setStyleSheet(STYLE_SERIAL);
-    debugTabs_->addTab(serialMonitor_, "Serial monitor");
+    serialLayout->addWidget(serialMonitor_);
+
+    // Serial input row
+    QWidget* inputRow = new QWidget();
+    QHBoxLayout* inputLayout = new QHBoxLayout(inputRow);
+    inputLayout->setContentsMargins(4, 4, 4, 4);
+    inputLayout->setSpacing(4);
+    inputRow->setStyleSheet("background: #252526; border-top: 1px solid #333;");
+    inputRow->setFixedHeight(36);
+
+    serialInput_ = new QLineEdit();
+    serialInput_->setPlaceholderText("Send serial input...");
+    serialInput_->setStyleSheet(
+        "QLineEdit { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444;"
+        "border-radius: 3px; padding: 3px 6px; font-family: 'Courier New'; font-size: 12px; }"
+    );
+    inputLayout->addWidget(serialInput_);
+
+    QPushButton* sendButton = new QPushButton("Send", inputRow);
+    sendButton->setFixedWidth(50);
+    sendButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(sendButton, &QPushButton::clicked, this, &MainWindow::onSerialSend);
+    connect(serialInput_, &QLineEdit::returnPressed, this, &MainWindow::onSerialSend);
+    inputLayout->addWidget(sendButton);
+
+    serialLayout->addWidget(inputRow);
+    debugTabs_->addTab(serialPanel, "Serial monitor");
 
     signalTimeline_ = new SignalTimeline();
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
@@ -762,4 +794,12 @@ void MainWindow::onSpeedChanged(int value) {
     sketchThread_->setSpeed(display_speed);
     speedSlider_->setToolTip(QString("Speed: %1x").arg(display_speed, 0, 'f', 1));
     QToolTip::showText(QCursor::pos(), speedSlider_->toolTip(), speedSlider_);
+}
+
+void MainWindow::onSerialSend() {
+    QString text = serialInput_->text();
+    if (text.isEmpty()) return;
+    sketchThread_->injectSerial(text + "\n");
+    serialMonitor_->appendPlainText("> " + text);
+    serialInput_->clear();
 }

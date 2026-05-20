@@ -38,6 +38,8 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.Serial_print   = impl_Serial_print;
     api.Serial_println = impl_Serial_println;
     api.watch_variable = impl_watch_variable;
+    api.Serial_available = impl_Serial_available;
+    api.Serial_read      = impl_Serial_read;
     return api;
 }
 
@@ -142,4 +144,16 @@ void ArduinoRuntime::impl_watch_variable(const char* name, int value) {
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {
     speed_multiplier_ = 1.0f / speed;
+}
+
+int ArduinoRuntime::impl_Serial_available() {
+    if (!g_runtime) return 0;
+    return (int)g_runtime->serial_buffer_.size();
+}
+
+int ArduinoRuntime::impl_Serial_read() {
+    if (!g_runtime || g_runtime->serial_buffer_.empty()) return -1;
+    char c = g_runtime->serial_buffer_.front();
+    g_runtime->serial_buffer_.pop_front();
+    return (int)c;
 }

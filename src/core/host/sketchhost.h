@@ -45,6 +45,10 @@ public:
         runtime_.inject_analog(pin, value);
     }
 
+    void inject_serial(const std::string& data) {
+        runtime_.inject_serial(data);
+    }
+
     void set_speed(float speed);
 
 private:

@@ -14,6 +14,7 @@
 #include <QShortcut>
 #include <Qsettings>
 #include <QSlider>
+#include <QLineEdit>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
@@ -49,6 +50,7 @@ private slots:
     void onRecentSketches();
     void addToRecentSketches(const QString& path);
     void onSpeedChanged(int value);
+    void onSerialSend();
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -94,4 +96,7 @@ private:
 
     // Speed Slider
     QSlider* speedSlider_ = nullptr;
+
+    // Serial Input
+    QLineEdit* serialInput_ = nullptr;
 };

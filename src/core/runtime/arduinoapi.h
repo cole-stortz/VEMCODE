@@ -26,6 +26,10 @@ struct ArduinoAPI {
 
     // Variable Watch
     void (*watch_variable)(const char* name, int value);
+
+    // Serial Communication
+    int (*Serial_available)();
+    int (*Serial_read)();
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

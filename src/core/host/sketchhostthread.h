@@ -35,6 +35,8 @@ public:
 
     void setSpeed(float speed);
 
+    void injectSerial(const QString& data);
+
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);

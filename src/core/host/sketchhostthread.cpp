@@ -78,3 +78,8 @@ void SketchThread::injectAnalog(int pin, int value) {
 void SketchThread::setSpeed(float speed){
     host_.set_speed(speed);
 }
+
+void SketchThread::injectSerial(const QString& data) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_serial(data.toStdString());
+}

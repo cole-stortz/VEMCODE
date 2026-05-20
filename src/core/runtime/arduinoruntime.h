@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <atomic>
+#include <deque>
 
 struct RuntimeState {
     int  pin_modes[20]    = {};
@@ -38,6 +39,12 @@ public:
     float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
     void set_speed_multiplier(float speed);
 
+    // In public section:
+    void inject_serial(const std::string& data) {
+        for (char c : data)
+            serial_buffer_.push_back(c);
+    }
+
     std::atomic<bool> stop_requested_ = false;
 
 private:
@@ -55,4 +62,8 @@ private:
     static void          impl_Serial_print   (const char* s);
     static void          impl_Serial_println (const char* s);
     static void          impl_watch_variable (const char* name, int value);
+    static int           impl_Serial_available();
+    static int           impl_Serial_read();
+
+    std::deque<char> serial_buffer_;
 };
