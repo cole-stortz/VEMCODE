@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QShortcut>
 #include <Qsettings>
+#include <QSlider>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
@@ -47,6 +48,7 @@ private slots:
     void onNewSketch();
     void onRecentSketches();
     void addToRecentSketches(const QString& path);
+    void onSpeedChanged(int value);
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -89,4 +91,7 @@ private:
     // Settings
     QString compilerPath_;
     QString projectRoot_;
+
+    // Speed Slider
+    QSlider* speedSlider_ = nullptr;
 };

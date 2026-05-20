@@ -45,6 +45,8 @@ public:
         runtime_.inject_analog(pin, value);
     }
 
+    void set_speed(float speed);
+
 private:
     SketchDLL      dll_;
     ArduinoRuntime runtime_;

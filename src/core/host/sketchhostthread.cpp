@@ -71,3 +71,7 @@ void SketchThread::injectAnalog(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_analog(pin, value);
 }
+
+void SketchThread::setSpeed(float speed){
+    host_.set_speed(speed);
+}

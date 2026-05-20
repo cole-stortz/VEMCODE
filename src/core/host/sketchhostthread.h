@@ -33,6 +33,8 @@ public:
 
     void injectAnalog(int pin, int value);
 
+    void setSpeed(float speed);
+
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);

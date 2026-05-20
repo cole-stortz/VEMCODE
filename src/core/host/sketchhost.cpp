@@ -89,3 +89,7 @@ bool SketchHost::file_time_changed(FILETIME a, FILETIME b) {
 void SketchHost::inject_pin(int pin, int value) {
     runtime_.inject_pin(pin, value);
 }
+
+void SketchHost::set_speed(float speed){
+    runtime_.set_speed_multiplier(speed);
+}

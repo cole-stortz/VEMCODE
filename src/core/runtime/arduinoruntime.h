@@ -34,6 +34,8 @@ public:
         if (analog_index >= 0 && analog_index < 8)
             state_.analog_values[analog_index] = value;
     }
+    float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
+    void set_speed_multiplier(float speed);
 
 private:
     RuntimeState state_;

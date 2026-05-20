@@ -16,6 +16,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QAction>
+#include <QToolTip>
 
 // -------------------------------------------------------
 // UI color palette -- change these to retheme the app
@@ -166,6 +167,25 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     stopButton_->setStyleSheet(STYLE_BTN_STOP);
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
+
+    // Speed slider
+    QLabel* speedLabel = new QLabel("Speed:", toolbar);
+    speedLabel->setStyleSheet("color: #888; font-size: 11px; border: none; background: transparent;");
+    toolbarLayout->addWidget(speedLabel);
+
+    speedSlider_ = new QSlider(Qt::Horizontal, toolbar);
+    speedSlider_->setRange(1, 25);
+    speedSlider_->setValue(10);
+    speedSlider_->setFixedWidth(80);
+    speedSlider_->setToolTip("Simulation speed (5 = normal)");
+    speedSlider_->setStyleSheet(
+        "QSlider::groove:horizontal { background: #333; height: 4px; border-radius: 2px; }"
+        "QSlider::handle:horizontal { background: #888; width: 12px; height: 12px;"
+        "margin: -4px 0; border-radius: 6px; }"
+        "QSlider::handle:horizontal:hover { background: #aaa; }"
+    );
+    connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
+    toolbarLayout->addWidget(speedSlider_);
 
     QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
     newsketchButton->setFixedHeight(26);
@@ -735,4 +755,11 @@ void MainWindow::addToRecentSketches(const QString& path) {
     while (recent.size() > 5)
         recent.removeLast();
     settings.setValue("recent/sketches", recent);
+}
+
+void MainWindow::onSpeedChanged(int value) {
+    float display_speed = value / 10.0f;  // 1=0.1x, 10=1.0x, 100=10.0x
+    sketchThread_->setSpeed(display_speed);
+    speedSlider_->setToolTip(QString("Speed: %1x").arg(display_speed, 0, 'f', 1));
+    QToolTip::showText(QCursor::pos(), speedSlider_->toolTip(), speedSlider_);
 }

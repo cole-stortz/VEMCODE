@@ -76,7 +76,9 @@ int ArduinoRuntime::impl_analogRead(int pin) {
 }
 
 void ArduinoRuntime::impl_delay(unsigned long ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms)); // simple delay
+    if (!g_runtime) return;
+    unsigned long scaled = (unsigned long)(ms * g_runtime->speed_multiplier_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(scaled));
 }
 
 unsigned long ArduinoRuntime::impl_millis() {
@@ -126,4 +128,8 @@ void ArduinoRuntime::impl_watch_variable(const char* name, int value) {
         g_runtime->on_variable_changed(std::string(name), value);
     else
         std::cout << ts() << "  watch: " << name << " = " << value << "\n";
+}
+
+void ArduinoRuntime::set_speed_multiplier(float speed) {
+    speed_multiplier_ = 1.0f / speed;
 }
