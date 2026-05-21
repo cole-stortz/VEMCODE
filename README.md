@@ -237,30 +237,60 @@ VirtualBench/
 
 ## Roadmap
 
-### In progress
-- `pulseIn()` support
-- Multi-pin component detection (HC-SR04 distance sensor, H-bridge motor, color sensor)
-- Servo angle tracking
+### Phase 1 — Component Completion (in progress)
+- `pulseIn(pin, value)` and `pulseIn(pin, value, timeout)`
+- `delayMicroseconds` as scaled milliseconds
+- Servo class in injected header + `#include <Servo.h>` stripping
+- `analogWrite` fires pin changed callback for signal timeline
+- Array-based pin detection (`const int PIN[N] = {...}`)
+- Multi-pin component grouping (HC-SR04, H-bridge motor, color sensor)
+- Motor (H-bridge 4-pin) separated from Servo (PWM single pin)
 
-### Coming soon
-- Component visuals — proper graphics instead of colored rectangles
+> **Milestone:** The simplified Lambo robot sketch (1 color sensor, 1 HC-SR04, 3 H-bridge motors, 1 servo) compiles and runs correctly.
+
+### Phase 2 — Component Visuals
+- Proper graphics for all component types
 - Per-component sensor input boxes (type a distance value, watch your code react)
-- Canvas layout mode — drag components to match your real breadboard
-- `attachInterrupt()` support
-- EEPROM simulation
-- LCD / 7-segment display rendering
+
+### Phase 3 — Canvas Improvements
+- Canvas layout mode — drag components to match your real breadboard, positions saved per sketch
+- Wire visualization improvements
+
+### Phase 4 — Simulation Realism
 - Floating pin simulation (undriven INPUT pins return random values)
 - Button bounce simulation
-- AVR memory usage bar (dual compile with avr-gcc)
-- Multi-board simulation (two Arduinos communicating over virtual serial)
+- Optional signal noise on analog readings
+
+### Phase 5 — New Arduino Features
+- `attachInterrupt()` — RISING, FALLING, CHANGE modes
+- EEPROM simulation (1024 bytes, optional disk persistence)
+- Basic I2C/SPI simulation
+
+### Phase 6 — Display Support
+- 16x2 LCD (`LiquidCrystal` compatible)
+- 7-segment display
+- Basic OLED
+
+### Phase 7 — Multi-board Simulation
+- Two Arduinos communicating over virtual serial
+
+### Phase 8 — Memory Analysis
+- Dual compile with `avr-gcc` for flash and RAM size analysis
+- Flash → hard enforce (block run if over 32,256 bytes)
+- Static RAM → hard enforce (block run if globals exceed 2048 bytes)
+- Dynamic RAM (String/malloc) → warn but don't block
+- Memory bar in UI like Arduino IDE
+
+### Later
 - macOS / Linux support
-- Installer / packaged release
+- Installer (bundle MinGW, zero-dependency install)
+- Additional board support (Nano, Mega, ESP32)
 
 ### Known limitations
 - Microsecond-accurate timing (Windows thread scheduler has ~1-15ms jitter)
 - Hardware protocol electrical behavior (I2C/SPI bus characteristics)
 - Register-level / AVR assembly programming
-- Dynamic RAM enforcement is approximate — static RAM is hard enforced via avr-gcc, heap usage from String and malloc is tracked with warnings but not exact
+- Dynamic RAM enforcement is approximate — static RAM hard enforced via avr-gcc, heap usage tracked with warnings
 - Libraries that wrap AVR hardware registers directly
 
 ---
