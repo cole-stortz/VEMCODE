@@ -42,6 +42,7 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_all(s, "delay(",           "api->delay(");
     s = replace_all(s, "micros()",         "api->micros()");
     s = replace_all(s, "millis()",         "api->millis()");
+    s = replace_all(s, "pulseIn(",          "api->pulseIn(");
 
     // Tone
     s = replace_all(s, "tone(",            "api->tone(");

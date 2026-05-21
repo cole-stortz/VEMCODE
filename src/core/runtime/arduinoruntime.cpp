@@ -40,6 +40,8 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.watch_variable = impl_watch_variable;
     api.Serial_available = impl_Serial_available;
     api.Serial_read      = impl_Serial_read;
+    api.pulseIn          = impl_pulseIn;
+    api.delayMicroseconds = impl_delayMicroseconds;
     return api;
 }
 
@@ -156,4 +158,47 @@ int ArduinoRuntime::impl_Serial_read() {
     char c = g_runtime->serial_buffer_.front();
     g_runtime->serial_buffer_.pop_front();
     return (int)c;
+}
+
+unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long timeout) {
+    if (!g_runtime) return 0;
+
+    if (pin >= 0 && pin < 20 && g_runtime->state_.pulse_durations_[pin] != 0) {
+        unsigned long duration = g_runtime->state_.pulse_durations_[pin]; // Get the injected pulse duration
+        g_runtime->state_.pulse_durations_[pin] = 0; // Clear after reading
+        return duration;
+    }
+    unsigned long start_time = impl_micros();
+    // Phase 1
+    while (impl_digitalRead(pin) == value) {
+        if (g_runtime->stop_requested_) return 0;
+        if (impl_micros() - start_time >= timeout) return 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    // Phase 2
+    while (impl_digitalRead(pin) != value) {
+        if (g_runtime->stop_requested_) return 0;
+        if (impl_micros() - start_time >= timeout) return 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    unsigned long pulse_start = impl_micros();
+    // Phase 3
+    while (impl_digitalRead(pin) == value) {
+        if (g_runtime->stop_requested_) return 0;
+        if (impl_micros() - start_time >= timeout) return 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    unsigned long pulse_end = impl_micros();
+    return pulse_end - pulse_start;
+}
+
+void ArduinoRuntime::impl_delayMicroseconds(unsigned long us) {
+    if (!g_runtime) return;
+    unsigned long scaled = (unsigned long)(us * g_runtime->speed_multiplier_);
+    auto start = std::chrono::steady_clock::now();
+    while (std::chrono::duration_cast<std::chrono::microseconds>(
+               std::chrono::steady_clock::now() - start).count() < scaled) {
+        if (g_runtime->stop_requested_) return;
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
+    }
 }

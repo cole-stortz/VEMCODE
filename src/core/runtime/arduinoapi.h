@@ -16,6 +16,7 @@ struct ArduinoAPI {
 
     // Timing
     void          (*delay)   (unsigned long ms);
+    void (*delayMicroseconds)(unsigned long us);
     unsigned long (*millis)  ();
     unsigned long (*micros)  ();
 
@@ -30,6 +31,9 @@ struct ArduinoAPI {
     // Serial Communication
     int (*Serial_available)();
     int (*Serial_read)();
+
+    // PulseIn
+    unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

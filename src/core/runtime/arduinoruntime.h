@@ -12,6 +12,7 @@ struct RuntimeState {
     int  analog_values[8] = {};
     bool serial_started   = false;
     int  serial_baud      = 0;
+    unsigned long pulse_durations_[20] = {}; 
     std::chrono::steady_clock::time_point start_time;
 };
 
@@ -39,11 +40,16 @@ public:
     float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
     void set_speed_multiplier(float speed);
 
-    // In public section:
     void inject_serial(const std::string& data) {
         for (char c : data)
             serial_buffer_.push_back(c);
     }
+
+    void inject_pulse_duration(int pin, unsigned long micros) {
+        if (pin >= 0 && pin < 20)
+            state_.pulse_durations_[pin] = micros;
+    }
+
 
     std::atomic<bool> stop_requested_ = false;
 
@@ -56,14 +62,16 @@ private:
     static void          impl_analogWrite    (int pin, int value);
     static int           impl_analogRead     (int pin);
     static void          impl_delay          (unsigned long ms);
+    static void       impl_delayMicroseconds (unsigned long us);
     static unsigned long impl_millis         ();
     static unsigned long impl_micros         ();
     static void          impl_Serial_begin   (int baud);
     static void          impl_Serial_print   (const char* s);
     static void          impl_Serial_println (const char* s);
     static void          impl_watch_variable (const char* name, int value);
+    static unsigned long impl_pulseIn        (int pin, int value, unsigned long timeout);
     static int           impl_Serial_available();
-    static int           impl_Serial_read();
+    static int           impl_Serial_read    ();
 
     std::deque<char> serial_buffer_;
 };

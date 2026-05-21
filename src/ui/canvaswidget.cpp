@@ -158,7 +158,9 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     bool is_output = (comp.type == ComponentType::LED          ||
                       comp.type == ComponentType::Buzzer       ||
                       comp.type == ComponentType::Servo        ||
+                      comp.type == ComponentType::HBridgeMotor ||
                       comp.type == ComponentType::GenericOutput);
+
 
     int comp_w = 100;
     int comp_h = 44;
@@ -238,22 +240,43 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         nameText->setPos(6, 24);
     }
 
-    // Wire start point -- right edge of component for inputs, left edge for outputs
-    QPointF wire_start = is_output
-        ? QPointF(comp_x, comp_y + comp_h / 2.0)
-        : QPointF(comp_x + comp_w, comp_y + comp_h / 2.0);
+    std::vector<int> wire_pins;
+    if (!comp.pins.empty())
+        wire_pins = comp.pins;
+    else
+        wire_pins = { comp.pin };
 
-    // Wire routing
-    if (is_analog_input) {
-        QPointF mid1 = QPointF(BOARD_X - 80, wire_start.y());
-        QPointF mid2 = QPointF(pin_pos.x(), wire_start.y());
-        drawWire(wire_start, mid1);
-        drawWire(mid1, mid2);
-        drawWire(mid2, pin_pos);
-    } else {
-        QPointF mid = QPointF(pin_pos.x(), wire_start.y());
-        drawWire(wire_start, mid);
-        drawWire(mid, pin_pos);
+    for (int wpin : wire_pins) {
+        if (wpin < 0) continue;
+
+        QPointF target = pinLocation(wpin);
+
+        // Clamp attachment point to component box bounds at the pin's Y
+        float attach_y = qBound((float)comp_y, (float)target.y(), (float)(comp_y + comp_h));
+
+        QPointF comp_edge = is_output
+            ? QPointF(comp_x, attach_y)
+            : QPointF(comp_x + comp_w, attach_y);
+
+        bool pin_is_analog = (wpin >= 14);
+        if (pin_is_analog) {
+            // Analog: 3-segment route around board left edge
+            QPointF mid1 = QPointF(BOARD_X - 80, target.y());
+            QPointF mid2 = QPointF(BOARD_X - 80, attach_y);
+            drawWire(target, mid1);
+            drawWire(mid1, mid2);
+            drawWire(mid2, comp_edge);
+        } else if (std::abs(target.y() - attach_y) < 1.0f) {
+            // Pin Y is within component box -- straight horizontal wire
+            drawWire(target, comp_edge);
+        } else {
+            // Pin Y is outside component box -- L-shaped turn
+            QPointF corner = is_output
+                ? QPointF(comp_x, target.y())
+                : QPointF(comp_x + comp_w, target.y());
+            drawWire(target, corner);
+            drawWire(corner, comp_edge);
+        }
     }
 }
 
@@ -352,6 +375,10 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::LightSensor,   COLOR_LIGHT_ACTIVE   },
         { ComponentType::TempSensor,    COLOR_TEMP_ACTIVE    },
         { ComponentType::AnalogSensor,  COLOR_ANALOG_ACTIVE  },
+        { ComponentType::DistanceSensor, QColor("#44ffff") },
+        { ComponentType::HBridgeMotor,   QColor("#ff44aa") },
+        { ComponentType::ColorSensor,    QColor("#aa44ff") },
+
     };
 
     static const std::map<ComponentType, QColor> inactiveColors = {
@@ -364,7 +391,9 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::LightSensor,   COLOR_LIGHT_INACTIVE },
         { ComponentType::TempSensor,    COLOR_TEMP_INACTIVE  },
         { ComponentType::AnalogSensor,  COLOR_ANALOG_INACTIVE},
-        { ComponentType::LCD,           COLOR_LCD_INACTIVE   },
+        { ComponentType::DistanceSensor, QColor("#003a3a") },
+        { ComponentType::HBridgeMotor,   QColor("#3a0020") },
+        { ComponentType::ColorSensor,    QColor("#1a0040") },
     };
 
     const auto& colors = active ? activeColors : inactiveColors;

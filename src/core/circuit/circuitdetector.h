@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 // The type of component inferred from the sketch
 enum class ComponentType {
@@ -17,13 +18,17 @@ enum class ComponentType {
     LCD,
     GenericOutput,
     GenericInput,
-    Serial
+    Serial,
+    DistanceSensor,
+    HBridgeMotor,
+    ColorSensor
 };
 
 // A single detected component
 struct DetectedComponent {
     ComponentType type;
     int           pin;          // -1 for non-pin components like Serial
+    std::vector<int> pins;        // for multi-pin components like LCD (RS, E, D4-D7)
     std::string   pin_name;     // original #define name e.g. "LED_PIN"
     std::string   label;        // human readable e.g. "LED (pin 13)"
     bool          confirmed;    // true once runtime pin_changed fires for this pin
@@ -53,6 +58,15 @@ public:
     void reset();
 
 private:
+    // Parses: const int NAME[N] = {v1, v2, v3};
+    std::map<std::string, std::vector<int>> parse_arrays(const std::string& source);
+
+    // Phase 0: detect multi-pin components, returns set of claimed pins
+    std::set<int> detect_multipin(
+        const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        const std::map<std::string, std::vector<int>>& arrays);
+
     std::vector<DetectedComponent> components_;
 
     // Phase 1: parse all #define NAME VALUE into a symbol table

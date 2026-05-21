@@ -9,6 +9,8 @@ void CircuitDetector::detect(const std::string& source) {
     reset();
 
     auto defines  = parse_defines(source);
+    auto arrays   = parse_arrays(source);                         
+    auto claimed  = detect_multipin(source, defines, arrays);     
     auto pinmodes = parse_pinmodes(source, defines);
 
     // Phase 3 -- infer component type from name and mode
@@ -28,6 +30,7 @@ void CircuitDetector::detect(const std::string& source) {
     };
 
     for (const auto& pm : pinmodes) {
+        if (claimed.count(pm.pin)) continue;
         DetectedComponent comp;
         comp.pin       = pm.pin;
         comp.pin_name  = pm.pin_name;
@@ -60,6 +63,7 @@ void CircuitDetector::detect(const std::string& source) {
         std::string token = m[1].str();
         int pin = resolve_pin(token, defines);
         if (pin < 0) continue;
+        if (claimed.count(pin)) continue;
 
         bool duplicate = false;
         for (const auto& existing : components_)
@@ -123,6 +127,187 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
 
     return defines;
 }
+
+std::map<std::string, std::vector<int>> CircuitDetector::parse_arrays(
+    const std::string& source)
+{
+    std::map<std::string, std::vector<int>> arrays;
+    std::map<std::string, std::string> empty_defines;
+
+    // Match: const int NAME[anything] = {v1, v2, v3, v4};
+    std::regex pattern(R"(const\s+int\s+(\w+)\s*\[.*?\]\s*=\s*\{([^}]+)\})");
+    auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
+    auto end   = std::sregex_iterator();
+
+    for (auto it = begin; it != end; ++it) {
+        std::smatch m = *it;
+        std::string name     = m[1].str();
+        std::string contents = m[2].str();  // "33, 31, 14, 19"
+
+        // Split contents on commas, resolve each token to a pin number
+        std::vector<int> pins;
+        std::stringstream ss(contents);
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            // trim whitespace
+            token.erase(0, token.find_first_not_of(" \t\r\n"));
+            token.erase(token.find_last_not_of(" \t\r\n") + 1);
+            int pin = resolve_pin(token, empty_defines);
+            pins.push_back(pin);
+        }
+        arrays[name] = pins;
+    }
+    return arrays;
+}
+
+std::set<int> CircuitDetector::detect_multipin(
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    const std::map<std::string, std::vector<int>>& arrays)
+{
+    std::set<int> claimed;
+
+    // --- HC-SR04 ---
+    // Look for defines containing TRIG and ECHO
+    int trig_pin = -1, echo_pin = -1;
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0) continue;
+        if (contains_any(upper, {"TRIG"})) trig_pin = pin;
+        if (contains_any(upper, {"ECHO"})) echo_pin = pin;
+    }
+    if (trig_pin >= 0 && echo_pin >= 0) {
+        DetectedComponent comp;
+        comp.type      = ComponentType::DistanceSensor;
+        comp.pin       = echo_pin;
+        comp.pins      = {trig_pin, echo_pin};
+        comp.pin_name  = "HC-SR04";
+        comp.label     = "Distance Sensor (TRIG=" + std::to_string(trig_pin)
+                       + ", ECHO=" + std::to_string(echo_pin) + ")";
+        comp.confirmed = false;
+        components_.push_back(comp);
+        claimed.insert(trig_pin);
+        claimed.insert(echo_pin);
+    }
+
+    // --- H-bridge motors ---
+    // Group defines by prefix: MOTOR1_, MOTOR2_, MOTOR3_
+    std::map<std::string, std::vector<std::pair<std::string, int>>> groups;
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0) continue;
+        if (contains_any(upper, {"MOTOR", "SRV", "SERVO"})) {
+            // Extract prefix up to last underscore
+            size_t pos = upper.find('_');
+            if (pos != std::string::npos) {
+                std::string prefix = upper.substr(0, pos);
+                groups[prefix].push_back({upper, pin});
+            }
+        }
+    }
+
+    for (const auto& g : groups) {
+        const auto& pins = g.second;
+        if (pins.size() >= 2) { // Need at least 2 pins to be an H-bridge
+            DetectedComponent comp;
+            comp.type      = ComponentType::HBridgeMotor;
+            comp.pin       = pins[0].second; // Just pick the first pin as representative
+            for (const auto& p : pins)
+                comp.pins.push_back(p.second);
+            comp.pin_name  = g.first;
+            comp.label     = "H-Bridge Motor (" + g.first + ")";
+            comp.confirmed = false;
+            components_.push_back(comp);
+            for (const auto& p : pins)
+                claimed.insert(p.second);
+        }
+    }
+
+    // --- Color Sensor ---
+    // Look for S0, S1, S2, S3, sensorOut arrays all present and same length
+    bool has_s0 = false, has_s1 = false, has_s2 = false, has_s3 = false, has_out = false;
+    std::vector<int> s0_pins, s1_pins, s2_pins, s3_pins, out_pins;
+    for (const auto& arr : arrays) {
+        std::string upper = to_upper(arr.first);
+        if (contains_any(upper, {"S0"})) { has_s0 = true; s0_pins = arr.second; }
+        if (contains_any(upper, {"S1"})) { has_s1 = true; s1_pins = arr.second; }
+        if (contains_any(upper, {"S2"})) { has_s2 = true; s2_pins = arr.second; }
+        if (contains_any(upper, {"S3"})) { has_s3 = true; s3_pins = arr.second; }
+        if (contains_any(upper, {"OUT", "SENSOROUT", "OUTPUT"})) { has_out = true; out_pins = arr.second; }
+    }
+
+    // If all 5 arrays are present and have the same number of pins, assume it's a color sensor
+    if (has_s0 && has_s1 && has_s2 && has_s3 && has_out &&
+        s0_pins.size() == s1_pins.size() &&
+        s0_pins.size() == s2_pins.size() &&
+        s0_pins.size() == s3_pins.size() &&
+        s0_pins.size() == out_pins.size()) {
+        for (size_t i = 0; i < s0_pins.size(); ++i) {
+            DetectedComponent comp;
+            comp.type      = ComponentType::ColorSensor;
+            comp.pin       = out_pins[i]; // Representative pin
+            comp.pins      = {s0_pins[i], s1_pins[i], s2_pins[i], s3_pins[i], out_pins[i]};
+            comp.pin_name  = "ColorSensor";
+            comp.label     = "Color Sensor (S0=" + std::to_string(s0_pins[i]) +
+                             ", S1=" + std::to_string(s1_pins[i]) +
+                             ", S2=" + std::to_string(s2_pins[i]) +
+                             ", S3=" + std::to_string(s3_pins[i]) +
+                             ", OUT=" + std::to_string(out_pins[i]) + ")";
+            comp.confirmed = false;
+            components_.push_back(comp);
+            claimed.insert(s0_pins[i]);
+            claimed.insert(s1_pins[i]);
+            claimed.insert(s2_pins[i]);
+            claimed.insert(s3_pins[i]);
+            claimed.insert(out_pins[i]);
+        }
+    }
+
+    // --- LCD 16x2 ---
+    // Look for defines containing RS, E, D4, D5, D6, D7
+    int rs_pin = -1, e_pin = -1, d4_pin = -1, d5_pin = -1, d6_pin = -1, d7_pin = -1;
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0) continue;
+        if (contains_any(upper, {"RS"})) rs_pin = pin;
+        if (contains_any(upper, {"LCD_EN", "LCD_E", "_ENABLE", "_EN"})) e_pin = pin;
+        if (contains_any(upper, {"D4"})) d4_pin = pin;
+        if (contains_any(upper, {"D5"})) d5_pin = pin;
+        if (contains_any(upper, {"D6"})) d6_pin = pin;
+        if (contains_any(upper, {"D7"})) d7_pin = pin;
+    }
+
+    // If all 6 pins are found, assume it's an LCD 16x2
+    if (rs_pin >= 0 && e_pin >= 0 && d4_pin >= 0 && d5_pin >= 0 && d6_pin >= 0 && d7_pin >= 0) {
+        DetectedComponent comp;
+        comp.type      = ComponentType::LCD;
+        comp.pin       = rs_pin; // Representative pin
+        comp.pins      = {rs_pin, e_pin, d4_pin, d5_pin, d6_pin, d7_pin};
+        comp.pin_name  = "LCD";
+        comp.label     = "LCD 16x2 (RS=" + std::to_string(rs_pin) +
+                         ", E=" + std::to_string(e_pin) +
+                         ", D4=" + std::to_string(d4_pin) +
+                         ", D5=" + std::to_string(d5_pin) +
+                         ", D6=" + std::to_string(d6_pin) +
+                         ", D7=" + std::to_string(d7_pin) + ")";
+        comp.confirmed = false;
+        components_.push_back(comp);
+        claimed.insert(rs_pin);
+        claimed.insert(e_pin);
+        claimed.insert(d4_pin);
+        claimed.insert(d5_pin);
+        claimed.insert(d6_pin);
+        claimed.insert(d7_pin);
+    }
+
+    // Add more multi-pin component detection logic here as needed...
+
+    return claimed;
+}
+
 
 // Phase 2 -- find pinMode(pin, mode) calls
 std::vector<CircuitDetector::PinModeCall> CircuitDetector::parse_pinmodes(
