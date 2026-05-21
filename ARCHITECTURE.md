@@ -1,6 +1,6 @@
 # VirtualBench — Architecture Reference
 
-This document is the primary developer reference for VirtualBench. Keep it up to date as the codebase evolves.
+This document is the primary developer reference for VirtualBench. Keep it up to date as the codebase evolves. New contributors and AI assistants should read this before touching any code.
 
 ---
 
@@ -96,6 +96,8 @@ struct ArduinoAPI {
     int  (*Serial_read)();
     void (*tone)(int, unsigned int, unsigned long);
     void (*noTone)(int);
+    // Planned additions:
+    // unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
 };
 
 namespace vb { INPUT=0, OUTPUT=1, INPUT_PULLUP=2, LOW=0, HIGH=1 }
@@ -106,11 +108,11 @@ constexpr int A0=14, A1=15, A2=16, A3=17, A4=18, A5=19;
 
 ```cpp
 struct RuntimeState {
-    int  pin_modes[20]   = {};
-    int  pin_values[20]  = {};
+    int  pin_modes[20]    = {};
+    int  pin_values[20]   = {};
     int  analog_values[8] = {};
-    bool serial_started  = false;
-    int  serial_baud     = 0;
+    bool serial_started   = false;
+    int  serial_baud      = 0;
     std::chrono::steady_clock::time_point start_time;
 };
 ```
@@ -119,8 +121,9 @@ struct RuntimeState {
 
 ```cpp
 enum class ComponentType {
-    LED, Button, Switch, Buzzer, Servo,
+    LED, Button, Switch, Buzzer, Servo, Motor,
     Potentiometer, LightSensor, TempSensor, AnalogSensor,
+    DistanceSensor, ColorSensor,
     LCD, GenericOutput, GenericInput, Serial
 };
 
@@ -153,7 +156,7 @@ Owns all simulation state. All `impl_*` functions are static and access state vi
 - `set_speed_multiplier(speed)` — sets `speed_multiplier_ = 1.0f / speed`
 
 **impl_delay:**
-Sleeps in 10ms chunks, checks `stop_requested_` between each chunk. This is critical — without chunking, Stop blocks until the full delay completes.
+Sleeps in 10ms chunks, checks `stop_requested_` between each chunk. Critical — without chunking, Stop blocks until the full delay completes.
 
 ```cpp
 void ArduinoRuntime::impl_delay(unsigned long ms) {
@@ -183,7 +186,7 @@ Transforms standard Arduino source into VirtualBench DLL format. Steps in order:
 
 **CRITICAL: `INJECTED_HEADER_LINES = 129`**
 
-This constant must match the exact number of `\n` characters in the injected header string. It is used to subtract from compiler error line numbers so errors point to the correct user sketch line. Run the line counter script if the header ever changes:
+Must match the exact number of `\n` characters in the injected header string. Used to subtract from compiler error line numbers so errors point to the correct user sketch line. Run the line counter script if the header ever changes:
 
 ```python
 python3 -c "print(header_string.count('\n'))"
@@ -193,6 +196,7 @@ python3 -c "print(header_string.count('\n'))"
 - `Serial.println` before `Serial.print` (partial match avoidance)
 - `digitalRead` before `digitalWrite` (partial match avoidance)
 - `delayMicroseconds` before `delay` (partial match avoidance)
+- `#include <Servo.h>` stripped (replaced by built-in Servo class in header) — planned
 
 **Injected header contains:**
 - `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`
@@ -202,6 +206,7 @@ python3 -c "print(header_string.count('\n'))"
 - Full `String` class (wraps std::string)
 - `map()`, `constrain()`, `vb_abs/min/max`, `random()`
 - `#define abs/min/max` macros
+- Planned: `Servo` class, `pulseIn` forwarding
 
 ---
 
@@ -244,9 +249,9 @@ QPainter-based canvas. Repaints on `updatePin` calls.
 
 **Layout:**
 - Arduino board drawn in center-right area
-- Output components (LED, Buzzer, Servo, GenericOutput): right side, Y aligned to pin position
+- Output components (LED, Buzzer, Servo, Motor, GenericOutput): right side, Y aligned to pin position
 - Digital inputs (Button, Switch, Potentiometer, GenericInput): left inner column (`BOARD_X - comp_w - 80`)
-- Analog sensors (LightSensor, TempSensor, AnalogSensor): left outer column (`BOARD_X - comp_w - 180`)
+- Analog sensors (LightSensor, TempSensor, AnalogSensor, DistanceSensor, ColorSensor): left outer column (`BOARD_X - comp_w - 180`)
 - Wire routing: sensors use 3-segment wire through inner column edge
 
 **Interaction:**
@@ -289,6 +294,8 @@ int analog_index = (pin >= 14) ? pin - 14 : pin;
 
 **Recent sketches:** Last 5 paths, stored as QStringList. `addToRecentSketches(path)` called on open/save/new.
 
+**Serial monitor:** Read-only output + input row (QLineEdit + Send button). `onSerialSend()` injects text+"\n" and echoes "> text" in monitor.
+
 ---
 
 ### CircuitDetector (`src/core/circuit/circuitdetector.cpp`)
@@ -301,21 +308,31 @@ Scans for `#define XXX_PIN N` patterns and matches the name against keyword list
 **Phase 2 — `analogRead` calls:**
 Scans for `analogRead(A0)` etc. to detect analog sensor components not caught by phase 1.
 
+**Planned Phase 3 — array declarations:**
+Scan for `const int NAME[N] = {...}` patterns for color sensor and multi-pin array-based components.
+
 **`confirm_pin(pin)`:** Called from `onPinChanged` when a pin actually fires. Promotes tentative detections to confirmed.
 
 **Detection keywords:**
 ```
-LED:          LED, LIGHT, LAMP, INDICATOR
-Button:       BTN, BUTTON, KEY
-Switch:       SWITCH, SW, TOGGLE
-Buzzer:       BUZZER, BUZZ, SPEAKER, TONE, PIEZO
-Servo:        SERVO, MOTOR, SRV
-Pot:          POT, POTENTIOMETER, DIAL
-LightSensor:  PHOTO, LDR, LIGHT_SENSOR, PHOTORESISTOR
-TempSensor:   TEMP, TEMPERATURE, THERMISTOR
-AnalogSensor: SENSOR, ANALOG, ADC
-LCD:          LCD, DISPLAY, SCREEN, OLED
+LED:           LED, LIGHT, LAMP, INDICATOR
+Button:        BTN, BUTTON, KEY
+Switch:        SWITCH, SW, TOGGLE
+Buzzer:        BUZZER, BUZZ, SPEAKER, TONE, PIEZO
+Servo:         SERVO, SRV                          (single PWM pin)
+Motor:         MOTOR, CW, CWISE, ANTI, IN1, IN2    (H-bridge, groups of 3-4 pins)
+Pot:           POT, POTENTIOMETER, DIAL
+LightSensor:   PHOTO, LDR, LIGHT_SENSOR, PHOTORESISTOR
+TempSensor:    TEMP, TEMPERATURE, THERMISTOR
+AnalogSensor:  SENSOR, ANALOG, ADC
+DistanceSensor: TRIG, ECHO                         (multi-pin pair)
+ColorSensor:   S0, S1, S2, S3, COLOR_OUT           (multi-pin group)
+LCD:           LCD, DISPLAY, SCREEN, OLED
 ```
+
+**Motor vs Servo distinction:**
+- `SERVO`, `SRV` → Servo (single PWM pin, angle from analogWrite)
+- `MOTOR`, `CW`, `CWISE`, `ANTI`, `IN1`-`IN4` → Motor (H-bridge, direction from digitalWrite pairs)
 
 ---
 
@@ -357,66 +374,100 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
 - **`stopSketch()` order** — sets `stop_requested_` BEFORE `running_=false` then `wait()`.
 - **Preprocessor replace order** — println before print, digitalRead before digitalWrite, delayMicroseconds before delay.
 - **Raw string header** — if ever switching back to raw string R"(...)", all `#include`, `#define`, `using`, `class`, `inline` must start at column 0 — no indentation.
+- **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
+- **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
+- **Array pin declarations** — `const int PIN[N] = {...}` needs a separate detection pass in CircuitDetector, not just `#define` patterns.
+- **Pin count** — RuntimeState arrays are `[20]`, all sketches must remap pins to fit 0-19. If Teensy or Mega support added later, expand arrays accordingly.
 
 ---
 
-## Roadmap Summary
+## Target Benchmark Sketch
 
-### In Progress
-- `pulseIn()` runtime implementation
-- Multi-pin component detection (HC-SR04, H-bridge motor, color sensor)
-- Servo angle tracking from `analogWrite`
+The simplified Lambo robot sketch is the primary milestone target for Phase 1 completion. When this sketch compiles and runs correctly, Phase 1 is done.
 
-### Phase 1 — Component Completion
-- Servo, Motor (H-bridge 4-pin), Distance sensor (TRIG+ECHO), Color sensor (S0-S3+OUT)
+**Components:**
+- 1x TCS3200 color sensor (S0-S3 + OUT, pins 14-18)
+- 1x HC-SR04 ultrasonic sensor (TRIG pin 12, ECHO pin 13)
+- 3x H-bridge DC motors (3 pins each: PWM + CW + ACW, pins 3-11)
+- 1x Servo arm (pin 2)
+
+**Total: 17 pins, all within 0-19**
+
+**What it exercises:**
+- `pulseIn()` — ultrasonic duration + color sensor frequency
+- `delayMicroseconds()` — ultrasonic trigger pulse
+- `analogWrite()` — motor PWM speed control
+- `digitalWrite/digitalRead` — motor direction, color sensor S-pins
+- `Servo.attach/write` — arm positioning
+- Array-based pin access — `S0[i]`, `sensorOut[i]`
+- Multi-pin component grouping — color sensor arrays, motor H-bridge groups
+
+---
+
+## Roadmap
+
+### Phase 1 — Component Completion (in progress)
+- `pulseIn(pin, value)` and `pulseIn(pin, value, timeout)`
 - `delayMicroseconds` as scaled milliseconds
+- Servo class in injected header + `#include <Servo.h>` stripping in preprocessor
+- `analogWrite` fires `on_pin_changed` for signal timeline tracking
+- Array-based pin detection (`const int PIN[N] = {...}`)
+- Multi-pin component grouping (HC-SR04, H-bridge motor, color sensor)
+- Motor (H-bridge 4-pin) separated from Servo (PWM single pin)
+
+> **Milestone:** Target benchmark sketch compiles and runs correctly.
 
 ### Phase 2 — Component Visuals
-- Proper graphics for all component types
-- Per-component sensor input boxes (distance cm, temperature °C, etc.)
+- Proper graphics for all component types replacing colored rectangles
+- Per-component sensor input boxes (type distance in cm, temperature in °C, color picker, etc.)
 
 ### Phase 3 — Canvas Improvements
-- Canvas layout mode — drag components, save to `.vblayout` file
-- Wire visualization improvements
+- Canvas layout mode — "Layout" toolbar button, components become draggable
+- Positions saved to `sketch_name.vblayout` next to `.cpp` file
+- On load: use saved positions if file exists, otherwise auto-generate
+- Wire visualization improvements — color coded by signal type
 
 ### Phase 4 — Simulation Realism
-- Floating pin simulation (random reads on undriven INPUT pins)
-- Button bounce simulation
-- Signal noise on analog readings (optional)
+- Floating pin simulation — undriven INPUT pins return random HIGH/LOW
+- Button bounce simulation — rapid toggles on click before settling (~10ms)
+- Optional gaussian noise on analog readings (off by default)
 
 ### Phase 5 — New Arduino Features
-- `attachInterrupt()` — RISING, FALLING, CHANGE modes
-- EEPROM simulation (1024 bytes, optional disk persistence)
-- Basic I2C/SPI simulation
-- `analogWrite` fires `on_pin_changed` for signal timeline
+- `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE
+- EEPROM simulation — 1024 bytes, optional disk persistence between sessions
+- Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`)
+- Basic SPI simulation (`SPI.begin`, `SPI.transfer`)
 
 ### Phase 6 — Display Support
-- 16x2 LCD (`LiquidCrystal` compatible)
-- 7-segment display
-- Basic OLED
+- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
 
 ### Phase 7 — Multi-board Simulation
-- Two SketchThread instances
-- Virtual serial pipe between boards
+- Two SketchThread instances running simultaneously
+- Virtual serial pipe connecting them (TX of one → RX of other)
+- Enables master/slave and sensor node + controller patterns
 
 ### Phase 8 — Memory Analysis
-- `avr_gcc_path` in settings
-- Dual compile with `avr-gcc` for size analysis
-- Flash usage → hard enforce (block run if over 32,256 bytes)
-- Static RAM → hard enforce (block run if globals exceed 2048 bytes)
+- `avr_gcc_path` in settings dialog
+- After successful Windows compile, run `avr-gcc` compile for size analysis only
+- Parse `avr-size` output for flash and RAM usage
+- Flash → hard enforce, block Run if over 32,256 bytes
+- Static RAM → hard enforce, block Run if globals exceed 2,048 bytes
 - Dynamic RAM (String/malloc) → warn but don't block
-- Memory bar in UI like Arduino IDE
-- Auto-detect Arduino IDE avr-gcc path
+- Memory bar in UI: `████░░░░ 1234 / 32256 bytes (3%)`
+- Auto-detect Arduino IDE avr-gcc path on first run
+- Warn at >75% usage before hitting limit
 
 ### Later
 - macOS / Linux support
-- Installer (bundle MinGW for zero-dependency install)
+- Installer — bundle MinGW for zero-dependency install
 - Additional board support (Nano, Mega, ESP32)
 
 ### Explicitly Out of Scope
 - Box2D / physics simulation
 - 3D visualization
-- External robot simulator integration
+- External robot simulator integration (Gazebo, Webots)
 
 ---
 
@@ -425,6 +476,6 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
 - Microsecond-accurate timing (Windows scheduler ~1-15ms jitter)
 - Hardware protocol electrical behavior (I2C/SPI bus capacitance, voltage levels)
 - Register-level / AVR assembly programming
-- Real electrical behavior (voltage, current, debouncing, floating pins — partially mitigated by simulation)
+- Real electrical behavior (voltage, current, short circuits)
 - Dynamic RAM enforcement is approximate — static RAM hard enforced via avr-gcc, heap from String/malloc tracked with warnings
 - Libraries that wrap AVR hardware registers directly
