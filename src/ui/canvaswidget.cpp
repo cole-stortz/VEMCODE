@@ -241,6 +241,27 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         });
     }
 
+    if (comp.type == ComponentType::LightSensor  ||
+        comp.type == ComponentType::TempSensor   ||
+        comp.type == ComponentType::AnalogSensor) {
+        int sensor_pin = comp.pin;
+        QLineEdit* input = new QLineEdit("0");
+        input->setFixedSize(60, 20);
+        input->setPlaceholderText("0-1023");
+        input->setStyleSheet(
+            "background:#1a1a00; color:#ffff44; border:1px solid #ffff44;");
+        QGraphicsProxyWidget* proxy = scene_->addWidget(input);
+        proxy->setParentItem(rect);
+        proxy->setPos(comp_w - 66, comp_h - 26);
+        connect(input, &QLineEdit::textChanged, this, [this, sensor_pin](const QString& text) {
+            bool ok;
+            int val = text.toInt(&ok);
+            if (ok)
+                emit analogInjected(sensor_pin, qBound(0, val, 1023));
+        });
+    }
+
+
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);
     typeText->setPlainText(QString::fromStdString(comp.label));
