@@ -1,47 +1,95 @@
 # VirtualBench
 
-An open-source embedded systems development tool for writing, simulating, testing, and debugging Arduino code — no hardware required.
+An open-source embedded systems simulator for writing, simulating, testing, and debugging Arduino code — no hardware required.
 
-![Status](https://img.shields.io/badge/status-early%20development-orange)
+![Status](https://img.shields.io/badge/status-active%20development-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## What it does
 
-Write standard Arduino sketches directly in the built-in editor and simulate them instantly — no Arduino board, no USB cable, no waiting.
+Write standard Arduino sketches directly in the built-in editor and simulate them instantly — no Arduino board, no USB cable, no waiting. VirtualBench compiles your sketch to a native DLL and runs it against a virtual Arduino runtime in real time.
 
-- **Write** Arduino code in a syntax-highlighted editor with line numbers and error highlighting
+- **Write** Arduino code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
 - **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
-- **Visualize** — the circuit canvas auto-detects components from your code (`#define LED_PIN 13` → LED appears on the canvas)
-- **Debug** — serial monitor shows `Serial.print` output live, signal timeline shows pin waveforms like a logic analyzer
-- **Interact** — click button components on the canvas to inject pin state into the running simulation
+- **Visualize** — the circuit canvas auto-detects components from your code and renders them automatically
+- **Interact** — click buttons, toggle switches, drag potentiometers, and type serial input to interact with the running simulation
+- **Debug** — serial monitor, signal timeline (logic analyzer view), and variable watch panel
 - **Hot-reload** — edit your sketch, hit Run again, simulation restarts instantly
+- **Speed control** — slow down or speed up simulation from 0.1x to 2.5x
 
 ## Screenshots
 
 *Coming soon*
 
+---
+
+## Features
+
+### Editor
+- Syntax highlighting (keywords, functions, strings, comments)
+- Line numbers
+- Auto-indent — Enter after `{` indents automatically
+- Auto-dedent — typing `}` on an indented blank line dedents automatically
+- Tab = 4 spaces
+- Compile error highlighting — error lines turn red with tooltip showing the message
+- Ctrl+S to save
+- New sketch, Open, Save, Recent sketches (last 5)
+
+### Simulation
+- Full Arduino API support:
+  - `pinMode`, `digitalWrite`, `digitalRead`
+  - `analogWrite`, `analogRead`
+  - `delay`, `delayMicroseconds`, `millis`, `micros`
+  - `Serial.begin`, `Serial.print`, `Serial.println`, `Serial.available`, `Serial.read`
+  - `tone`, `noTone`
+  - `map`, `constrain`, `abs`, `min`, `max`, `random`
+- Full `String` class — construction, concatenation, search, manipulation, conversion
+- Speed slider — 0.1x to 2.5x simulation speed
+- Stop is instant — no waiting for long delays to finish
+
+### Circuit Canvas
+Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
+
+| Component | Detection keywords | Interaction |
+|---|---|---|
+| LED | LED, LIGHT, LAMP, INDICATOR | Visual on/off |
+| Button | BTN, BUTTON, KEY | Click to press |
+| Switch | SWITCH, SW, TOGGLE | Click to toggle |
+| Buzzer | BUZZER, BUZZ, SPEAKER, TONE, PIEZO | Visual active state |
+| Servo | SERVO, SRV | Visual coming soon |
+| Motor | MOTOR | Visual coming soon |
+| Potentiometer | POT, POTENTIOMETER, DIAL | Drag to set value 0-1023 |
+| Light sensor | PHOTO, LDR, PHOTORESISTOR | Analog input |
+| Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Analog input |
+| Analog sensor | SENSOR, ANALOG, ADC | Analog input |
+| LCD | LCD, DISPLAY, SCREEN, OLED | Visual coming soon |
+
+### Debug Panel
+- **Serial monitor** — live `Serial.print` output, plus a text input box to send data to `Serial.read`
+- **Signal timeline** — logic analyzer view of all pin state changes over time
+- **Variable watch** — live table of `watch_variable("name", value)` calls from your sketch
+
+---
+
 ## Getting started
 
 ### Prerequisites
 
-- Windows 10/11
+- Windows 10/11 64-bit
 - Qt 6.x with MinGW 64-bit — [download from qt.io](https://www.qt.io/download)
+  - During install select: Qt 6.x → MinGW 64-bit, and Developer Tools → Ninja
 - CMake 3.20+
-- Ninja build system (included with Qt)
 
 ### Build from source
 
-```bash
-# Clone the repo
+```powershell
+# Clone
 git clone https://github.com/cole-stortz/VirtualBench.git
 cd VirtualBench
 
-# Configure
-cmake -B build -S . -G "Ninja" \
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" \
-  -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw1310_64/bin/g++.exe" \
-  -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/Ninja/ninja.exe"
+# Configure (all one line)
+cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw1310_64/bin/g++.exe" -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/Ninja/ninja.exe"
 
 # Build
 cmake --build build
@@ -50,11 +98,17 @@ cmake --build build
 C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VirtualBench.exe
 ```
 
-### Run
+> **Note:** Ninja may be at a different path depending on your system. Run `where.exe ninja` to find it.
 
-```bash
+### First run
+
+```powershell
 .\app\VirtualBench.exe
 ```
+
+On first launch VirtualBench will ask for your compiler path and project root. Point it at your `g++.exe` (e.g. `C:/Qt/Tools/mingw1310_64/bin/g++.exe`) and the root of the VirtualBench repo. These are saved to `app/settings.ini`.
+
+---
 
 ## Writing sketches
 
@@ -68,6 +122,7 @@ void setup() {
     Serial.begin(9600);
     pinMode(LED_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
+    Serial.println("Ready");
 }
 
 void loop() {
@@ -81,64 +136,134 @@ void loop() {
 }
 ```
 
-The preprocessor automatically transforms your sketch into the VirtualBench runtime format before compilation. You never need to write any boilerplate.
+The preprocessor automatically transforms your sketch into the VirtualBench runtime format. You never write any boilerplate.
 
-## Circuit auto-detection
+### String support
 
-VirtualBench reads your `#define` statements and `pinMode` calls to automatically populate the circuit canvas:
+The full Arduino `String` class is available:
 
-| Pattern | Component |
-|---|---|
-| `#define LED_PIN` + `pinMode(OUTPUT)` | LED |
-| `#define BUTTON_PIN` + `pinMode(INPUT_PULLUP)` | Button (clickable) |
-| `#define BUZZER_PIN` + `pinMode(OUTPUT)` | Buzzer |
-| `#define SERVO_PIN` | Servo |
-| `Serial.begin(...)` | Serial monitor |
+```cpp
+String msg = String("Count: ") + String(counter);
+Serial.println(msg);
+```
 
-## Project structure
+### Variable watch
+
+Use `watch_variable` to monitor values in real time in the Variable Watch panel:
+
+```cpp
+watch_variable("counter", counter);
+watch_variable("sensor", analogRead(A0));
+```
+
+### Serial input
+
+Type into the serial monitor input box and hit Send (or Enter) to inject data into `Serial.available()` / `Serial.read()`:
+
+```cpp
+if (Serial.available() > 0) {
+    int c = Serial.read();
+    Serial.println(c);
+}
+```
+
+### Non-blocking patterns
+
+`millis()` works correctly for non-blocking timing:
+
+```cpp
+unsigned long last = 0;
+
+void loop() {
+    if (millis() - last >= 500) {
+        last = millis();
+        digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+    }
+}
+```
+
+---
+
+## Architecture
+
+VirtualBench compiles your sketch into a `.dll` using the system C++ compiler and loads it at runtime via `LoadLibrary`. The sketch calls back into the host through a function pointer table (`ArduinoAPI`) — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
+
+```
+Your sketch (.cpp)
+    → Preprocessor (transforms Arduino syntax → DLL format)
+    → g++ (compiles to .dll)
+    → SketchHost (LoadLibrary, extracts vb_init/vb_setup/vb_loop)
+    → SketchThread (runs vb_loop in background thread)
+    → ArduinoRuntime (implements all API calls, fires callbacks)
+    → UI (canvas, serial monitor, signal timeline, variable watch)
+```
+
+Hot-reload works by watching the sketch file for changes and reloading the DLL while the simulation is running.
+
+### Project structure
 
 ```
 VirtualBench/
 ├── app/                        # Runtime — exe + Qt DLLs
-│   └── sketches/               # Your saved sketches live here
+│   ├── sketches/               # Saved sketches
+│   └── settings.ini            # Compiler path + recent sketches (gitignored)
 ├── src/
 │   ├── main.cpp
-│   ├── ui/                     # Qt6 UI
-│   │   ├── mainwindow.cpp/h
-│   │   ├── canvaswidget.cpp/h
+│   ├── ui/
+│   │   ├── mainwindow.cpp/h    # Main window, toolbar, all UI wiring
+│   │   ├── canvaswidget.cpp/h  # Circuit canvas + component rendering
 │   │   ├── signaltimeline.cpp/h
 │   │   ├── codehighlighter.cpp/h
-│   │   └── linenumberarea.h
+│   │   ├── linenumberarea.cpp/h
+│   │   ├── variablewatch.cpp/h
+│   │   └── settingsdialog.cpp/h
 │   └── core/
-│       ├── runtime/            # Virtual Arduino runtime
-│       │   ├── arduinoapi.h
+│       ├── runtime/
+│       │   ├── arduinoapi.h        # ArduinoAPI function pointer struct
 │       │   └── arduinoruntime.cpp/h
-│       ├── host/               # Sketch DLL loader + hot-reload
-│       │   ├── sketchhost.cpp/h
-│       │   └── sketchhostthread.cpp/h
-│       ├── build/              # Compiler pipeline + preprocessor
-│       │   ├── compiler.cpp/h
-│       │   └── preprocessor.cpp/h
-│       └── circuit/            # Auto circuit detection
-│           └── circuitdetector.cpp/h
+│       ├── host/
+│       │   ├── sketchhost.cpp/h        # DLL load/unload + hot-reload
+│       │   └── sketchhostthread.cpp/h  # Background simulation thread
+│       ├── build/
+│       │   ├── compiler.cpp/h      # Invokes g++
+│       │   └── preprocessor.cpp/h  # Arduino → VirtualBench transform
+│       └── circuit/
+│           └── circuitdetector.cpp/h   # Auto component detection
 ├── sketches/                   # Example sketches
 └── CMakeLists.txt
 ```
 
-## Architecture
-
-VirtualBench compiles your sketch into a `.dll` using the system C++ compiler and loads it at runtime via `LoadLibrary`. The sketch DLL calls back into the host through a function pointer table (`ArduinoAPI`) — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
-
-Hot-reload works by watching the DLL file for changes and calling `FreeLibrary` + `LoadLibrary` while the simulation is running — no restart needed.
+---
 
 ## Roadmap
 
-- [ ] Variable watch panel
-- [ ] Potentiometer / analog input simulation
-- [ ] More component types (servo animation, buzzer tone)
-- [ ] macOS / Linux support
-- [ ] Installer / packaged release
-- [ ] Additional board support (Nano, Mega)
+### In progress
+- `pulseIn()` support
+- Multi-pin component detection (HC-SR04 distance sensor, H-bridge motor, color sensor)
+- Servo angle tracking
+
+### Coming soon
+- Component visuals — proper graphics instead of colored rectangles
+- Per-component sensor input boxes (type a distance value, watch your code react)
+- Canvas layout mode — drag components to match your real breadboard
+- `attachInterrupt()` support
+- EEPROM simulation
+- LCD / 7-segment display rendering
+- Floating pin simulation (undriven INPUT pins return random values)
+- Button bounce simulation
+- AVR memory usage bar (dual compile with avr-gcc)
+- Multi-board simulation (two Arduinos communicating over virtual serial)
+- macOS / Linux support
+- Installer / packaged release
+
+### Known limitations
+- Microsecond-accurate timing (Windows thread scheduler has ~1-15ms jitter)
+- Hardware protocol electrical behavior (I2C/SPI bus characteristics)
+- Register-level / AVR assembly programming
+- Dynamic RAM enforcement is approximate — static RAM is hard enforced via avr-gcc, heap usage from String and malloc is tracked with warnings but not exact
+- Libraries that wrap AVR hardware registers directly
+
+---
 
 ## License
 
@@ -146,4 +271,4 @@ MIT — see [LICENSE](LICENSE)
 
 ## Contributing
 
-Pull requests welcome. This project is early — if you find a bug or want a feature, open an issue.
+Pull requests welcome. If you find a bug or want a feature, open an issue.
