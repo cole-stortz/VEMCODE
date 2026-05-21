@@ -142,6 +142,33 @@ struct DetectedComponent {
 };
 ```
 
+### BoardProfile (`src/core/runtime/boardprofile.h` — planned)
+
+Describes the hardware characteristics of a supported board. Selected in Settings, passed to the runtime and canvas at startup. Adding a new board means adding one entry here — nothing else changes.
+
+```cpp
+struct BoardProfile {
+    const char* name;           // "Arduino Uno", "Teensy 4.1", "STM32F4"
+    int         pin_count;      // total pins (20, 42, 64)
+    int         analog_offset;  // pin number where A0 starts (14, 14, 16)
+    int         analog_count;   // number of analog pins (6, 18, 16)
+    int         pwm_resolution; // max analogWrite value (255, 4095, 4095)
+};
+
+// Built-in profiles
+static const BoardProfile BOARD_UNO     = {"Arduino Uno",  20, 14, 6,  255};
+static const BoardProfile BOARD_TEENSY  = {"Teensy 4.1",   42, 14, 18, 4095};
+static const BoardProfile BOARD_STM32F4 = {"STM32F4",      64, 16, 16, 4095};
+```
+
+**What consumes the profile:**
+- `RuntimeState` — `pin_count` replaces hardcoded `[20]`
+- `inject_analog` / `impl_analogRead` — `analog_offset` replaces hardcoded `14`
+- `CanvasWidget` — pin loop and board graphic height driven by `pin_count`
+- `CircuitDetector` — valid pin range check uses `pin_count`
+- MainWindow toolbar — displays `profile.name`
+- Settings dialog — board selector, saved to `settings.ini`
+
 ---
 
 ## Key Classes
@@ -420,7 +447,9 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
 - **Raw string header** — if ever switching back to raw string R"(...)", all `#include`, `#define`, `using`, `class`, `inline` must start at column 0 — no indentation.
 - **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
 - **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
-- **Pin count** — RuntimeState arrays are `[20]`, all sketches must remap pins to fit 0-19. If Teensy or Mega support added later, expand arrays accordingly.
+- **Pin count** — RuntimeState arrays sized by `BoardProfile.pin_count`. Default is Uno (20). Sketches targeting Teensy or Mega must select the matching board in Settings or remap pins manually until board profiles are implemented.
+- **Analog offset** — `inject_analog` and `impl_analogRead` will use `BoardProfile.analog_offset` instead of hardcoded `14`. When adding a board, set `analog_offset` correctly or `analogRead(A0)` returns wrong values.
+- **PWM resolution** — `BoardProfile.pwm_resolution` is 255 for Uno, 4095 for Teensy/STM32. Canvas servo angle calculation (`value * 180 / pwm_resolution`) must use the profile value, not a hardcoded 255.
 - **`pulseIn` requires all 3 args** — the function pointer has no default. Sketches calling `pulseIn(PIN, HIGH)` must use `pulseIn(PIN, HIGH, 1000000)`.
 - **TCS3200 channel encoding** — channel index = `s2_val * 2 + s3_val`. Stored as `[0=Red, 1=Blue, 2=Clear, 3=Green]` — NOT intuitive R/G/B/Clear order.
 - **H-bridge prefix uses `find('_')` not `rfind('_')`** — `MOTOR1_ANTI_CWISE` must yield prefix `MOTOR1`. Using `rfind` gives `MOTOR1_ANTI` and breaks motor grouping.
@@ -440,6 +469,8 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - 1x Servo arm (pin 2)
 
 **Total: 17 pins, all within 0-19**
+
+**Note:** The full Lambo sketch targets Teensy 4.1 with pins up to 41. The VirtualBench adaptation remaps to 0-19 until Teensy board profile support is added (Phase 4).
 
 **What it exercises:**
 - `pulseIn()` — ultrasonic duration + color sensor frequency
@@ -465,15 +496,15 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - ✓ Motor (H-bridge) separated from Servo (PWM single pin)
 - ✓ Canvas sensor inputs — distance (cm → µs), color (R/G/B 0-255), analog (0-1023)
 - ✓ Servo angle display — live °label updated from analogWrite value
+- ✓ Per-component sensor input boxes (type distance in cm, temperature in °C, color picker, etc.)
 
 **Remaining:**
 - Servo class in injected header + `#include <Servo.h>` stripping in preprocessor
 
-> **Milestone:** Target benchmark sketch compiles and runs correctly.
+> **Milestone:** Target benchmark sketch compiles and runs correctly. ✓ish
 
 ### Phase 2 — Component Visuals
 - Proper graphics for all component types replacing colored rectangles
-- Per-component sensor input boxes (type distance in cm, temperature in °C, color picker, etc.)
 
 ### Phase 3 — Canvas Improvements
 - Canvas layout mode — "Layout" toolbar button, components become draggable
@@ -481,28 +512,39 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - On load: use saved positions if file exists, otherwise auto-generate
 - Wire visualization improvements — color coded by signal type
 
-### Phase 4 — Simulation Realism
+### Phase 4 — Board Profiles
+- `BoardProfile` struct in `src/core/runtime/boardprofile.h` — `pin_count`, `analog_offset`, `analog_count`, `pwm_resolution`
+- Built-in profiles: Arduino Uno, Teensy 4.1, STM32F4
+- Board selector in Settings dialog — saved to `settings.ini`
+- `RuntimeState` pin arrays sized by active profile (bump to fixed `[64]` max or use `std::vector`)
+- `inject_analog` / `impl_analogRead` use `profile.analog_offset` instead of hardcoded `14`
+- `CanvasWidget` board graphic and pin loop driven by `profile.pin_count`
+- `CircuitDetector` pin range check uses `profile.pin_count`
+- Servo angle calculation uses `profile.pwm_resolution` instead of hardcoded 255
+- Unlocks running the full Lambo sketch on Teensy 4.1 without pin remapping
+
+### Phase 5 — Simulation Realism
 - Floating pin simulation — undriven INPUT pins return random HIGH/LOW
 - Button bounce simulation — rapid toggles on click before settling (~10ms)
 - Optional gaussian noise on analog readings (off by default)
 
-### Phase 5 — New Arduino Features
+### Phase 6 — New Arduino Features
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE
 - EEPROM simulation — 1024 bytes, optional disk persistence between sessions
 - Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`)
 - Basic SPI simulation (`SPI.begin`, `SPI.transfer`)
 
-### Phase 6 — Display Support
+### Phase 7 — Display Support
 - 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
 - 7-segment display — single and multi-digit
 - Basic OLED — text and simple graphics
 
-### Phase 7 — Multi-board Simulation
+### Phase 8 — Multi-board Simulation
 - Two SketchThread instances running simultaneously
 - Virtual serial pipe connecting them (TX of one → RX of other)
 - Enables master/slave and sensor node + controller patterns
 
-### Phase 8 — Memory Analysis
+### Phase 9 — Memory Analysis
 - `avr_gcc_path` in settings dialog
 - After successful Windows compile, run `avr-gcc` compile for size analysis only
 - Parse `avr-size` output for flash and RAM usage
@@ -516,7 +558,7 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 ### Later
 - macOS / Linux support
 - Installer — bundle MinGW for zero-dependency install
-- Additional board support (Nano, Mega, ESP32)
+- Additional board profiles (Nano, Mega, ESP32) — add one `BoardProfile` entry each
 
 ### Explicitly Out of Scope
 - Box2D / physics simulation

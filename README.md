@@ -68,6 +68,8 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
 | LCD | LCD, DISPLAY, SCREEN, OLED | Visual coming soon |
 
+> Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Default is Arduino Uno (pins 0-19, 8-bit PWM). Teensy 4.1 and STM32F4 profiles are planned for Phase 4.
+
 ### Debug Panel
 - **Serial monitor** — live `Serial.print` output, plus a text input box to send data to `Serial.read`
 - **Signal timeline** — logic analyzer view of all pin state changes over time
@@ -265,25 +267,31 @@ VirtualBench/
 - Canvas layout mode — drag components to match your real breadboard, positions saved per sketch
 - Wire visualization improvements
 
-### Phase 4 — Simulation Realism
+### Phase 4 — Board Profiles
+- Board selector in Settings — Arduino Uno, Teensy 4.1, STM32F4
+- Pin count, analog offset, and PWM resolution driven by selected profile
+- Teensy 4.1 profile unlocks the full Lambo robot sketch without pin remapping
+- Adding future boards (Nano, Mega, ESP32) requires only a new profile entry
+
+### Phase 5 — Simulation Realism
 - Floating pin simulation (undriven INPUT pins return random values)
 - Button bounce simulation
 - Optional signal noise on analog readings
 
-### Phase 5 — New Arduino Features
+### Phase 6 — New Arduino Features
 - `attachInterrupt()` — RISING, FALLING, CHANGE modes
 - EEPROM simulation (1024 bytes, optional disk persistence)
 - Basic I2C/SPI simulation
 
-### Phase 6 — Display Support
+### Phase 7 — Display Support
 - 16x2 LCD (`LiquidCrystal` compatible)
 - 7-segment display
 - Basic OLED
 
-### Phase 7 — Multi-board Simulation
+### Phase 8 — Multi-board Simulation
 - Two Arduinos communicating over virtual serial
 
-### Phase 8 — Memory Analysis
+### Phase 9 — Memory Analysis
 - Dual compile with `avr-gcc` for flash and RAM size analysis
 - Flash → hard enforce (block run if over 32,256 bytes)
 - Static RAM → hard enforce (block run if globals exceed 2048 bytes)
@@ -293,7 +301,7 @@ VirtualBench/
 ### Later
 - macOS / Linux support
 - Installer (bundle MinGW, zero-dependency install)
-- Additional board support (Nano, Mega, ESP32)
+- Additional board profiles (Nano, Mega, ESP32) — one `BoardProfile` entry each
 
 ### Known limitations
 - Microsecond-accurate timing (Windows thread scheduler has ~1-15ms jitter)
