@@ -324,6 +324,12 @@ QWidget* MainWindow::buildCanvasPanel() {
                 sketchThread_->injectPin(pin, value);
             });
 
+    connect(canvasWidget_, &CanvasWidget::pulseInjected,
+        this, [this](int pin, unsigned long micros) {
+            sketchThread_->injectPulseDuration(pin, micros);
+        });
+
+
     return panel;
 }
 

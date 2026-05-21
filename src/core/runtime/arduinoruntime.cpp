@@ -164,9 +164,7 @@ unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long tim
     if (!g_runtime) return 0;
 
     if (pin >= 0 && pin < 20 && g_runtime->state_.pulse_durations_[pin] != 0) {
-        unsigned long duration = g_runtime->state_.pulse_durations_[pin]; // Get the injected pulse duration
-        g_runtime->state_.pulse_durations_[pin] = 0; // Clear after reading
-        return duration;
+        return g_runtime->state_.pulse_durations_[pin];
     }
     unsigned long start_time = impl_micros();
     // Phase 1

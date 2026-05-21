@@ -224,6 +224,23 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         rect->setToolTip("Analog input — value: 0");
     }
 
+    if (comp.type == ComponentType::DistanceSensor) {
+        int echo_pin = comp.pin;
+        QLineEdit* input = new QLineEdit("0");
+        input->setFixedSize(60, 20);
+        input->setPlaceholderText("cm");
+        input->setStyleSheet("background:#001a1a; color:#44ffff; border:1px solid #44ffff;");
+        QGraphicsProxyWidget* proxy = scene_->addWidget(input);
+        proxy->setParentItem(rect);
+        proxy->setPos(comp_w - 66, comp_h - 26);
+        connect(input, &QLineEdit::textChanged, this, [this, echo_pin](const QString& text) {
+            bool ok;
+            float cm = text.toFloat(&ok);
+            if (ok && cm >= 0)
+                emit pulseInjected(echo_pin, (unsigned long)std::ceil(cm * 2.0f / 0.034f));
+        });
+    }
+
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);
     typeText->setPlainText(QString::fromStdString(comp.label));

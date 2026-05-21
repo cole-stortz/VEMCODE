@@ -51,6 +51,10 @@ public:
 
     void set_speed(float speed);
 
+    void inject_pulse_duration(int pin, unsigned long micros) {
+        runtime_.inject_pulse_duration(pin, micros);
+    }
+
 private:
     SketchDLL      dll_;
     ArduinoRuntime runtime_;

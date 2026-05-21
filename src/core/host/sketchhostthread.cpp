@@ -83,3 +83,8 @@ void SketchThread::injectSerial(const QString& data) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_serial(data.toStdString());
 }
+
+void SketchThread::injectPulseDuration(int pin, unsigned long micros) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_pulse_duration(pin, micros);
+}
