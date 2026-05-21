@@ -43,6 +43,8 @@ private:
     QMap<int, bool>               switchStates_;
     QMap<int, ComponentType>      pinTypes_;
     QMap<int, int>                analogValues_;
+    QMap<int, QGraphicsTextItem*> servoLabels_;
+
 
     static constexpr int BOARD_X = 300;
     static constexpr int BOARD_Y = 150;

@@ -94,10 +94,8 @@ struct ArduinoAPI {
     void (*watch_variable)(const char*, int);
     int  (*Serial_available)();
     int  (*Serial_read)();
-    void (*tone)(int, unsigned int, unsigned long);
-    void (*noTone)(int);
-    // Planned additions:
-    // unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
+    unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
+    // Note: tone/noTone are in preprocessor replace list but not yet implemented in runtime
 };
 
 namespace vb { INPUT=0, OUTPUT=1, INPUT_PULLUP=2, LOW=0, HIGH=1 }
@@ -109,28 +107,38 @@ constexpr int A0=14, A1=15, A2=16, A3=17, A4=18, A5=19;
 ```cpp
 struct RuntimeState {
     int  pin_modes[20]    = {};
-    int  pin_values[20]   = {};
-    int  analog_values[8] = {};
+    int  pin_values[20]   = {};  // digital pin state (LOW/HIGH)
+    int  analog_values[8] = {};  // injected analog values, index = pin - 14
+    int  pwm_values[20]   = {};  // analogWrite values (0-255), used for servo angle
     bool serial_started   = false;
     int  serial_baud      = 0;
+    unsigned long pulse_durations_[20] = {};  // pre-set pulseIn return values (µs), e.g. distance sensor
+    std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G] periods
+    std::map<int, int> color_sensor_s2_; // out_pin → s2_pin (for channel lookup)
+    std::map<int, int> color_sensor_s3_; // out_pin → s3_pin (for channel lookup)
     std::chrono::steady_clock::time_point start_time;
 };
 ```
 
-### ComponentInfo (`src/core/circuit/circuitdetector.h`)
+### DetectedComponent (`src/core/circuit/circuitdetector.h`)
 
 ```cpp
 enum class ComponentType {
-    LED, Button, Switch, Buzzer, Servo, Motor,
+    LED, Button, Switch, Buzzer, Servo,
     Potentiometer, LightSensor, TempSensor, AnalogSensor,
-    DistanceSensor, ColorSensor,
-    LCD, GenericOutput, GenericInput, Serial
+    LCD, GenericOutput, GenericInput, Serial,
+    DistanceSensor,   // HC-SR04: TRIG + ECHO
+    HBridgeMotor,     // 3-pin motor: PWM + CWISE + ANTI_CWISE
+    ColorSensor       // TCS3200: S0 + S1 + S2 + S3 + OUT
 };
 
-struct ComponentInfo {
-    ComponentType type;
-    std::string   name;
-    int           pin;
+struct DetectedComponent {
+    ComponentType    type;
+    int              pin;          // primary pin (-1 for Serial)
+    std::vector<int> pins;         // all pins for multi-pin components
+    std::string      pin_name;     // original #define name e.g. "LED_PIN"
+    std::string      label;        // human readable e.g. "LED (pin 13)"
+    bool             confirmed;    // true once runtime pin_changed fires for this pin
 };
 ```
 
@@ -154,6 +162,8 @@ Owns all simulation state. All `impl_*` functions are static and access state vi
 - `inject_analog(pin, value)` — sets analog value, handles A0-A5 offset (pin 14→index 0)
 - `inject_serial(data)` — pushes chars into serial_buffer_
 - `set_speed_multiplier(speed)` — sets `speed_multiplier_ = 1.0f / speed`
+- `inject_pulse_duration(pin, micros)` — pre-sets the pulseIn fast-path return value for a pin (used by DistanceSensor canvas input)
+- `inject_color(out_pin, s2_pin, s3_pin, r, g, b)` — converts R/G/B 0-255 to TCS3200 frequency periods and stores all 4 channels keyed by out_pin
 
 **impl_delay:**
 Sleeps in 10ms chunks, checks `stop_requested_` between each chunk. Critical — without chunking, Stop blocks until the full delay completes.
@@ -171,6 +181,14 @@ void ArduinoRuntime::impl_delay(unsigned long ms) {
     }
 }
 ```
+
+**impl_delayMicroseconds:**
+Busy-waits in 50µs chunks, checks `stop_requested_` between each chunk. Not real µs accuracy — simulated only. Fine for HC-SR04's short pulses (2µs trigger, 10µs activation).
+
+**impl_pulseIn — three-path implementation:**
+1. **Fast path:** if `pulse_durations_[pin] > 0`, return it immediately (used by distance sensor canvas input)
+2. **Color path:** if pin is a registered TCS3200 OUT pin, look up current S2/S3 pin states and return the matching channel period
+3. **Slow path:** polls pin state in a loop — waits for pin to enter `value` state then times it in µs (works for simple simulated toggles)
 
 ---
 
@@ -196,7 +214,9 @@ python3 -c "print(header_string.count('\n'))"
 - `Serial.println` before `Serial.print` (partial match avoidance)
 - `digitalRead` before `digitalWrite` (partial match avoidance)
 - `delayMicroseconds` before `delay` (partial match avoidance)
-- `#include <Servo.h>` stripped (replaced by built-in Servo class in header) — planned
+- `pulseIn(` → `api->pulseIn(` (all 3 args required; no default-arg wrapper in injected header)
+- `tone`/`noTone` — replaced but not yet implemented in runtime
+- `#include <Servo.h>` stripped — **planned**
 
 **Injected header contains:**
 - `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`
@@ -206,7 +226,7 @@ python3 -c "print(header_string.count('\n'))"
 - Full `String` class (wraps std::string)
 - `map()`, `constrain()`, `vb_abs/min/max`, `random()`
 - `#define abs/min/max` macros
-- Planned: `Servo` class, `pulseIn` forwarding
+- Planned: `Servo` class + `#include <Servo.h>` stripping (so sketches using `Servo.h` compile without changes)
 
 ---
 
@@ -218,6 +238,8 @@ Manages DLL lifecycle. Uses Windows file timestamp polling for hot-reload detect
 - `load(path)` — copies to .tmp.dll, LoadLibrary, extracts vb_init/vb_setup/vb_loop, calls vb_init
 - `reload_if_changed()` — polls file timestamp, reloads if changed
 - `inject_pin/inject_analog/inject_serial/set_speed` — delegate to runtime_
+- `inject_pulse_duration(pin, micros)` — inline, delegates to `runtime_.inject_pulse_duration`
+- `inject_color(out_pin, s2_pin, s3_pin, r, g, b)` — inline, delegates to `runtime_.inject_color`
 - `runtime()` — returns reference to ArduinoRuntime
 
 ---
@@ -230,6 +252,8 @@ QThread subclass. Runs vb_loop in a tight loop on a background thread.
 - `startSketch(path)` — loads sketch, starts thread
 - `stopSketch()` — sets `stop_requested_ = true`, then `running_ = false`, then `wait()`
 - `injectPin/injectAnalog/injectSerial` — mutex-locked injection
+- `injectPulseDuration(pin, micros)` — mutex-locked, delegates to host
+- `injectColor(out_pin, s2_pin, s3_pin, r, g, b)` — mutex-locked, delegates to host
 - `setSpeed(float)` — calls host_.set_speed()
 
 **Signals:**
@@ -259,6 +283,19 @@ QPainter-based canvas. Repaints on `updatePin` calls.
 - Switch: mousePress toggles state, persists in `switchStates_` QMap → emits `buttonPressed(pin, value)`
 - Potentiometer: drag up/down changes value 0-1023 → emits `potentiometerChanged(pin, value)`
   - `dragPin_`, `dragStartY_`, `dragStartValue_` track drag state
+
+**Canvas Inputs (QGraphicsProxyWidget + QLineEdit):**
+- DistanceSensor: one QLineEdit (cm), default "10". On change emits `pulseInjected(pin, (unsigned long)ceil(cm * 2.0f / 0.034f))`
+- LightSensor / TempSensor / AnalogSensor: one QLineEdit (0-1023). On change emits `analogInjected(pin, value)`
+- ColorSensor: three QLineEdit fields (R/G/B 0-255). On any change emits `colorInjected(out_pin, s2_pin, s3_pin, r, g, b)`
+
+**Critical:** connect signal THEN call `input->setText("10")`. `textChanged` does NOT fire from the constructor, so the initial injection only happens if `setText` is called after the connection is made.
+
+**Multi-wire routing:**
+Multi-pin components draw one wire per pin. Each wire is L-shaped: horizontal to the board, then vertical clamped to `qBound(comp_y, pin_y, comp_y + comp_h)` so each wire clearly shows which pin it connects to.
+
+**Servo angle display:**
+`servoLabels_` QMap stores a `QGraphicsTextItem*` per servo pin. Created in `drawComponent`, updated in `updatePin` when `analogWrite` fires: `angle = value * 180 / 255`, label text is `"°" + angle`.
 
 **Analog index conversion:**
 Both `inject_analog` (CanvasWidget → SketchThread) and `impl_analogRead` (runtime) apply:
@@ -300,16 +337,23 @@ int analog_index = (pin >= 14) ? pin - 14 : pin;
 
 ### CircuitDetector (`src/core/circuit/circuitdetector.cpp`)
 
-Two-phase detection:
+Four-phase detection. `detect()` runs all phases in order; phases 1-2 skip pins already claimed by phase 0.
+
+**Parse step — `parse_arrays()`:**
+Runs before all detection phases. Regex-scans for `const int NAME[N] = {v1, v2, ...}` and builds `arrays_` map (name → `vector<int>`). Used by phase 0 to resolve array-based pin lists.
+
+**Phase 0 — Multi-pin components (`detect_multipin`):**
+Claims pins before single-pin phases so components aren't double-detected.
+- HC-SR04: `_TRIG` / `_ECHO` define pairs grouped by common prefix → `DistanceSensor`
+- H-bridge: defines sharing a `find('_')` prefix (e.g. MOTOR1_CW + MOTOR1_ANTI + MOTOR1_PWM) → `HBridgeMotor`
+- TCS3200: S0/S1/S2/S3/sensorOut names from `arrays_` map → `ColorSensor`
+- LCD: RS + E + D4-D7 define groups → `LCD`
 
 **Phase 1 — `#define` keywords:**
-Scans for `#define XXX_PIN N` patterns and matches the name against keyword lists.
+Scans for `#define XXX_PIN N` patterns and matches the name against keyword lists. Skips claimed pins.
 
 **Phase 2 — `analogRead` calls:**
-Scans for `analogRead(A0)` etc. to detect analog sensor components not caught by phase 1.
-
-**Planned Phase 3 — array declarations:**
-Scan for `const int NAME[N] = {...}` patterns for color sensor and multi-pin array-based components.
+Scans for `analogRead(A0)` etc. to detect analog sensor components not caught by phases 0-1. Skips claimed pins.
 
 **`confirm_pin(pin)`:** Called from `onPinChanged` when a pin actually fires. Promotes tentative detections to confirmed.
 
@@ -376,8 +420,12 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
 - **Raw string header** — if ever switching back to raw string R"(...)", all `#include`, `#define`, `using`, `class`, `inline` must start at column 0 — no indentation.
 - **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
 - **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
-- **Array pin declarations** — `const int PIN[N] = {...}` needs a separate detection pass in CircuitDetector, not just `#define` patterns.
 - **Pin count** — RuntimeState arrays are `[20]`, all sketches must remap pins to fit 0-19. If Teensy or Mega support added later, expand arrays accordingly.
+- **`pulseIn` requires all 3 args** — the function pointer has no default. Sketches calling `pulseIn(PIN, HIGH)` must use `pulseIn(PIN, HIGH, 1000000)`.
+- **TCS3200 channel encoding** — channel index = `s2_val * 2 + s3_val`. Stored as `[0=Red, 1=Blue, 2=Clear, 3=Green]` — NOT intuitive R/G/B/Clear order.
+- **H-bridge prefix uses `find('_')` not `rfind('_')`** — `MOTOR1_ANTI_CWISE` must yield prefix `MOTOR1`. Using `rfind` gives `MOTOR1_ANTI` and breaks motor grouping.
+- **QLineEdit initial value** — `textChanged` does NOT fire from constructor. Connect the signal handler THEN call `setText("10")` to trigger initial injection.
+- **Distance conversion** — use `(unsigned long)std::ceil(cm * 2.0f / 0.034f)`, not `cm * 58.2f`. The ceil prevents floor truncation from the integer cast.
 
 ---
 
@@ -406,14 +454,20 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 
 ## Roadmap
 
-### Phase 1 — Component Completion (in progress)
-- `pulseIn(pin, value)` and `pulseIn(pin, value, timeout)`
-- `delayMicroseconds` as scaled milliseconds
+### Phase 1 — Component Completion (mostly complete)
+
+**Completed:**
+- ✓ `pulseIn(pin, value, timeout)` — fast path (distance sensor), color channel path (TCS3200), slow path (pin polling)
+- ✓ `delayMicroseconds` — busy-wait with stop check
+- ✓ `analogWrite` fires `on_pin_changed` for signal timeline tracking
+- ✓ Array-based pin detection (`const int PIN[N] = {...}`)
+- ✓ Multi-pin component grouping (HC-SR04 → DistanceSensor, H-bridge → HBridgeMotor, TCS3200 → ColorSensor)
+- ✓ Motor (H-bridge) separated from Servo (PWM single pin)
+- ✓ Canvas sensor inputs — distance (cm → µs), color (R/G/B 0-255), analog (0-1023)
+- ✓ Servo angle display — live °label updated from analogWrite value
+
+**Remaining:**
 - Servo class in injected header + `#include <Servo.h>` stripping in preprocessor
-- `analogWrite` fires `on_pin_changed` for signal timeline tracking
-- Array-based pin detection (`const int PIN[N] = {...}`)
-- Multi-pin component grouping (HC-SR04, H-bridge motor, color sensor)
-- Motor (H-bridge 4-pin) separated from Servo (PWM single pin)
 
 > **Milestone:** Target benchmark sketch compiles and runs correctly.
 

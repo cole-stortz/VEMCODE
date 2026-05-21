@@ -78,6 +78,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     switchStates_.clear();
     buttonStates_.clear();
     analogValues_.clear();
+    servoLabels_.clear();
     dragPin_ = -1;
 
     drawBoard();
@@ -92,11 +93,17 @@ void CanvasWidget::updatePin(int pin, int value) {
     auto it = pinItems_.find(pin);
     if (it == pinItems_.end()) return;
 
-    // Find the component type for this pin to get the right active color
-    // We store it in the item's data slot
     ComponentType type = static_cast<ComponentType>(it.value()->data(0).toInt());
     it.value()->setBrush(QBrush(componentColor(type, value == 1)));
+
+    if (type == ComponentType::Servo) {
+        int angle = value * 180 / 255;
+        auto label_it = servoLabels_.find(pin);
+        if (label_it != servoLabels_.end())
+            label_it.value()->setPlainText(QString::number(angle) + "°");
+    }
 }
+
 
 void CanvasWidget::drawBoard() {
     // Board body
@@ -226,7 +233,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
     if (comp.type == ComponentType::DistanceSensor) {
         int echo_pin = comp.pin;
-        QLineEdit* input = new QLineEdit("0");
+        QLineEdit* input = new QLineEdit();
         input->setFixedSize(60, 20);
         input->setPlaceholderText("cm");
         input->setStyleSheet("background:#001a1a; color:#44ffff; border:1px solid #44ffff;");
@@ -239,6 +246,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
             if (ok && cm >= 0)
                 emit pulseInjected(echo_pin, (unsigned long)std::ceil(cm * 2.0f / 0.034f));
         });
+        input->setText("10");
     }
 
     if (comp.type == ComponentType::LightSensor  ||
@@ -260,7 +268,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
                 emit analogInjected(sensor_pin, qBound(0, val, 1023));
         });
     }
-
 
     if (comp.type == ComponentType::ColorSensor && comp.pins.size() >= 5) {
         int s2_pin  = comp.pins[2];
@@ -295,6 +302,15 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         connect(g_in, &QLineEdit::textChanged, this, emit_color);
         connect(b_in, &QLineEdit::textChanged, this, emit_color);
     }
+
+    if (comp.type == ComponentType::Servo) {
+        QGraphicsTextItem* angleText = new QGraphicsTextItem("0°", rect);
+        angleText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+        angleText->setFont(QFont("Courier New", 9));
+        angleText->setPos(comp_w - 36, 10);
+        servoLabels_[comp.pin] = angleText;
+    }
+
 
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);

@@ -41,6 +41,7 @@ Write standard Arduino sketches directly in the built-in editor and simulate the
   - `pinMode`, `digitalWrite`, `digitalRead`
   - `analogWrite`, `analogRead`
   - `delay`, `delayMicroseconds`, `millis`, `micros`
+  - `pulseIn(pin, value, timeout)` — fast path for sensors, color channel routing for TCS3200, pin polling fallback
   - `Serial.begin`, `Serial.print`, `Serial.println`, `Serial.available`, `Serial.read`
   - `tone`, `noTone`
   - `map`, `constrain`, `abs`, `min`, `max`, `random`
@@ -57,12 +58,14 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Button | BTN, BUTTON, KEY | Click to press |
 | Switch | SWITCH, SW, TOGGLE | Click to toggle |
 | Buzzer | BUZZER, BUZZ, SPEAKER, TONE, PIEZO | Visual active state |
-| Servo | SERVO, SRV | Visual coming soon |
-| Motor | MOTOR | Visual coming soon |
+| Servo | SERVO, SRV | Live angle display (0-180°) |
+| H-bridge motor | MOTOR, CW, CWISE, ANTI, IN1, IN2 | Visual active state |
+| Distance sensor | TRIG, ECHO (pair) | Type distance in cm — pulseIn returns matching µs |
+| Color sensor | S0, S1, S2, S3, COLOR_OUT (array) | Type R/G/B values (0-255) |
 | Potentiometer | POT, POTENTIOMETER, DIAL | Drag to set value 0-1023 |
-| Light sensor | PHOTO, LDR, PHOTORESISTOR | Analog input |
-| Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Analog input |
-| Analog sensor | SENSOR, ANALOG, ADC | Analog input |
+| Light sensor | PHOTO, LDR, PHOTORESISTOR | Type analog value (0-1023) |
+| Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Type analog value (0-1023) |
+| Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
 | LCD | LCD, DISPLAY, SCREEN, OLED | Visual coming soon |
 
 ### Debug Panel
@@ -237,14 +240,20 @@ VirtualBench/
 
 ## Roadmap
 
-### Phase 1 — Component Completion (in progress)
-- `pulseIn(pin, value)` and `pulseIn(pin, value, timeout)`
-- `delayMicroseconds` as scaled milliseconds
+### Phase 1 — Component Completion (mostly complete)
+
+**Completed:**
+- ✓ `pulseIn(pin, value, timeout)` — distance sensor fast path, TCS3200 color channel path, pin polling fallback
+- ✓ `delayMicroseconds` — busy-wait with stop check
+- ✓ `analogWrite` fires pin changed callback for signal timeline
+- ✓ Array-based pin detection (`const int PIN[N] = {...}`)
+- ✓ Multi-pin component grouping (HC-SR04 → DistanceSensor, H-bridge → HBridgeMotor, TCS3200 → ColorSensor)
+- ✓ Motor (H-bridge) separated from Servo (PWM single pin)
+- ✓ Canvas sensor inputs — distance (cm), color (R/G/B 0-255), analog (0-1023)
+- ✓ Servo angle display — live °label from analogWrite value
+
+**Remaining:**
 - Servo class in injected header + `#include <Servo.h>` stripping
-- `analogWrite` fires pin changed callback for signal timeline
-- Array-based pin detection (`const int PIN[N] = {...}`)
-- Multi-pin component grouping (HC-SR04, H-bridge motor, color sensor)
-- Motor (H-bridge 4-pin) separated from Servo (PWM single pin)
 
 > **Milestone:** The simplified Lambo robot sketch (1 color sensor, 1 HC-SR04, 3 H-bridge motors, 1 servo) compiles and runs correctly.
 

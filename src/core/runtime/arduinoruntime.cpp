@@ -71,8 +71,12 @@ int ArduinoRuntime::impl_digitalRead(int pin) {
 
 // TODO: add on_analog_changed callback when potentiometer component is implemented
 void ArduinoRuntime::impl_analogWrite(int pin, int value) {
-    std::cout << ts() << "  analogWrite(" << pin << ", " << value << ")\n";
+    if (!g_runtime || pin < 0 || pin >= 20) return;
+    g_runtime->state_.pwm_values[pin] = value;
+    if (g_runtime->on_pin_changed)
+        g_runtime->on_pin_changed(pin, value);
 }
+
 
 int ArduinoRuntime::impl_analogRead(int pin) {
     if (!g_runtime) return 0;

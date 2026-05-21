@@ -14,6 +14,7 @@ struct RuntimeState {
     int  analog_values[8] = {};
     bool serial_started   = false;
     int  serial_baud      = 0;
+    int  pwm_values[20]    = {};
     unsigned long pulse_durations_[20] = {};
     std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
     std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
