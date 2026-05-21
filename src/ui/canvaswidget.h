@@ -45,6 +45,12 @@ private:
     QMap<int, int>                analogValues_;
     QMap<int, QGraphicsTextItem*> servoLabels_;
 
+    struct MotorState { int pwm = 0, cwise = 0, anti_cwise = 0; };
+    QMap<int, MotorState>         motorStates_;       // keyed by rep pin (comp.pin = PWM pin)
+    QMap<int, int>                motorPinToRep_;     // any motor pin → rep pin
+    QMap<int, int>                motorCwisePin_;     // rep pin → cwise pin
+    QMap<int, int>                motorAntiCwisePin_; // rep pin → anti_cwise pin
+    QMap<int, QGraphicsTextItem*> motorLabels_;       // keyed by rep pin
 
     static constexpr int BOARD_X = 300;
     static constexpr int BOARD_Y = 150;

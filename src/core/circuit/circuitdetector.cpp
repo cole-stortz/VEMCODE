@@ -193,13 +193,14 @@ std::set<int> CircuitDetector::detect_multipin(
 
     // --- H-bridge motors ---
     // Group defines by prefix: MOTOR1_, MOTOR2_, MOTOR3_
+    // Pin values above 53 are treated as constants (e.g. PWM duty cycle), not pin numbers.
+    static constexpr int MAX_PIN = 53;
     std::map<std::string, std::vector<std::pair<std::string, int>>> groups;
     for (const auto& d : defines) {
         std::string upper = to_upper(d.first);
         int pin = resolve_pin(d.second, defines);
-        if (pin < 0) continue;
+        if (pin < 0 || pin > MAX_PIN) continue;
         if (contains_any(upper, {"MOTOR", "SRV", "SERVO"})) {
-            // Extract prefix up to last underscore
             size_t pos = upper.find('_');
             if (pos != std::string::npos) {
                 std::string prefix = upper.substr(0, pos);
@@ -210,14 +211,29 @@ std::set<int> CircuitDetector::detect_multipin(
 
     for (const auto& g : groups) {
         const auto& pins = g.second;
-        if (pins.size() >= 2) { // Need at least 2 pins to be an H-bridge
+        if (pins.size() >= 2) {
+            // Sort into canonical order: pins[0]=PWM, pins[1]=CWISE, pins[2]=ANTI_CWISE
+            int pwm_pin = -1, cwise_pin = -1, anti_cwise_pin = -1;
+            for (const auto& p : pins) {
+                const std::string& name = p.first;
+                if (contains_any(name, {"PWM"}))
+                    pwm_pin = p.second;
+                else if (contains_any(name, {"ANTI"}))
+                    anti_cwise_pin = p.second;
+                else if (contains_any(name, {"CWISE", "CW", "DIR"}))
+                    cwise_pin = p.second;
+            }
+            // Fall back to source order for any unrecognised suffixes
+            if (pwm_pin < 0)       pwm_pin       = pins[0].second;
+            if (cwise_pin < 0)     cwise_pin     = (pins.size() > 1) ? pins[1].second : -1;
+            if (anti_cwise_pin < 0) anti_cwise_pin = (pins.size() > 2) ? pins[2].second : -1;
+
             DetectedComponent comp;
-            comp.type      = ComponentType::HBridgeMotor;
-            comp.pin       = pins[0].second; // Just pick the first pin as representative
-            for (const auto& p : pins)
-                comp.pins.push_back(p.second);
-            comp.pin_name  = g.first;
-            comp.label     = "H-Bridge Motor (" + g.first + ")";
+            comp.type     = ComponentType::HBridgeMotor;
+            comp.pin      = pwm_pin;
+            comp.pins     = { pwm_pin, cwise_pin, anti_cwise_pin };
+            comp.pin_name = g.first;
+            comp.label    = "Motor (" + g.first + ")";
             comp.confirmed = false;
             components_.push_back(comp);
             for (const auto& p : pins)

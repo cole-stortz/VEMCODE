@@ -94,6 +94,35 @@ void CanvasWidget::updatePin(int pin, int value) {
     if (it == pinItems_.end()) return;
 
     ComponentType type = static_cast<ComponentType>(it.value()->data(0).toInt());
+
+    if (type == ComponentType::HBridgeMotor) {
+        auto rep_it = motorPinToRep_.find(pin);
+        if (rep_it == motorPinToRep_.end()) return;
+        int rep = rep_it.value();
+
+        auto& state = motorStates_[rep];
+        if (pin == rep)
+            state.pwm = value;
+        else if (pin == motorCwisePin_.value(rep, -1))
+            state.cwise = value;
+        else if (pin == motorAntiCwisePin_.value(rep, -1))
+            state.anti_cwise = value;
+
+        bool active = (state.cwise || state.anti_cwise) && state.pwm > 0;
+        it.value()->setBrush(QBrush(componentColor(type, active)));
+
+        QString dir;
+        if      (state.cwise && state.anti_cwise) dir = "BRAKE";
+        else if (state.cwise)                     dir = "CW";
+        else if (state.anti_cwise)                dir = "CCW";
+        else                                      dir = "STOP";
+
+        auto label_it = motorLabels_.find(rep);
+        if (label_it != motorLabels_.end())
+            label_it.value()->setPlainText(dir + "\nPWM: " + QString::number(state.pwm));
+        return;
+    }
+
     it.value()->setBrush(QBrush(componentColor(type, value == 1)));
 
     if (type == ComponentType::Servo) {
@@ -170,7 +199,9 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
 
     int comp_w = 100;
-    int comp_h = (comp.type == ComponentType::ColorSensor) ? 64 : 44;
+    int comp_h = (comp.type == ComponentType::ColorSensor)  ? 64
+               : (comp.type == ComponentType::HBridgeMotor) ? 54
+               : 44;
 
     QPointF pin_pos = pinLocation(comp.pin);
 
@@ -200,6 +231,28 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     rect->setData(0, static_cast<int>(comp.type));
     pinItems_[comp.pin] = rect;
     pinTypes_[comp.pin] = comp.type;
+
+    // H-bridge motor: register all 3 pins and create state/label tracking
+    if (comp.type == ComponentType::HBridgeMotor && comp.pins.size() == 3) {
+        int rep        = comp.pin;        // pins[0] = PWM = rep
+        int cwise_pin  = comp.pins[1];
+        int anti_pin   = comp.pins[2];
+        motorStates_[rep]       = MotorState{};
+        motorCwisePin_[rep]     = cwise_pin;
+        motorAntiCwisePin_[rep] = anti_pin;
+        for (int mp : comp.pins) {
+            if (mp >= 0) {
+                pinItems_[mp]      = rect;
+                pinTypes_[mp]      = comp.type;
+                motorPinToRep_[mp] = rep;
+            }
+        }
+        QGraphicsTextItem* motorLabel = new QGraphicsTextItem("STOP\nPWM: 0", rect);
+        motorLabel->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+        motorLabel->setFont(QFont("Courier New", 8));
+        motorLabel->setPos(6, 30);
+        motorLabels_[rep] = motorLabel;
+    }
 
     // Button -- click/release injects LOW/HIGH
     if (comp.type == ComponentType::Button) {
