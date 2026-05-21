@@ -88,3 +88,8 @@ void SketchThread::injectPulseDuration(int pin, unsigned long micros) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_pulse_duration(pin, micros);
 }
+
+void SketchThread::injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
+}

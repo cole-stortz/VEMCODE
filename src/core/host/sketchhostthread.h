@@ -38,6 +38,7 @@ public:
     void injectSerial(const QString& data);
 
     void injectPulseDuration(int pin, unsigned long micros);
+    void injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
 
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()

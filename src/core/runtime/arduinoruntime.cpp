@@ -166,6 +166,12 @@ unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long tim
     if (pin >= 0 && pin < 20 && g_runtime->state_.pulse_durations_[pin] != 0) {
         return g_runtime->state_.pulse_durations_[pin];
     }
+
+    if (g_runtime->state_.color_channels_.count(pin)) {
+        int s2 = impl_digitalRead(g_runtime->state_.color_sensor_s2_[pin]);
+        int s3 = impl_digitalRead(g_runtime->state_.color_sensor_s3_[pin]);
+        return g_runtime->state_.color_channels_[pin][s2 * 2 + s3];
+    }
     unsigned long start_time = impl_micros();
     // Phase 1
     while (impl_digitalRead(pin) == value) {

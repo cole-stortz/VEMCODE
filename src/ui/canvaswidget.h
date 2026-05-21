@@ -23,6 +23,7 @@ signals:
     void potentiometerChanged(int pin, int value);
     void pulseInjected(int pin, unsigned long micros);
     void analogInjected(int pin, int value);
+    void colorInjected(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;

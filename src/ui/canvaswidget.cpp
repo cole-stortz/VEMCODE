@@ -163,7 +163,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
 
     int comp_w = 100;
-    int comp_h = 44;
+    int comp_h = (comp.type == ComponentType::ColorSensor) ? 64 : 44;
 
     QPointF pin_pos = pinLocation(comp.pin);
 
@@ -261,6 +261,40 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         });
     }
 
+
+    if (comp.type == ComponentType::ColorSensor && comp.pins.size() >= 5) {
+        int s2_pin  = comp.pins[2];
+        int s3_pin  = comp.pins[3];
+        int out_pin = comp.pins[4];
+
+        auto make_input = [&](const char* fg, const char* bg, int x) -> QLineEdit* {
+            QLineEdit* in = new QLineEdit("0");
+            in->setFixedSize(26, 16);
+            in->setStyleSheet(QString("background:%1; color:%2; border:1px solid %2;")
+                              .arg(bg).arg(fg));
+            QGraphicsProxyWidget* proxy = scene_->addWidget(in);
+            proxy->setParentItem(rect);
+            proxy->setPos(x, comp_h - 22);
+            return in;
+        };
+
+        QLineEdit* r_in = make_input("#ff4444", "#1a0000", 4);
+        QLineEdit* g_in = make_input("#44ff44", "#001a00", 34);
+        QLineEdit* b_in = make_input("#4444ff", "#00001a", 64);
+
+        auto emit_color = [this, r_in, g_in, b_in, out_pin, s2_pin, s3_pin]() {
+            bool rok, gok, bok;
+            int r = qBound(0, r_in->text().toInt(&rok), 255);
+            int g = qBound(0, g_in->text().toInt(&gok), 255);
+            int b = qBound(0, b_in->text().toInt(&bok), 255);
+            if (rok && gok && bok)
+                emit colorInjected(out_pin, s2_pin, s3_pin, r, g, b);
+        };
+
+        connect(r_in, &QLineEdit::textChanged, this, emit_color);
+        connect(g_in, &QLineEdit::textChanged, this, emit_color);
+        connect(b_in, &QLineEdit::textChanged, this, emit_color);
+    }
 
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);

@@ -5,6 +5,8 @@
 #include <string>
 #include <atomic>
 #include <deque>
+#include <map>
+#include <array>
 
 struct RuntimeState {
     int  pin_modes[20]    = {};
@@ -12,7 +14,10 @@ struct RuntimeState {
     int  analog_values[8] = {};
     bool serial_started   = false;
     int  serial_baud      = 0;
-    unsigned long pulse_durations_[20] = {}; 
+    unsigned long pulse_durations_[20] = {};
+    std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
+    std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
+    std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
     std::chrono::steady_clock::time_point start_time;
 };
 
@@ -48,6 +53,18 @@ public:
     void inject_pulse_duration(int pin, unsigned long micros) {
         if (pin >= 0 && pin < 20)
             state_.pulse_durations_[pin] = micros;
+    }
+
+    void inject_color(int out_pin, int s2_pin, int s3_pin, int r, int g, int b) {
+        auto to_period = [](int v) -> unsigned long {
+            return (unsigned long)(387 - (v * 348 / 255));
+        };
+        state_.color_channels_[out_pin][0] = to_period(r);
+        state_.color_channels_[out_pin][1] = to_period(b);
+        state_.color_channels_[out_pin][2] = 200;
+        state_.color_channels_[out_pin][3] = to_period(g);
+        state_.color_sensor_s2_[out_pin] = s2_pin;
+        state_.color_sensor_s3_[out_pin] = s3_pin;
     }
 
 

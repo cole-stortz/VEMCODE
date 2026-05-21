@@ -334,7 +334,10 @@ QWidget* MainWindow::buildCanvasPanel() {
             sketchThread_->injectAnalog(pin, value);
         });
 
-
+    connect(canvasWidget_, &CanvasWidget::colorInjected,
+        this, [this](int out_pin, int s2_pin, int s3_pin, int r, int g, int b) {
+            sketchThread_->injectColor(out_pin, s2_pin, s3_pin, r, g, b);
+        });
 
     return panel;
 }

@@ -55,6 +55,10 @@ public:
         runtime_.inject_pulse_duration(pin, micros);
     }
 
+    void inject_color(int out_pin, int s2_pin, int s3_pin, int r, int g, int b) {
+        runtime_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
+    }
+
 private:
     SketchDLL      dll_;
     ArduinoRuntime runtime_;
