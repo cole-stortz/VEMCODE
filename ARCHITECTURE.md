@@ -1,6 +1,6 @@
 # VirtualBench — Architecture Reference
 
-This document is the primary developer reference for VirtualBench. Keep it up to date as the codebase evolves. New contributors and AI assistants should read this before touching any code.
+This document is the primary developer reference for VirtualBench. Keep it up to date as the codebase evolves.
 
 ---
 
