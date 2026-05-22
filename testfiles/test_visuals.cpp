@@ -130,11 +130,34 @@ private:
         p.drawLine(x2, y2, x2, y2 + len);
     }
 
+    // +5V label at the tip of a VCC lead
+    void drawVCC(QPainter& p, int x, int y) {
+        p.setPen(QColor("#ff8888"));
+        p.setFont(QFont("Courier New", 7));
+        p.drawText(x - 9, y + 11, "+5V");
+    }
+
+    // Standard ground symbol: 3 decreasing horizontal lines
+    void drawGND(QPainter& p, int x, int y) {
+        p.setPen(QPen(LEADS, 2));
+        p.drawLine(x - 7, y,     x + 7, y);
+        p.drawLine(x - 4, y + 4, x + 4, y + 4);
+        p.drawLine(x - 2, y + 8, x + 2, y + 8);
+    }
+
     // Motor: clock-face circle with a rotating hand.
     // angle_deg: 0 = 12 o'clock, positive = clockwise
     void drawMotor(QPainter& p, int cx, int cy, int angle_deg, bool cw, bool acw) {
         const int R = 40;
+        const int LEAD = 18;
         bool active = cw || acw;
+
+        // 3 leads (PWM, CW, ACW) drawn before circle so they sit behind it
+        p.setPen(QPen(LEADS, 2));
+        for (int i = 0; i < 3; i++) {
+            int lx = cx - 12 + i * 12;
+            p.drawLine(lx, cy + R, lx, cy + R + LEAD);
+        }
 
         QColor bg = active ? MOTOR_ON : MOTOR_OFF;
         p.setPen(QPen(bg.lighter(160), 2));
@@ -155,7 +178,7 @@ private:
         QString state = (cw && acw) ? "BRAKE" : cw ? "CW" : acw ? "CCW" : "STOP";
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(cx - 20, cy + R + 18, state);
+        p.drawText(cx - 20, cy + R + LEAD + 14, state);
     }
 
     // Servo: rectangular body with an arm pivoting from the top center.
@@ -163,6 +186,16 @@ private:
     void drawServo(QPainter& p, int x, int y, int angle_deg) {
         const int BW = 80, BH = 40;
         const int ARM = 40;
+        const int LEAD = 18;
+
+        // 3 leads (VCC, GND, Signal) at the bottom of the body
+        p.setPen(QPen(LEADS, 2));
+        for (int i = 0; i < 3; i++) {
+            int lx = x + BW / 4 + i * (BW / 4);
+            p.drawLine(lx, y + BH, lx, y + BH + LEAD);
+        }
+        drawVCC(p, x + BW / 4,     y + BH + LEAD);
+        drawGND(p, x + BW / 4 * 2, y + BH + LEAD);
 
         p.setPen(QPen(SERVO_ON.darker(160), 2));
         p.setBrush(SERVO_OFF);
@@ -184,7 +217,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(x + BW / 2 - 14, y + BH + 18, QString("%1°").arg(angle_deg));
+        p.drawText(x + BW / 2 - 14, y + BH + LEAD + 24, QString("%1°").arg(angle_deg));
     }
 
     // LED: circle dome with two leads at the bottom
@@ -193,6 +226,7 @@ private:
         const int LEAD = 22;
 
         drawLeads(p, cx - 7, cy + R, cx + 7, cy + R, LEAD);
+        drawGND(p, cx + 7, cy + R + LEAD);
 
         QColor bg = active ? LED_ON : LED_OFF;
         p.setPen(QPen(bg.lighter(160), 2));
@@ -205,7 +239,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(cx - 12, cy + R + LEAD + 14, active ? "HIGH" : "LOW");
+        p.drawText(cx - 12, cy + R + LEAD + 24, active ? "HIGH" : "LOW");
     }
 
     // Button: square body with a raised circular actuator, two leads
@@ -216,6 +250,7 @@ private:
         const int CAP_OFFSET = pressed ? 4 : 0;
 
         drawLeads(p, cx - 9, cy + BH / 2, cx + 9, cy + BH / 2, LEAD);
+        drawGND(p, cx + 9, cy + BH / 2 + LEAD);
 
         QColor bg = pressed ? BUTTON_ON : BUTTON_OFF;
         p.setPen(QPen(bg.lighter(160), 2));
@@ -229,7 +264,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(cx - 16, cy + BH / 2 + LEAD + 14, pressed ? "PRESSED" : "UP");
+        p.drawText(cx - 16, cy + BH / 2 + LEAD + 24, pressed ? "PRESSED" : "UP");
     }
 
     // Switch: outer rectangle, inner square slides left (off) or right (on)
@@ -239,6 +274,7 @@ private:
         const int LEAD = 18;
 
         drawLeads(p, x + BW / 3, y + BH, x + 2 * BW / 3, y + BH, LEAD);
+        drawGND(p, x + 2 * BW / 3, y + BH + LEAD);
 
         QColor bg = on ? SWITCH_ON : SWITCH_OFF;
         p.setPen(QPen(bg.lighter(150), 2));
@@ -253,7 +289,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(x + BW / 2 - 8, y + BH + LEAD + 14, on ? "ON" : "OFF");
+        p.drawText(x + BW / 2 - 8, y + BH + LEAD + 24, on ? "ON" : "OFF");
     }
 
     // Buzzer: circle with concentric inner rings to suggest a piezo disc
@@ -262,6 +298,7 @@ private:
         const int LEAD = 22;
 
         drawLeads(p, cx - 7, cy + R, cx + 7, cy + R, LEAD);
+        drawGND(p, cx + 7, cy + R + LEAD);
 
         QColor bg = active ? BUZZER_ON : BUZZER_OFF;
         p.setPen(QPen(bg.lighter(160), 2));
@@ -276,7 +313,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(cx - 12, cy + R + LEAD + 14, active ? "ON" : "OFF");
+        p.drawText(cx - 12, cy + R + LEAD + 24, active ? "ON" : "OFF");
     }
 
     // Distance sensor: PCB rectangle with two ultrasonic transducer circles
@@ -306,16 +343,18 @@ private:
             p.drawEllipse(cx - TR / 2, cy - TR / 2, TR, TR);
         }
 
-        // 4 pin leads at the bottom
+        // 4 pin leads at the bottom (VCC, GND, TRIG, ECHO)
         p.setPen(QPen(LEADS, 2));
         for (int i = 0; i < 4; i++) {
             int lx = x + 16 + i * (BW - 32) / 3;
             p.drawLine(lx, y + BH, lx, y + BH + LEAD);
         }
+        drawVCC(p, x + 16,                   y + BH + LEAD);
+        drawGND(p, x + 16 + (BW - 32) / 3,  y + BH + LEAD);
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(x + BW / 2 - 30, y + BH + LEAD + 14, "HC-SR04");
+        p.drawText(x + BW / 2 - 30, y + BH + LEAD + 24, "HC-SR04");
     }
 
     // Color sensor: square PCB with a circular lens; lens fills with the detected R/G/B color
@@ -354,7 +393,13 @@ private:
         const int R = 28;
         const int LEAD = 20;
 
-        drawLeads(p, cx - 9, cy + R, cx + 9, cy + R, LEAD);
+        // 3 leads: VCC (left), wiper/signal (middle), GND (right)
+        p.setPen(QPen(LEADS, 2));
+        p.drawLine(cx - 12, cy + R, cx - 12, cy + R + LEAD);
+        p.drawLine(cx,      cy + R, cx,      cy + R + LEAD);
+        p.drawLine(cx + 12, cy + R, cx + 12, cy + R + LEAD);
+        drawVCC(p, cx - 12, cy + R + LEAD);
+        drawGND(p, cx + 12, cy + R + LEAD);
 
         p.setPen(QPen(POT_OFF.lighter(160), 2));
         p.setBrush(POT_OFF);
@@ -374,7 +419,7 @@ private:
 
         p.setPen(LABEL);
         p.setFont(QFont("Courier New", 9));
-        p.drawText(cx - 16, cy + R + LEAD + 14, QString::number(value));
+        p.drawText(cx - 16, cy + R + LEAD + 24, QString::number(value));
     }
 };
 
