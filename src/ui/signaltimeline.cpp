@@ -16,7 +16,7 @@ void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
         tracks_[pin] = QVector<PinEvent>();
         pin_order_.append(pin);
     }
-    tracks_[pin].append({pin, value, time_ms});
+    tracks_[pin].append({pin, value, time_ms}); 
 
     // Auto-scroll to keep latest events visible
     qint64 latest = time_ms;

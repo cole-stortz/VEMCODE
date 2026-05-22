@@ -100,7 +100,6 @@ MainWindow::MainWindow(QWidget* parent)
     compilerPath_ = settings.value("compiler/path", "").toString();
     projectRoot_  = settings.value("compiler/project_root", "").toString();
 
-    // First run -- no settings saved yet
     if (compilerPath_.isEmpty() || projectRoot_.isEmpty()) {
         SettingsDialog dialog(this);
         if (dialog.exec() == QDialog::Accepted) {
@@ -112,9 +111,9 @@ MainWindow::MainWindow(QWidget* parent)
     }
 
     setupToolbar(central, layout);
-    setupMainArea(central, layout);  // variableWatch_ gets created here
+    setupMainArea(central, layout);  // variableWatch_ must exist before the connect below
 
-    // Simulation thread
+    // Wire simulation signals to UI slots
     sketchThread_ = new SketchThread(this);
     connect(sketchThread_, &SketchThread::serialOutput,
             this, &MainWindow::onSerialOutput);
@@ -127,7 +126,6 @@ MainWindow::MainWindow(QWidget* parent)
     connect(sketchThread_, &SketchThread::variableChanged,  
             variableWatch_, &VariableWatch::onVariableChanged);
 
-    // Ctrl+S to save
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
 
@@ -155,12 +153,14 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     toolbarLayout->addWidget(title);
     toolbarLayout->addSpacing(8);
 
+    // Run button
     runButton_ = new QPushButton("Run", toolbar);
     runButton_->setFixedSize(64, 26);
     runButton_->setStyleSheet(STYLE_BTN_RUN);
     connect(runButton_, &QPushButton::clicked, this, &MainWindow::onRunClicked);
     toolbarLayout->addWidget(runButton_);
 
+    // Stop button
     stopButton_ = new QPushButton("Stop", toolbar);
     stopButton_->setFixedSize(64, 26);
     stopButton_->setEnabled(false);
@@ -187,30 +187,35 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
     toolbarLayout->addWidget(speedSlider_);
 
+    // New Sketch button
     QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
     newsketchButton->setFixedHeight(26);
     newsketchButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(newsketchButton, &QPushButton::clicked, this, &MainWindow::onNewSketch);
     toolbarLayout->addWidget(newsketchButton);
 
-    QPushButton* openButton = new QPushButton("Open sketch", toolbar);
+    // Open Sketch button
+    QPushButton* openButton = new QPushButton("Open Sketch", toolbar);
     openButton->setFixedHeight(26);
     openButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
 
+    // Recent Sketche button
     QPushButton* recentButton = new QPushButton("Recent", toolbar);
     recentButton->setFixedHeight(26);
     recentButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
     toolbarLayout->addWidget(recentButton);
 
-    QPushButton* saveButton = new QPushButton("Save sketch", toolbar);
+    // Save Sketch button
+    QPushButton* saveButton = new QPushButton("Save Sketch", toolbar);
     saveButton->setFixedHeight(26);
     saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
 
+    // Settings button
     QPushButton* settingsButton = new QPushButton("Settings", toolbar);
     settingsButton->setFixedHeight(26);
     settingsButton->setStyleSheet(STYLE_BTN_OUTLINE);
@@ -275,7 +280,6 @@ QWidget* MainWindow::buildEditorPanel() {
     lineNumbers_ = new LineNumberArea(codeEditor_);
     lineNumbers_->show();
 
-    // Default starter sketch
     codeEditor_->setPlainText(
         "#define LED_PIN 13\n\n"
         "void setup() {\n"
@@ -318,7 +322,6 @@ QWidget* MainWindow::buildCanvasPanel() {
             sketchThread_->injectAnalog(pin, value);
         });
 
-    // Wire button clicks on canvas to pin injection in simulation
     connect(canvasWidget_, &CanvasWidget::buttonPressed,
             this, [this](int pin, int value) {
                 sketchThread_->injectPin(pin, value);
@@ -389,12 +392,11 @@ QWidget* MainWindow::buildDebugPanel() {
     connect(serialInput_, &QLineEdit::returnPressed, this, &MainWindow::onSerialSend);
     inputLayout->addWidget(sendButton);
 
+    // Build panel
     serialLayout->addWidget(inputRow);
     debugTabs_->addTab(serialPanel, "Serial monitor");
-
     signalTimeline_ = new SignalTimeline();
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
-
     variableWatch_ = new VariableWatch();
     debugTabs_->addTab(variableWatch_, "Variable watch");
 
@@ -413,6 +415,8 @@ void MainWindow::onSerialOutput(QString text) {
 
 void MainWindow::onPinChanged(int pin, int value) {
     canvasWidget_->updatePin(pin, value);
+    // Mark this pin as actively driven so the detector can distinguish
+    // components actually wired up from ones only referenced in source
     detector_.confirm_pin(pin);
     signalTimeline_->addEvent(pin, value, simTimer_.elapsed());
     statusBar()->showMessage(
@@ -474,6 +478,8 @@ void MainWindow::onRunClicked() {
     CompileResult result = compiler.compile(sketch_path);
 
     if (!result.success) {
+        // GCC output references internal temp file paths and the preprocessor's
+        // injected header lines -- clean it up before showing it to the user
         QString raw = QString::fromStdString(result.raw_output);
 
         QString temp_file_path = QString::fromStdString(sketch_dir + "/_vb_temp.cpp");
@@ -488,7 +494,8 @@ void MainWindow::onRunClicked() {
         );
         raw.replace(context_re, "");
 
-        // Adjust line numbers -- subtract injected header offset
+        // Subtract the lines the preprocessor injected above the user's code
+        // (Arduino API wrapper, Serial macros, etc.) so errors point to the right line
         QRegularExpression line_num_re(R"(line (\d+):)");
         QString adjusted_raw;
         int last_pos = 0;
@@ -534,6 +541,7 @@ void MainWindow::onRunClicked() {
     stopButton_->setEnabled(true);
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));
 
+    // Parse the sketch source to auto-detect components and populate the canvas
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
 }
@@ -610,23 +618,19 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
             QTextCursor cursor = codeEditor_->textCursor();
 
-            // Get current line text
             cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
             QString line = cursor.selectedText();
 
-            // Count leading spaces for current indentation
             int spaces = 0;
             for (QChar c : line) {
                 if (c == ' ') spaces++;
                 else break;
             }
 
-            // If line ends with '{', add one indent level
             QString trimmed = line.trimmed();
             if (trimmed.endsWith('{'))
                 spaces += 4;
 
-            // Insert newline + indentation
             cursor = codeEditor_->textCursor();
             cursor.insertText("\n" + QString(spaces, ' '));
             codeEditor_->setTextCursor(cursor);
@@ -637,7 +641,6 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         if (key->key() == Qt::Key_BraceRight) {
             QTextCursor cursor = codeEditor_->textCursor();
 
-            // Select entire current line content
             cursor.movePosition(QTextCursor::StartOfLine);
             cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
             QString line = cursor.selectedText();
@@ -683,7 +686,6 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
 
     codeEditor_->setExtraSelections(selections);
 
-    // Move cursor to first error line
     for (const auto& err : result.errors) {
         if (err.is_error) {
             int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
@@ -731,7 +733,6 @@ void MainWindow::onNewSketch() {
     QString sketch_dir    = sketches_root + "/" + name;
     QDir().mkpath(sketch_dir);
 
-    // Default template
     QString default_sketch =
         "#define LED_PIN 13\n\n"
         "void setup() {\n"
@@ -740,7 +741,6 @@ void MainWindow::onNewSketch() {
         "void loop() {\n"
         "}\n";
 
-    // Write template to disk
     QString file_path = sketch_dir + "/" + name + ".cpp";
     QFile file(file_path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -750,7 +750,6 @@ void MainWindow::onNewSketch() {
     file.write(default_sketch.toUtf8());
     file.close();
 
-    // Load into editor and update state
     codeEditor_->setPlainText(default_sketch);
     currentSketchPath_ = file_path;
     setWindowTitle("VirtualBench — " + name + ".cpp");
@@ -805,7 +804,7 @@ void MainWindow::addToRecentSketches(const QString& path) {
 }
 
 void MainWindow::onSpeedChanged(int value) {
-    float display_speed = value / 10.0f;  // 1=0.1x, 10=1.0x, 100=10.0x
+    float display_speed = value / 10.0f;  // slider range 1–25: 1=0.1x, 10=1.0x, 25=2.5x
     sketchThread_->setSpeed(display_speed);
     speedSlider_->setToolTip(QString("Speed: %1x").arg(display_speed, 0, 'f', 1));
     QToolTip::showText(QCursor::pos(), speedSlider_->toolTip(), speedSlider_);

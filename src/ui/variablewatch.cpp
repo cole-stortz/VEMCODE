@@ -5,10 +5,12 @@
 VariableWatch::VariableWatch(QWidget* parent)
     : QWidget(parent)
 {
+    // Initialize the layout of the panel
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
+    // Set panel information
     table_ = new QTableWidget(this);
     table_->setColumnCount(2);
     table_->setHorizontalHeaderLabels({"Variable", "Value"});
@@ -22,6 +24,7 @@ VariableWatch::VariableWatch(QWidget* parent)
         "border: none; padding: 4px; }"
     );
 
+    // Add the info to the layout
     layout->addWidget(table_);
 }
 

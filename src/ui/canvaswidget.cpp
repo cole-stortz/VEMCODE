@@ -135,20 +135,17 @@ void CanvasWidget::updatePin(int pin, int value) {
 
 
 void CanvasWidget::drawBoard() {
-    // Board body
     scene_->addRect(
         BOARD_X, BOARD_Y, BOARD_W, BOARD_H,
         QPen(COLOR_BOARD_BORDER, 2),
         QBrush(COLOR_BOARD_BG)
     );
 
-    // Board label
     QGraphicsTextItem* label = scene_->addText("Arduino Uno");
     label->setDefaultTextColor(COLOR_BOARD_LABEL);
     label->setFont(QFont("Courier New", 9));
     label->setPos(BOARD_X + BOARD_W/2 - 40, BOARD_Y + 10);
 
-    // Chip
     scene_->addRect(
         BOARD_X + 40, BOARD_Y + 80, 120, 60,
         QPen(COLOR_CHIP_BORDER, 1),
@@ -205,7 +202,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
     QPointF pin_pos = pinLocation(comp.pin);
 
-    // Determine which side and column
     bool is_analog_input = (comp.pin >= 14);
 
     float comp_x;
@@ -272,12 +268,12 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         rect->setToolTip("Click to toggle");
     }
 
-    // Potentiometer -- drag to set analog value (coming soon)
+    // Potentiometer -- drag to set analog value
     if (comp.type == ComponentType::Potentiometer) {
         rect->setToolTip("Drag to set analog value (0-1023)");
     }
 
-    // Sensor types -- show current analog value (read only for now)
+    // Sensor types -- show current analog value
     if (comp.type == ComponentType::LightSensor  ||
         comp.type == ComponentType::TempSensor   ||
         comp.type == ComponentType::AnalogSensor) {
@@ -372,7 +368,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     typeText->setFont(QFont("Courier New", 8));
     typeText->setPos(6, 6);
 
-    // Pin name label (e.g. LED_PIN)
     if (!comp.pin_name.empty()) {
         QGraphicsTextItem* nameText = new QGraphicsTextItem(rect);
         nameText->setPlainText(QString::fromStdString(comp.pin_name));
@@ -452,7 +447,6 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
-    // Potentiometer -- start drag
     if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Potentiometer) {
         dragPin_        = pin;
         dragStartY_     = event->pos().y();
@@ -465,14 +459,12 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
 }
 
 void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
-    // Reset potentiometer drag
     if (dragPin_ >= 0) {
         dragPin_ = -1;
         QGraphicsView::mouseReleaseEvent(event);
         return;
     }
 
-    // Button release -- existing logic
     for (auto pin : buttonStates_.keys()) {
         if (buttonStates_[pin]) {
             buttonStates_[pin] = false;
@@ -553,19 +545,16 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
 
     analogValues_[dragPin_] = new_value;
 
-    // Update component color intensity based on value
     auto it = pinItems_.find(dragPin_);
     if (it != pinItems_.end()) {
         float ratio = new_value / 1023.0f;
         QColor active = componentColor(ComponentType::Potentiometer, true);
         QColor inactive = componentColor(ComponentType::Potentiometer, false);
-        // Interpolate between inactive and active color based on value
         int r = inactive.red()   + ratio * (active.red()   - inactive.red());
         int g = inactive.green() + ratio * (active.green() - inactive.green());
         int b = inactive.blue()  + ratio * (active.blue()  - inactive.blue());
         it.value()->setBrush(QBrush(QColor(r, g, b)));
 
-        // Update tooltip to show current value
         it.value()->setToolTip(
             QString("Value: %1 / 1023").arg(new_value));
     }

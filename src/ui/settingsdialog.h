@@ -9,11 +9,9 @@ class SettingsDialog : public QDialog {
 public:
     explicit SettingsDialog(QWidget* parent = nullptr);
 
-    // Call these after exec() returns to get the values
     QString compilerPath() const;
     QString projectRoot() const;
 
-    // Pre-fill fields with existing values
     void setCompilerPath(const QString& path);
     void setProjectRoot(const QString& path);
 

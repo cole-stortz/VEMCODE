@@ -64,10 +64,6 @@ private:
     QWidget* buildCanvasPanel();
     QWidget* buildDebugPanel();
 
-    CodeHighlighter* highlighter_ = nullptr;
-
-    LineNumberArea* lineNumbers_ = nullptr;
-
     // Toolbar
     QPushButton*    runButton_      = nullptr;
     QPushButton*    stopButton_     = nullptr;
@@ -75,7 +71,9 @@ private:
 
     // Editor panel (left)
     EditorWithLines* codeEditor_    = nullptr;
-
+    CodeHighlighter* highlighter_ = nullptr;
+    LineNumberArea* lineNumbers_ = nullptr;
+    
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;
 
