@@ -350,6 +350,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         connect(r_in, &QLineEdit::textChanged, this, emit_color);
         connect(g_in, &QLineEdit::textChanged, this, emit_color);
         connect(b_in, &QLineEdit::textChanged, this, emit_color);
+        emit_color();
     }
 
     if (comp.type == ComponentType::Servo) {

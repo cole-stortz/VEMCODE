@@ -266,7 +266,7 @@ VirtualBench/
 - Basic OLED — text and simple graphics
 
 ### Phase 3 — Canvas Improvements
-- Canvas layout mode — drag components to match your real breadboard, positions saved per sketch
+- Canvas layout mode — drag components to match your ideal layout, positions saved per sketch
 - Wire visualization improvements
 
 ### Phase 4 — Board Profiles
