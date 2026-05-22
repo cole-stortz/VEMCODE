@@ -75,6 +75,13 @@ target_link_libraries(VirtualBench PRIVATE
     Qt6::Widgets
 )
 
+# Standalone visual test -- run test_visuals.exe to iterate on component shapes
+qt_add_executable(test_visuals testfiles/test_visuals.cpp)
+target_link_libraries(test_visuals PRIVATE Qt6::Core Qt6::Widgets)
+set_target_properties(test_visuals PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/app
+)
+
 # Windows-specific: hide the console window in release builds
 # In debug builds we keep it so we can see std::cout output
 if(WIN32)
