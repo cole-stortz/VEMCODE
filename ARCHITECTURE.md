@@ -503,8 +503,11 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 
 > **Milestone:** Target benchmark sketch compiles and runs correctly. ✓ish
 
-### Phase 2 — Component Visuals
+### Phase 2 — Component Visuals and Display Support
 - Proper graphics for all component types replacing colored rectangles
+- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
 
 ### Phase 3 — Canvas Improvements
 - Canvas layout mode — "Layout" toolbar button, components become draggable
@@ -534,17 +537,12 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`)
 - Basic SPI simulation (`SPI.begin`, `SPI.transfer`)
 
-### Phase 7 — Display Support
-- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
-- 7-segment display — single and multi-digit
-- Basic OLED — text and simple graphics
-
-### Phase 8 — Multi-board Simulation
+### Phase 7 — Multi-board Simulation
 - Two SketchThread instances running simultaneously
 - Virtual serial pipe connecting them (TX of one → RX of other)
 - Enables master/slave and sensor node + controller patterns
 
-### Phase 9 — Memory Analysis
+### Phase 8 — Memory Analysis
 - `avr_gcc_path` in settings dialog
 - After successful Windows compile, run `avr-gcc` compile for size analysis only
 - Parse `avr-size` output for flash and RAM usage
@@ -560,18 +558,19 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Installer — bundle MinGW for zero-dependency install
 - Additional board profiles (Nano, Mega, ESP32) — add one `BoardProfile` entry each
 
-### Explicitly Out of Scope
-- Box2D / physics simulation
-- 3D visualization
-- External robot simulator integration (Gazebo, Webots)
-
 ---
 
 ## Permanent Limitations
 
-- Microsecond-accurate timing (Windows scheduler ~1-15ms jitter)
-- Hardware protocol electrical behavior (I2C/SPI bus capacitance, voltage levels)
-- Register-level / AVR assembly programming
-- Real electrical behavior (voltage, current, short circuits)
-- Dynamic RAM enforcement is approximate — static RAM hard enforced via avr-gcc, heap from String/malloc tracked with warnings
-- Libraries that wrap AVR hardware registers directly
+**Genuinely permanent (require replacing the compile-to-native-DLL architecture):**
+- AVR assembly instructions (`asm volatile`) — CPU instructions don't exist on x86
+- Hardware interrupt vectors (`ISR(TIMER1_OVF_vect)` etc.) — the interrupt hardware doesn't exist
+- Real electrical behavior (voltage, current, short circuits) — requires SPICE-level simulation
+
+**Fixable within current architecture (not yet implemented):**
+- Microsecond-accurate timing — `micros()` and `delayMicroseconds()` can operate on a simulated time counter decoupled from the Windows scheduler; wall-clock accuracy isn't needed for sketch logic
+- AVR hardware registers (C/C++ access) — fake register variables (`DDRB`, `PORTB`, etc.) can be defined in the injected header; a custom type intercepting reads/writes could map them to pin state; covers most register-manipulation libraries but not assembly or ISRs
+- Dynamic RAM enforcement — approximate now (String/malloc tracked with warnings); precise heap tracking via `malloc`/`new` interception is possible
+
+**Partially fixable (protocol level yes, electrical level no):**
+- I2C/SPI — byte-level protocol emulation (frame timing, ACK/NACK, transactions) is implementable; bus electrical characteristics (capacitance, voltage levels) are not

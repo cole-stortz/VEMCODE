@@ -66,7 +66,7 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Light sensor | PHOTO, LDR, PHOTORESISTOR | Type analog value (0-1023) |
 | Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Type analog value (0-1023) |
 | Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
-| LCD | LCD, DISPLAY, SCREEN, OLED | Visual coming soon |
+| LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering — Phase 2 |
 
 > Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Default is Arduino Uno (pins 0-19, 8-bit PWM). Teensy 4.1 and STM32F4 profiles are planned for Phase 4.
 
@@ -259,9 +259,11 @@ VirtualBench/
 
 > **Milestone:** The simplified Lambo robot sketch (1 color sensor, 1 HC-SR04, 3 H-bridge motors, 1 servo) compiles and runs correctly.
 
-### Phase 2 — Component Visuals
-- Proper graphics for all component types
-- Per-component sensor input boxes (type a distance value, watch your code react)
+### Phase 2 — Component Visuals and Display Support
+- Proper graphics for all component types replacing colored rectangles
+- 16x2 LCD (`LiquidCrystal` compatible, renders actual characters on canvas)
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
 
 ### Phase 3 — Canvas Improvements
 - Canvas layout mode — drag components to match your real breadboard, positions saved per sketch
@@ -283,15 +285,10 @@ VirtualBench/
 - EEPROM simulation (1024 bytes, optional disk persistence)
 - Basic I2C/SPI simulation
 
-### Phase 7 — Display Support
-- 16x2 LCD (`LiquidCrystal` compatible)
-- 7-segment display
-- Basic OLED
-
-### Phase 8 — Multi-board Simulation
+### Phase 7 — Multi-board Simulation
 - Two Arduinos communicating over virtual serial
 
-### Phase 9 — Memory Analysis
+### Phase 8 — Memory Analysis
 - Dual compile with `avr-gcc` for flash and RAM size analysis
 - Flash → hard enforce (block run if over 32,256 bytes)
 - Static RAM → hard enforce (block run if globals exceed 2048 bytes)
@@ -304,11 +301,18 @@ VirtualBench/
 - Additional board profiles (Nano, Mega, ESP32) — one `BoardProfile` entry each
 
 ### Known limitations
-- Microsecond-accurate timing (Windows thread scheduler has ~1-15ms jitter)
-- Hardware protocol electrical behavior (I2C/SPI bus characteristics)
-- Register-level / AVR assembly programming
-- Dynamic RAM enforcement is approximate — static RAM hard enforced via avr-gcc, heap usage tracked with warnings
-- Libraries that wrap AVR hardware registers directly
+
+**Genuinely permanent:**
+- AVR assembly instructions and hardware interrupt vectors (`ISR()`) — require a full CPU emulator, incompatible with the compile-to-native approach
+- Real electrical behavior (voltage, current, short circuits)
+
+**Not yet implemented (fixable within current architecture):**
+- Microsecond-accurate wall-clock timing — sketch logic using `micros()` works correctly via simulated time; timing won't match a real board's wall clock
+- AVR hardware registers via C/C++ (`PORTB |= ...`) — fake register variables are feasible; assembly and ISRs are still out of scope
+- Dynamic RAM enforcement is approximate — static RAM is hard enforced via avr-gcc; heap tracking can be made precise
+
+**Partially fixable:**
+- I2C/SPI — protocol-level emulation (byte transactions, ACK/NACK) is possible; electrical bus characteristics are not
 
 ---
 
