@@ -91,6 +91,7 @@ private:
     // Settings
     QString compilerPath_;
     QString projectRoot_;
+    BoardProfile activeProfile_ = BOARD_UNO;
 
     // Speed Slider
     QSlider* speedSlider_ = nullptr;

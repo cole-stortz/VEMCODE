@@ -68,7 +68,7 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
 | LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering — Phase 2 |
 
-> Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Default is Arduino Uno (pins 0-19, 8-bit PWM). Teensy 4.1 and STM32F4 profiles are planned for Phase 4.
+> Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Supported boards: Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1. The selected board drives pin count, analog offset, PWM resolution, and the canvas board graphic.
 
 ### Debug Panel
 - **Serial monitor** — live `Serial.print` output, plus a text input box to send data to `Serial.read`
@@ -242,63 +242,58 @@ VirtualBench/
 
 ## Roadmap
 
-### Phase 1 — Component Completion (mostly complete)
+### Phase 1 — Component Completion ✓
 
-**Completed:**
 - ✓ `pulseIn(pin, value, timeout)` — distance sensor fast path, TCS3200 color channel path, pin polling fallback
 - ✓ `delayMicroseconds` — busy-wait with stop check
 - ✓ `analogWrite` fires pin changed callback for signal timeline
 - ✓ Array-based pin detection (`const int PIN[N] = {...}`)
-- ✓ Multi-pin component grouping (HC-SR04 → DistanceSensor, H-bridge → HBridgeMotor, TCS3200 → ColorSensor)
-- ✓ Motor (H-bridge) separated from Servo (PWM single pin)
+- ✓ Multi-pin component grouping (HC-SR04, H-bridge motor, TCS3200 color sensor)
 - ✓ Canvas sensor inputs — distance (cm), color (R/G/B 0-255), analog (0-1023)
 - ✓ Servo angle display — live °label from analogWrite value
+- ✓ `Servo` class — `#include <Servo.h>` replaced inline by preprocessor
 
-**Remaining:**
-- Servo class in injected header + `#include <Servo.h>` stripping
+### Phase 2 — Board Profiles ✓
 
-> **Milestone:** The simplified Lambo robot sketch (1 color sensor, 1 HC-SR04, 3 H-bridge motors, 1 servo) compiles and runs correctly.
+- ✓ Board selector in Settings — Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1
+- ✓ Pin count, analog offset, PWM resolution, and chip name all driven by selected profile
+- ✓ Canvas board graphic shows correct board name and chip for selected board
+- ✓ Teensy 4.1 profile unlocks the full Lambo robot sketch without pin remapping
 
-### Phase 2 — Component Visuals and Display Support
-- Proper graphics for all component types replacing colored rectangles
-- 16x2 LCD (`LiquidCrystal` compatible, renders actual characters on canvas)
-- 7-segment display — single and multi-digit
-- Basic OLED — text and simple graphics
-
-### Phase 3 — Canvas Improvements
-- Canvas layout mode — drag components to match your ideal layout, positions saved per sketch
-- Wire visualization improvements
-
-### Phase 4 — Board Profiles
-- Board selector in Settings — Arduino Uno, Teensy 4.1, STM32F4
-- Pin count, analog offset, and PWM resolution driven by selected profile
-- Teensy 4.1 profile unlocks the full Lambo robot sketch without pin remapping
-- Adding future boards (Nano, Mega, ESP32) requires only a new profile entry
-
-### Phase 5 — Simulation Realism
+### Phase 3 — Simulation Realism
 - Floating pin simulation (undriven INPUT pins return random values)
 - Button bounce simulation
 - Optional signal noise on analog readings
 
-### Phase 6 — New Arduino Features
+### Phase 4 — New Arduino Features
 - `attachInterrupt()` — RISING, FALLING, CHANGE modes
 - EEPROM simulation (1024 bytes, optional disk persistence)
 - Basic I2C/SPI simulation
 
-### Phase 7 — Multi-board Simulation
+### Phase 5 — Multi-board Simulation
 - Two Arduinos communicating over virtual serial
 
-### Phase 8 — Memory Analysis
+### Phase 6 — Memory Analysis
 - Dual compile with `avr-gcc` for flash and RAM size analysis
 - Flash → hard enforce (block run if over 32,256 bytes)
 - Static RAM → hard enforce (block run if globals exceed 2048 bytes)
 - Dynamic RAM (String/malloc) → warn but don't block
 - Memory bar in UI like Arduino IDE
 
+### Phase 7 — Component Visuals and Display Support
+- Proper graphics for all component types replacing colored rectangles
+- 16x2 LCD (`LiquidCrystal` compatible, renders actual characters on canvas)
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
+
+### Phase 8 — Canvas Improvements
+- Canvas layout mode — drag components to match your ideal layout, positions saved per sketch
+- Wire visualization improvements
+
 ### Later
 - macOS / Linux support
 - Installer (bundle MinGW, zero-dependency install)
-- Additional board profiles (Nano, Mega, ESP32) — one `BoardProfile` entry each
+- Additional board profiles (ESP32, STM32) — one `BoardProfile` entry each
 
 ### Known limitations
 

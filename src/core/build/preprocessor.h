@@ -24,7 +24,7 @@ public:
     std::string process(const std::string& source);
     // Number of lines injected at the top of transformed sketches.
     // Used to offset compiler error line numbers back to the original source.
-    static constexpr int INJECTED_HEADER_LINES = 129;
+    static constexpr int INJECTED_HEADER_LINES = 127;
 
 private:
     // Returns true if source is already in VirtualBench format
@@ -46,4 +46,7 @@ private:
 
     // Quick check to see if loop delay exists, add delay(10) if missing
     std::string inject_safety_delay(const std::string& source);
+
+    // Replace embedded includes with either nothing or custom functions if needed
+    std::string strip_includes(const std::string& source);
 };

@@ -9,6 +9,7 @@
 #include <QGraphicsProxyWidget>
 #include <QLineEdit>
 #include "src/core/circuit/circuitdetector.h"
+#include "src/core/runtime/boardprofile.h"
 
 class CanvasWidget : public QGraphicsView {
     Q_OBJECT
@@ -17,6 +18,7 @@ public:
     explicit CanvasWidget(QWidget* parent = nullptr);
     void refresh(const std::vector<DetectedComponent>& components);
     void updatePin(int pin, int value);
+    void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
     
 signals:
     void buttonPressed(int pin, int value);
@@ -55,8 +57,10 @@ private:
     static constexpr int BOARD_X = 300;
     static constexpr int BOARD_Y = 150;
     static constexpr int BOARD_W = 200;
-    static constexpr int BOARD_H = 300;
+    int BOARD_H = 300;
     int dragPin_         = -1;
     int dragStartY_      = 0;
     int dragStartValue_  = 512;
+
+    BoardProfile profile_ = BOARD_UNO;
 };

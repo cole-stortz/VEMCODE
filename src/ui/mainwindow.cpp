@@ -100,6 +100,13 @@ MainWindow::MainWindow(QWidget* parent)
     compilerPath_ = settings.value("compiler/path", "").toString();
     projectRoot_  = settings.value("compiler/project_root", "").toString();
 
+    QString boardName = settings.value("board/name", "Arduino Uno").toString();
+    if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
+    else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
+    else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
+    else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
+    else                                        activeProfile_ = BOARD_UNO;
+
     if (compilerPath_.isEmpty() || projectRoot_.isEmpty()) {
         SettingsDialog dialog(this);
         if (dialog.exec() == QDialog::Accepted) {
@@ -111,7 +118,10 @@ MainWindow::MainWindow(QWidget* parent)
     }
 
     setupToolbar(central, layout);
+    boardLabel_->setText(activeProfile_.name);
+
     setupMainArea(central, layout);  // variableWatch_ must exist before the connect below
+    canvasWidget_->setProfile(activeProfile_);
 
     // Wire simulation signals to UI slots
     sketchThread_ = new SketchThread(this);
@@ -224,7 +234,7 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 
     toolbarLayout->addStretch();
 
-    boardLabel_ = new QLabel("Arduino Uno — ATmega328P", toolbar);
+    boardLabel_ = new QLabel("", toolbar);
     boardLabel_->setStyleSheet(STYLE_BOARD_LABEL);
     toolbarLayout->addWidget(boardLabel_);
 
@@ -709,12 +719,18 @@ void MainWindow::onSettingsClicked() {
     SettingsDialog dialog(this);
     dialog.setCompilerPath(compilerPath_);
     dialog.setProjectRoot(projectRoot_);
+    dialog.setSelectedBoard(QString(activeProfile_.name));
 
     if (dialog.exec() == QDialog::Accepted) {
-        compilerPath_ = dialog.compilerPath();
-        projectRoot_  = dialog.projectRoot();
+        compilerPath_  = dialog.compilerPath();
+        projectRoot_   = dialog.projectRoot();
+        activeProfile_ = dialog.selectedBoard();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
+        settings.setValue("board/name", QString(activeProfile_.name));
+        canvasWidget_->setProfile(activeProfile_);
+        boardLabel_->setText(activeProfile_.name);
+        if (sketchThread_) sketchThread_->setProfile(activeProfile_);
         statusBar()->showMessage("Settings saved");
     }
 }

@@ -126,7 +126,7 @@ void CanvasWidget::updatePin(int pin, int value) {
     it.value()->setBrush(QBrush(componentColor(type, value == 1)));
 
     if (type == ComponentType::Servo) {
-        int angle = value * 180 / 255;
+        int angle = value * 180 / profile_.pwm_resolution;
         auto label_it = servoLabels_.find(pin);
         if (label_it != servoLabels_.end())
             label_it.value()->setPlainText(QString::number(angle) + "°");
@@ -141,7 +141,7 @@ void CanvasWidget::drawBoard() {
         QBrush(COLOR_BOARD_BG)
     );
 
-    QGraphicsTextItem* label = scene_->addText("Arduino Uno");
+    QGraphicsTextItem* label = scene_->addText(profile_.name);
     label->setDefaultTextColor(COLOR_BOARD_LABEL);
     label->setFont(QFont("Courier New", 9));
     label->setPos(BOARD_X + BOARD_W/2 - 40, BOARD_Y + 10);
@@ -151,13 +151,13 @@ void CanvasWidget::drawBoard() {
         QPen(COLOR_CHIP_BORDER, 1),
         QBrush(COLOR_CHIP_BG)
     );
-    QGraphicsTextItem* chipLabel = scene_->addText("ATmega328P");
+    QGraphicsTextItem* chipLabel = scene_->addText(profile_.chip);
     chipLabel->setDefaultTextColor(COLOR_CHIP_LABEL);
     chipLabel->setFont(QFont("Courier New", 8));
     chipLabel->setPos(BOARD_X + 48, BOARD_Y + 100);
 
-    // Digital pins on right edge (0-13)
-    for (int i = 0; i <= 13; i++) {
+    // Digital pins
+    for (int i = 0; i < profile_.analog_offset; i++) {
         QPointF pos = pinLocation(i);
         scene_->addEllipse(
             pos.x() - 3, pos.y() - 3, 6, 6,
@@ -170,8 +170,8 @@ void CanvasWidget::drawBoard() {
         pinNum->setPos(pos.x() + 6, pos.y() - 8);
     }
 
-    // Analog pins on left edge (A0-A5 = pins 14-19)
-    for (int i = 14; i <= 19; i++) {
+    // Analog pins
+    for (int i = profile_.analog_offset; i < profile_.analog_offset + profile_.analog_count; i++) {
         QPointF pos = pinLocation(i);
         scene_->addEllipse(
             pos.x() - 3, pos.y() - 3, 6, 6,
@@ -179,6 +179,7 @@ void CanvasWidget::drawBoard() {
             QBrush(COLOR_PIN_DOT_BG)
         );
         QGraphicsTextItem* pinNum = scene_->addText(QString("A%1").arg(i - 14));
+        pinNum->setPlainText(QString("A%1").arg(i - profile_.analog_offset));
         pinNum->setDefaultTextColor(COLOR_PIN_LABEL);
         pinNum->setFont(QFont("Courier New", 7));
         pinNum->setPos(pos.x() - 24, pos.y() - 8);
@@ -202,7 +203,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
     QPointF pin_pos = pinLocation(comp.pin);
 
-    bool is_analog_input = (comp.pin >= 14);
+    bool is_analog_input = (comp.pin >= profile_.analog_offset);
 
     float comp_x;
     if (is_output) {
@@ -395,7 +396,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
             ? QPointF(comp_x, attach_y)
             : QPointF(comp_x + comp_w, attach_y);
 
-        bool pin_is_analog = (wpin >= 14);
+        bool pin_is_analog = (wpin >= profile_.analog_offset);
         if (pin_is_analog) {
             // Analog: 3-segment route around board left edge
             QPointF mid1 = QPointF(BOARD_X - 80, target.y());
@@ -485,14 +486,14 @@ void CanvasWidget::drawWire(QPointF from, QPointF to) {
 }
 
 QPointF CanvasWidget::pinLocation(int pin) {
-    if (pin >= 0 && pin <= 13) {
-        float spacing = (float)BOARD_H / 15.0f;
+    if (pin >= 0 && pin < profile_.analog_offset) {
+        float spacing = (float)BOARD_H / (float)(profile_.analog_offset + 1);
         float y = BOARD_Y + spacing * (pin + 1);
         return QPointF(BOARD_X + BOARD_W, y);
     }
-    if (pin >= 14 && pin <= 19) {
-        float spacing = (float)BOARD_H / 7.0f;
-        float y = BOARD_Y + spacing * (pin - 13);
+    if (pin >= profile_.analog_offset && pin < profile_.analog_offset + profile_.analog_count) {
+        float spacing = (float)BOARD_H / (float)(profile_.analog_count + 1);
+        float y = BOARD_Y + spacing * (pin - profile_.analog_offset + 1);
         return QPointF(BOARD_X, y);
     }
     return QPointF(BOARD_X + BOARD_W / 2, BOARD_Y);

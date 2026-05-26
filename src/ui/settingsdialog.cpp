@@ -35,6 +35,18 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     rootRow->addWidget(browseRoot);
     layout->addLayout(rootRow);
 
+    // Board selector row
+    QHBoxLayout* boardRow = new QHBoxLayout();
+    boardRow->addWidget(new QLabel("Board:"));
+    boardCombo_ = new QComboBox();
+    boardCombo_->addItem("Arduino Uno");
+    boardCombo_->addItem("Arduino Nano");
+    boardCombo_->addItem("Arduino Mega 2560");
+    boardCombo_->addItem("Arduino Due");
+    boardCombo_->addItem("Teensy 4.1");
+    boardRow->addWidget(boardCombo_);
+    layout->addLayout(boardRow);
+
     // Save/Cancel buttons
     QDialogButtonBox* buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Cancel);
@@ -57,6 +69,20 @@ void SettingsDialog::setCompilerPath(const QString& path) {
 
 void SettingsDialog::setProjectRoot(const QString& path) {
     rootEdit_->setText(path);
+}
+
+BoardProfile SettingsDialog::selectedBoard() const {
+    QString name = boardCombo_->currentText();
+    if (name == "Arduino Nano")       return BOARD_NANO;
+    if (name == "Arduino Mega 2560")  return BOARD_MEGA;
+    if (name == "Arduino Due")        return BOARD_DUE;
+    if (name == "Teensy 4.1")         return BOARD_TEENSY;
+    return BOARD_UNO;
+}
+
+void SettingsDialog::setSelectedBoard(const QString& name) {
+    int i = boardCombo_->findText(name);
+    if (i >= 0) boardCombo_->setCurrentIndex(i);
 }
 
 void SettingsDialog::onBrowseCompiler() {

@@ -19,7 +19,7 @@ static std::string ts() {
     return ss.str();
 }
 
-ArduinoRuntime::ArduinoRuntime() {
+ArduinoRuntime::ArduinoRuntime(BoardProfile profile) : profile_(profile) {
     state_.start_time = std::chrono::steady_clock::now();
 }
 
@@ -46,14 +46,14 @@ ArduinoAPI ArduinoRuntime::get_api() {
 }
 
 void ArduinoRuntime::impl_pinMode(int pin, int mode) {
-    if (!g_runtime || pin < 0 || pin >= 20) return;
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return;
     g_runtime->state_.pin_modes[pin] = mode;
     if (mode == 2)
         g_runtime->state_.pin_values[pin] = 1;
 }
 
 void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
-    if (!g_runtime || pin < 0 || pin >= 20) return; // return if pins are outside the arduino range
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return; // return if pins are outside the arduino range
     bool changed = (g_runtime->state_.pin_values[pin] != value); // Check to see if the value has changed
     g_runtime->state_.pin_values[pin] = value; // Set the value
     if (!changed) return; // If didnt change return
@@ -65,13 +65,13 @@ void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
 }
 
 int ArduinoRuntime::impl_digitalRead(int pin) {
-    if (!g_runtime || pin < 0 || pin >= 20) return 0; // return if digital pins are outside the arduino range
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return 0; // return if digital pins are outside the arduino range
     return g_runtime->state_.pin_values[pin]; // Return the pin value
 }
 
 // TODO: add on_analog_changed callback when potentiometer component is implemented
 void ArduinoRuntime::impl_analogWrite(int pin, int value) {
-    if (!g_runtime || pin < 0 || pin >= 20) return;
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return;
     g_runtime->state_.pwm_values[pin] = value;
     if (g_runtime->on_pin_changed)
         g_runtime->on_pin_changed(pin, value);
@@ -80,7 +80,7 @@ void ArduinoRuntime::impl_analogWrite(int pin, int value) {
 
 int ArduinoRuntime::impl_analogRead(int pin) {
     if (!g_runtime) return 0;
-    int analog_index = (pin >= 14) ? pin - 14 : pin;
+    int analog_index = (pin >= g_runtime->profile_.analog_offset) ? pin - g_runtime->profile_.analog_offset : pin;
     if (analog_index < 0 || analog_index >= 8) return 0;
     return g_runtime->state_.analog_values[analog_index];
 }
@@ -137,7 +137,7 @@ void ArduinoRuntime::impl_Serial_println(const char* s) {
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
-    if (pin >= 0 && pin < 20) 
+    if (pin >= 0 && pin < g_runtime->profile_.pin_count) 
         state_.pin_values[pin] = value; // set pin state if in range
 }
 
@@ -167,7 +167,7 @@ int ArduinoRuntime::impl_Serial_read() {
 unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long timeout) {
     if (!g_runtime) return 0;
 
-    if (pin >= 0 && pin < 20 && g_runtime->state_.pulse_durations_[pin] != 0) {
+    if (pin >= 0 && pin < g_runtime->profile_.pin_count && g_runtime->state_.pulse_durations_[pin] != 0) {
         return g_runtime->state_.pulse_durations_[pin];
     }
 

@@ -93,3 +93,8 @@ void SketchThread::injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g
     QMutexLocker lock(&inject_mutex_);
     host_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
 }
+
+void SketchThread::setProfile(BoardProfile p) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.setProfile(p);
+}

@@ -8,9 +8,10 @@ std::string Preprocessor::process(const std::string& source) {
         return source;
 
     std::string result = source;
+    result = strip_includes(result);
     result = replace_api_calls(result);
     result = wrap_functions(result);
-    result = inject_safety_delay(result);  // add this step
+    result = inject_safety_delay(result);
     result = inject_header(result);
     return result;
 }
@@ -50,6 +51,29 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
 
     // Watch Variable
     s = replace_all(s, "watch_variable(", "api->watch_variable(");
+
+    return s;
+}
+
+std::string Preprocessor::strip_includes(const std::string& source) {
+    std::string s = source;
+
+    s = replace_all(s, "#include <Servo.h>",
+    "#ifndef VB_SERVO_H\n"
+    "#define VB_SERVO_H\n"
+    "class Servo {\n"
+    "public:\n"
+    "    void attach(int pin) { pin_ = pin; }\n"
+    "    void write(int angle) { if (pin_ >= 0) { angle_ = angle; api->analogWrite(pin_, angle * 255 / 180); } }\n"
+    "    int read() const { return angle_; }\n"
+    "    bool attached() const { return pin_ >= 0; }\n"
+    "    void detach() { pin_ = -1; }\n"
+    "private:\n"
+    "    int pin_ = -1;\n"
+    "    int angle_ = 0;\n"
+    "};\n"
+    "#endif\n");
+
     return s;
 }
 

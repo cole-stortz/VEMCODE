@@ -1,5 +1,6 @@
 #pragma once
 #include "src/core/runtime/arduinoapi.h"
+#include "src/core/runtime/boardprofile.h"
 #include <chrono>
 #include <functional>
 #include <string>
@@ -9,13 +10,13 @@
 #include <array>
 
 struct RuntimeState {
-    int  pin_modes[20]    = {};
-    int  pin_values[20]   = {};
-    int  analog_values[8] = {};
+    int  pin_modes[80]    = {};
+    int  pin_values[80]   = {};
+    int  analog_values[20] = {};
     bool serial_started   = false;
     int  serial_baud      = 0;
-    int  pwm_values[20]    = {};
-    unsigned long pulse_durations_[20] = {};
+    int  pwm_values[80]    = {};
+    unsigned long pulse_durations_[80] = {};
     std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
     std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
     std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
@@ -24,7 +25,7 @@ struct RuntimeState {
 
 class ArduinoRuntime {
 public:
-    ArduinoRuntime();
+    ArduinoRuntime(BoardProfile profile = BOARD_UNO);
     ArduinoAPI get_api();
     RuntimeState& get_state() { return state_; }
 
@@ -39,8 +40,8 @@ public:
     void inject_analog(int pin, int value) {
         // Convert internal pin number to analog index
         // A0=14, A1=15... → index 0,1...
-        int analog_index = (pin >= 14) ? pin - 14 : pin;
-        if (analog_index >= 0 && analog_index < 8)
+        int analog_index = (pin >= profile_.analog_offset) ? pin - profile_.analog_offset : pin;
+        if (analog_index >= 0 && analog_index < profile_.analog_count)
             state_.analog_values[analog_index] = value;
     }
     float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
@@ -51,8 +52,10 @@ public:
             serial_buffer_.push_back(c);
     }
 
+    void setProfile(BoardProfile p) { profile_ = p; }
+
     void inject_pulse_duration(int pin, unsigned long micros) {
-        if (pin >= 0 && pin < 20)
+        if (pin >= 0 && pin < profile_.pin_count)
             state_.pulse_durations_[pin] = micros;
     }
 
@@ -92,4 +95,5 @@ private:
     static int           impl_Serial_read    ();
 
     std::deque<char> serial_buffer_;
+    BoardProfile profile_;
 };

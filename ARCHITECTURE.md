@@ -485,9 +485,8 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 
 ## Roadmap
 
-### Phase 1 — Component Completion (mostly complete)
+### Phase 1 — Component Completion ✓
 
-**Completed:**
 - ✓ `pulseIn(pin, value, timeout)` — fast path (distance sensor), color channel path (TCS3200), slow path (pin polling)
 - ✓ `delayMicroseconds` — busy-wait with stop check
 - ✓ `analogWrite` fires `on_pin_changed` for signal timeline tracking
@@ -496,53 +495,39 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - ✓ Motor (H-bridge) separated from Servo (PWM single pin)
 - ✓ Canvas sensor inputs — distance (cm → µs), color (R/G/B 0-255), analog (0-1023)
 - ✓ Servo angle display — live °label updated from analogWrite value
-- ✓ Per-component sensor input boxes (type distance in cm, temperature in °C, color picker, etc.)
+- ✓ `Servo` class — injected inline by `strip_includes()` replacing `#include <Servo.h>`
+- ✓ Preprocessor `strip_includes()` step — runs before `replace_api_calls()`, handles library header replacement
 
-**Remaining:**
-- Servo class in injected header + `#include <Servo.h>` stripping in preprocessor
+> **Milestone:** Target benchmark sketch compiles and runs correctly. ✓
 
-> **Milestone:** Target benchmark sketch compiles and runs correctly. ✓ish
+### Phase 2 — Board Profiles ✓
 
-### Phase 2 — Component Visuals and Display Support
-- Proper graphics for all component types replacing colored rectangles
-- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
-- 7-segment display — single and multi-digit
-- Basic OLED — text and simple graphics
+- ✓ `BoardProfile` struct in `src/core/runtime/boardprofile.h` — `name`, `chip`, `pin_count`, `analog_offset`, `analog_count`, `pwm_resolution`
+- ✓ Built-in profiles: Arduino Uno (ATmega328P), Arduino Nano (ATmega328P), Arduino Mega 2560 (ATmega2560), Arduino Due (AT91SAM3X8E), Teensy 4.1 (IMXRT1062)
+- ✓ Board selector in Settings dialog — saved to `board/name` in `settings.ini`
+- ✓ `RuntimeState` pin arrays bumped to fixed `[80]` / `[20]` max, all hardcoded `20`/`14`/`8` replaced with profile values
+- ✓ `inject_analog` / `impl_analogRead` use `profile.analog_offset` instead of hardcoded `14`
+- ✓ `CanvasWidget` fully profile-aware — pin loops, pin spacing, `BOARD_H`, servo angle, board name and chip label on canvas graphic
+- ✓ `setProfile()` chain: `SketchThread` → `SketchHost` → `ArduinoRuntime` — board change propagates to running runtime
+- ✓ Unlocks running the full Lambo sketch on Teensy 4.1 without pin remapping
 
-### Phase 3 — Canvas Improvements
-- Canvas layout mode — "Layout" toolbar button, components become draggable
-- Positions saved to `sketch_name.vblayout` next to `.cpp` file
-- On load: use saved positions if file exists, otherwise auto-generate
-- Wire visualization improvements — color coded by signal type
-
-### Phase 4 — Board Profiles
-- `BoardProfile` struct in `src/core/runtime/boardprofile.h` — `pin_count`, `analog_offset`, `analog_count`, `pwm_resolution`
-- Built-in profiles: Arduino Uno, Teensy 4.1, STM32F4
-- Board selector in Settings dialog — saved to `settings.ini`
-- `RuntimeState` pin arrays sized by active profile (bump to fixed `[64]` max or use `std::vector`)
-- `inject_analog` / `impl_analogRead` use `profile.analog_offset` instead of hardcoded `14`
-- `CanvasWidget` board graphic and pin loop driven by `profile.pin_count`
-- `CircuitDetector` pin range check uses `profile.pin_count`
-- Servo angle calculation uses `profile.pwm_resolution` instead of hardcoded 255
-- Unlocks running the full Lambo sketch on Teensy 4.1 without pin remapping
-
-### Phase 5 — Simulation Realism
+### Phase 3 — Simulation Realism
 - Floating pin simulation — undriven INPUT pins return random HIGH/LOW
 - Button bounce simulation — rapid toggles on click before settling (~10ms)
 - Optional gaussian noise on analog readings (off by default)
 
-### Phase 6 — New Arduino Features
+### Phase 4 — New Arduino Features
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE
 - EEPROM simulation — 1024 bytes, optional disk persistence between sessions
 - Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`)
 - Basic SPI simulation (`SPI.begin`, `SPI.transfer`)
 
-### Phase 7 — Multi-board Simulation
+### Phase 5 — Multi-board Simulation
 - Two SketchThread instances running simultaneously
 - Virtual serial pipe connecting them (TX of one → RX of other)
 - Enables master/slave and sensor node + controller patterns
 
-### Phase 8 — Memory Analysis
+### Phase 6 — Memory Analysis
 - `avr_gcc_path` in settings dialog
 - After successful Windows compile, run `avr-gcc` compile for size analysis only
 - Parse `avr-size` output for flash and RAM usage
@@ -553,16 +538,28 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Auto-detect Arduino IDE avr-gcc path on first run
 - Warn at >75% usage before hitting limit
 
+### Phase 7 — Component Visuals and Display Support
+- Proper graphics for all component types replacing colored rectangles
+- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
+
+### Phase 8 — Canvas Improvements
+- Canvas layout mode — "Layout" toolbar button, components become draggable
+- Positions saved to `sketch_name.vblayout` next to `.cpp` file
+- On load: use saved positions if file exists, otherwise auto-generate
+- Wire visualization improvements — color coded by signal type
+
 ### Later
 - macOS / Linux support
 - Installer — bundle MinGW for zero-dependency install
-- Additional board profiles (Nano, Mega, ESP32) — add one `BoardProfile` entry each
+- Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
 
 ---
 
-## Permanent Limitations
+## Limitations
 
-**Genuinely permanent (require replacing the compile-to-native-DLL architecture):**
+**Permanent (require replacing the compile-to-native-DLL architecture):**
 - AVR assembly instructions (`asm volatile`) — CPU instructions don't exist on x86
 - Hardware interrupt vectors (`ISR(TIMER1_OVF_vect)` etc.) — the interrupt hardware doesn't exist
 - Real electrical behavior (voltage, current, short circuits) — requires SPICE-level simulation
