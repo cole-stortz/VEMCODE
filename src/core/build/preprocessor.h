@@ -22,11 +22,15 @@ public:
     // Transform Arduino sketch source into VirtualBench DLL source.
     // Returns the transformed source ready to write to a .cpp file.
     std::string process(const std::string& source);
-    // Number of lines injected at the top of transformed sketches.
-    // Used to offset compiler error line numbers back to the original source.
-    static constexpr int INJECTED_HEADER_LINES = 127;
+    // Fixed lines of the VB boilerplate header injected above user code.
+    static constexpr int INJECTED_HEADER_LINES = 131;
+    // Actual lines injected (boilerplate + forward declarations) for the last process() call.
+    // Use this value to offset compiler error line numbers back to the original source.
+    int injectedLines() const { return injected_lines_; }
 
 private:
+    int injected_lines_ = INJECTED_HEADER_LINES;
+
     // Returns true if source is already in VirtualBench format
     bool is_already_transformed(const std::string& source);
 
@@ -49,4 +53,8 @@ private:
 
     // Replace embedded includes with either nothing or custom functions if needed
     std::string strip_includes(const std::string& source);
+
+    // Scan source for top-level function definitions and return forward declarations.
+    // Mimics what the Arduino IDE does automatically.
+    std::string generate_forward_declarations(const std::string& source);
 };

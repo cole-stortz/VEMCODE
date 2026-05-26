@@ -17,6 +17,7 @@ struct CompileResult {
     std::string              dll_path;       // path to output DLL if success
     std::string              raw_output;     // full stderr from g++
     std::vector<CompileError> errors;        // parsed errors and warnings
+    int                      header_lines = 131; // injected lines before user code (for error line offsetting)
 };
 
 // Compiler wraps g++ to build a sketch .cpp file into a .dll.

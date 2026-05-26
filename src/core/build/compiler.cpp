@@ -37,6 +37,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     // Preprocess -- transform Arduino syntax to VirtualBench format
     Preprocessor preprocessor;
     std::string transformed = preprocessor.process(source);
+    result.header_lines = preprocessor.injectedLines();
 
     // Write transformed source to a temp file for compilation
     std::string temp_path = output_dir_ + "/_vb_temp.cpp";

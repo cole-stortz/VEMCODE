@@ -8,11 +8,24 @@ std::string Preprocessor::process(const std::string& source) {
         return source;
 
     std::string result = source;
-    result = strip_includes(result);
+    // replace_api_calls must run before strip_includes so that API calls injected
+    // by the Servo/library replacements are not double-prefixed with api->
     result = replace_api_calls(result);
+    result = strip_includes(result);
+
+    // Generate forward declarations before wrap_functions renames setup/loop
+    std::string fwd = generate_forward_declarations(result);
+    int fwd_lines = 0;
+    if (!fwd.empty()) {
+        fwd_lines = (int)std::count(fwd.begin(), fwd.end(), '\n') + 1; // +1 for blank separator
+        result = fwd + "\n" + result;
+    }
+
     result = wrap_functions(result);
     result = inject_safety_delay(result);
     result = inject_header(result);
+
+    injected_lines_ = INJECTED_HEADER_LINES + fwd_lines;
     return result;
 }
 
@@ -43,11 +56,7 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_all(s, "delay(",           "api->delay(");
     s = replace_all(s, "micros()",         "api->micros()");
     s = replace_all(s, "millis()",         "api->millis()");
-    s = replace_all(s, "pulseIn(",          "api->pulseIn(");
-
-    // Tone
-    s = replace_all(s, "tone(",            "api->tone(");
-    s = replace_all(s, "noTone(",          "api->noTone(");
+    // pulseIn is handled by an inline wrapper (with default timeout) in inject_header
 
     // Watch Variable
     s = replace_all(s, "watch_variable(", "api->watch_variable(");
@@ -219,6 +228,11 @@ std::string Preprocessor::inject_header(const std::string& source) {
         "#define abs(x) vb_abs(x)\n"
         "#define min(a,b) vb_min(a,b)\n"
         "#define max(a,b) vb_max(a,b)\n"
+        "\n"
+        "// pulseIn with optional timeout matching real Arduino behavior\n"
+        "inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000UL) {\n"
+        "    return api->pulseIn(pin, value, timeout);\n"
+        "}\n"
         "\n";
 
     return header + source;
@@ -257,4 +271,28 @@ std::string Preprocessor::inject_safety_delay(const std::string& source) {
     std::string result = source;
     result.insert(last_brace, "    api->delay(10);\n");
     return result;
+}
+
+std::string Preprocessor::generate_forward_declarations(const std::string& source) {
+    // Match top-level (non-indented) function definitions with common Arduino return types.
+    // This mimics what the Arduino IDE does automatically -- allows calling functions
+    // before they are defined in the source file.
+    std::regex func_re(
+        R"(^((?:void|int|float|double|bool|long|char|byte|String)\s+(\w+)\s*\([^)]*\))\s*\{)",
+        std::regex::multiline
+    );
+
+    std::string decls;
+    auto begin = std::sregex_iterator(source.begin(), source.end(), func_re);
+    auto end_it = std::sregex_iterator();
+
+    for (auto it = begin; it != end_it; ++it) {
+        std::smatch m = *it;
+        std::string name = m[2].str();
+        // setup and loop are renamed by wrap_functions -- skip them
+        if (name == "setup" || name == "loop") continue;
+        decls += m[1].str() + ";\n";
+    }
+
+    return decls;
 }

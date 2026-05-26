@@ -108,18 +108,27 @@ void CircuitDetector::reset() {
     components_.clear();
 }
 
-// Phase 1 -- parse #defines into a symbol table
-// Handles: #define NAME VALUE and #define NAME (VALUE)
+// Phase 1 -- parse #defines and const int scalars into a symbol table
+// Handles: #define NAME VALUE, #define NAME (VALUE), and const int NAME = VALUE;
 std::map<std::string, std::string> CircuitDetector::parse_defines(
     const std::string& source)
 {
     std::map<std::string, std::string> defines;
 
     // Match: #define IDENTIFIER value
-    std::regex pattern(R"(#\s*define\s+(\w+)\s+\(?\s*(\w+)\s*\)?)");
-    auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
+    std::regex define_re(R"(#\s*define\s+(\w+)\s+\(?\s*(\w+)\s*\)?)");
+    auto begin = std::sregex_iterator(source.begin(), source.end(), define_re);
     auto end   = std::sregex_iterator();
+    for (auto it = begin; it != end; ++it) {
+        std::smatch m = *it;
+        defines[m[1].str()] = m[2].str();
+    }
 
+    // Also match: const int NAME = VALUE; (single value, not arrays)
+    // This lets pin names like "const int trigPin1 = 9;" resolve just like #defines.
+    std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)");
+    begin = std::sregex_iterator(source.begin(), source.end(), const_int_re);
+    end   = std::sregex_iterator();
     for (auto it = begin; it != end; ++it) {
         std::smatch m = *it;
         defines[m[1].str()] = m[2].str();
@@ -317,6 +326,38 @@ std::set<int> CircuitDetector::detect_multipin(
         claimed.insert(d5_pin);
         claimed.insert(d6_pin);
         claimed.insert(d7_pin);
+    }
+
+    // --- Servo ---
+    // Find "Servo Name;" declarations, then "Name.attach(pin)" calls
+    {
+        std::regex servo_decl_re(R"(\bServo\s+(\w+)\s*;)");
+        auto sd_begin = std::sregex_iterator(source.begin(), source.end(), servo_decl_re);
+        auto sd_end   = std::sregex_iterator();
+
+        for (auto it = sd_begin; it != sd_end; ++it) {
+            std::string servo_name = (*it)[1].str();
+
+            std::regex attach_re("\\b" + servo_name + R"(\s*\.\s*attach\s*\(\s*(\w+)\s*\))");
+            auto ab = std::sregex_iterator(source.begin(), source.end(), attach_re);
+            auto ae = std::sregex_iterator();
+
+            for (auto ait = ab; ait != ae; ++ait) {
+                std::string pin_token = (*ait)[1].str();
+                int pin = resolve_pin(pin_token, defines);
+                if (pin < 0 || claimed.count(pin)) continue;
+
+                DetectedComponent comp;
+                comp.type     = ComponentType::Servo;
+                comp.pin      = pin;
+                comp.pins     = {pin};
+                comp.pin_name = servo_name;
+                comp.label    = "Servo " + servo_name + " (pin " + std::to_string(pin) + ")";
+                comp.confirmed = false;
+                components_.push_back(comp);
+                claimed.insert(pin);
+            }
+        }
     }
 
     // Add more multi-pin component detection logic here as needed...

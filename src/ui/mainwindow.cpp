@@ -125,6 +125,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Wire simulation signals to UI slots
     sketchThread_ = new SketchThread(this);
+    sketchThread_->setProfile(activeProfile_);
     connect(sketchThread_, &SketchThread::serialOutput,
             this, &MainWindow::onSerialOutput);
     connect(sketchThread_, &SketchThread::pinChanged,
@@ -513,7 +514,7 @@ void MainWindow::onRunClicked() {
         while (it.hasNext()) {
             QRegularExpressionMatch match = it.next();
             int raw_line = match.captured(1).toInt();
-            int adj_line = raw_line - Preprocessor::INJECTED_HEADER_LINES;
+            int adj_line = raw_line - result.header_lines;
             adjusted_raw += raw.mid(last_pos, match.capturedStart() - last_pos);
             adjusted_raw += QString("line %1:").arg(qMax(1, adj_line));
             last_pos = match.capturedEnd();
@@ -679,7 +680,7 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
     for (const auto& err : result.errors) {
         if (!err.is_error) continue;
 
-        int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
+        int adjusted_line = err.line - result.header_lines;
         if (adjusted_line < 1) continue;
         QTextBlock block = codeEditor_->document()->findBlockByLineNumber(
             adjusted_line - 1);
@@ -698,7 +699,7 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
 
     for (const auto& err : result.errors) {
         if (err.is_error) {
-            int adjusted_line = err.line - Preprocessor::INJECTED_HEADER_LINES;
+            int adjusted_line = err.line - result.header_lines;
             if (adjusted_line < 1) continue;
             QTextBlock block = codeEditor_->document()
                 ->findBlockByLineNumber(adjusted_line - 1);
