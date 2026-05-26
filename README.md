@@ -264,11 +264,14 @@ VirtualBench/
 - Floating pin simulation (undriven INPUT pins return random values)
 - Button bounce simulation
 - Optional signal noise on analog readings
+- Simulated time counter for `micros()` / `delayMicroseconds()` — tracks simulation speed rather than wall clock
 
 ### Phase 4 — New Arduino Features
 - `attachInterrupt()` — RISING, FALLING, CHANGE modes
 - EEPROM simulation (1024 bytes, optional disk persistence)
-- Basic I2C/SPI simulation
+- Basic I2C simulation (`Wire` library) — byte-level protocol with virtual device responses
+- Basic SPI simulation (`SPI` library) — same scope as I2C
+- AVR hardware register simulation — `DDRB`, `PORTB`, etc. mapped to pin state via overloaded operators in the injected header
 
 ### Phase 5 — Multi-board Simulation
 - Two Arduinos communicating over virtual serial
@@ -277,7 +280,7 @@ VirtualBench/
 - Dual compile with `avr-gcc` for flash and RAM size analysis
 - Flash → hard enforce (block run if over 32,256 bytes)
 - Static RAM → hard enforce (block run if globals exceed 2048 bytes)
-- Dynamic RAM (String/malloc) → warn but don't block
+- Dynamic RAM → warn but don't block; precise tracking via `malloc`/`new` interception
 - Memory bar in UI like Arduino IDE
 
 ### Phase 7 — Component Visuals and Display Support
@@ -297,17 +300,8 @@ VirtualBench/
 
 ### Known limitations
 
-**Genuinely permanent:**
 - AVR assembly instructions and hardware interrupt vectors (`ISR()`) — require a full CPU emulator, incompatible with the compile-to-native approach
-- Real electrical behavior (voltage, current, short circuits)
-
-**Not yet implemented (fixable within current architecture):**
-- Microsecond-accurate wall-clock timing — sketch logic using `micros()` works correctly via simulated time; timing won't match a real board's wall clock
-- AVR hardware registers via C/C++ (`PORTB |= ...`) — fake register variables are feasible; assembly and ISRs are still out of scope
-- Dynamic RAM enforcement is approximate — static RAM is hard enforced via avr-gcc; heap tracking can be made precise
-
-**Partially fixable:**
-- I2C/SPI — protocol-level emulation (byte transactions, ACK/NACK) is possible; electrical bus characteristics are not
+- Real electrical behavior (voltage, current, short circuits) — not simulatable without SPICE-level modeling
 
 ---
 

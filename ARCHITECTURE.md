@@ -515,12 +515,14 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Floating pin simulation — undriven INPUT pins return random HIGH/LOW
 - Button bounce simulation — rapid toggles on click before settling (~10ms)
 - Optional gaussian noise on analog readings (off by default)
+- Simulated time counter for `micros()` / `delayMicroseconds()` — monotonic counter advancing by `elapsed * speed_multiplier`, decoupled from Windows wall clock so timing tracks simulation speed correctly
 
 ### Phase 4 — New Arduino Features
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE
 - EEPROM simulation — 1024 bytes, optional disk persistence between sessions
-- Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`)
-- Basic SPI simulation (`SPI.begin`, `SPI.transfer`)
+- Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`) — byte-level protocol, virtual device responses; electrical bus characteristics not simulated
+- Basic SPI simulation (`SPI.begin`, `SPI.transfer`) — same scope as I2C
+- AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header, reads/writes mapped to the same pin state as `digitalWrite`/`digitalRead`; covers direct port manipulation libraries without requiring assembly or ISRs
 
 ### Phase 5 — Multi-board Simulation
 - Two SketchThread instances running simultaneously
@@ -533,27 +535,28 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Parse `avr-size` output for flash and RAM usage
 - Flash → hard enforce, block Run if over 32,256 bytes
 - Static RAM → hard enforce, block Run if globals exceed 2,048 bytes
-- Dynamic RAM (String/malloc) → warn but don't block
+- Dynamic RAM (String/malloc) → warn but don't block; precise heap tracking via `malloc`/`new` interception rather than estimates
 - Memory bar in UI: `████░░░░ 1234 / 32256 bytes (3%)`
 - Auto-detect Arduino IDE avr-gcc path on first run
 - Warn at >75% usage before hitting limit
 
-### Phase 7 — Component Visuals and Display Support
-- Proper graphics for all component types replacing colored rectangles
-- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
-- 7-segment display — single and multi-digit
-- Basic OLED — text and simple graphics
-
-### Phase 8 — Canvas Improvements
+### Phase 7 — Canvas Improvements
 - Canvas layout mode — "Layout" toolbar button, components become draggable
 - Positions saved to `sketch_name.vblayout` next to `.cpp` file
 - On load: use saved positions if file exists, otherwise auto-generate
 - Wire visualization improvements — color coded by signal type
 
+### Phase 8 — Component Visuals and Display Support
+- Proper graphics for all component types replacing colored rectangles
+- 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
+- 7-segment display — single and multi-digit
+- Basic OLED — text and simple graphics
+
 ### Later
 - macOS / Linux support
 - Installer — bundle MinGW for zero-dependency install
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
+- Potentially FPGA support but unlikely
 
 ---
 
@@ -563,11 +566,3 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - AVR assembly instructions (`asm volatile`) — CPU instructions don't exist on x86
 - Hardware interrupt vectors (`ISR(TIMER1_OVF_vect)` etc.) — the interrupt hardware doesn't exist
 - Real electrical behavior (voltage, current, short circuits) — requires SPICE-level simulation
-
-**Fixable within current architecture (not yet implemented):**
-- Microsecond-accurate timing — `micros()` and `delayMicroseconds()` can operate on a simulated time counter decoupled from the Windows scheduler; wall-clock accuracy isn't needed for sketch logic
-- AVR hardware registers (C/C++ access) — fake register variables (`DDRB`, `PORTB`, etc.) can be defined in the injected header; a custom type intercepting reads/writes could map them to pin state; covers most register-manipulation libraries but not assembly or ISRs
-- Dynamic RAM enforcement — approximate now (String/malloc tracked with warnings); precise heap tracking via `malloc`/`new` interception is possible
-
-**Partially fixable (protocol level yes, electrical level no):**
-- I2C/SPI — byte-level protocol emulation (frame timing, ACK/NACK, transactions) is implementable; bus electrical characteristics (capacitance, voltage levels) are not
