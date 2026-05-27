@@ -117,7 +117,7 @@ int BOXCOLOR;
 int BOXSIZE;
 int box_detected = 0;
 int arm_pos = 35;
-int robot_case = 1;
+int robot_case = 0;
 int LINE_COLOR=BLUE;
 
 
@@ -255,6 +255,8 @@ void pickUpBox(){
   float distance = getDistance1(); // Get the distance from the correct ultrasonic sensor
 
   forceValue = analogRead(forceSensorPin); // read the force value of the force sensor
+  Serial.print("Force Sensor Value: ");
+  Serial.println(forceValue);
   int sensorStatus = digitalRead(IRSensor); // read the IR sensor value
   if (sensorStatus == 1) { // if the sensor is not activated set to blue, else go red
     BOXCOLOR = BLUE;

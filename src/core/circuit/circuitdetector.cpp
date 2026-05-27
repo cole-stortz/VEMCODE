@@ -51,6 +51,8 @@ void CircuitDetector::detect(const std::string& source) {
                 { duplicate = true; break; }
         if (!duplicate)
             components_.push_back(comp);
+
+        
     }
 
     // Phase 2b -- detect components from analogRead calls
@@ -94,6 +96,24 @@ void CircuitDetector::detect(const std::string& source) {
         serial.label    = "Serial monitor";
         serial.confirmed = false;
         components_.push_back(serial);
+    }
+
+    // Post-process: append [n] index to labels when multiple components share the same type
+    std::map<ComponentType, int> type_counts;
+    for (const auto& c : components_)
+        type_counts[c.type]++;
+
+    std::map<ComponentType, int> type_idx;
+    for (auto& c : components_) {
+        if (type_counts[c.type] > 1) {
+            int idx = type_idx[c.type]++;
+            // Insert [n] before the " (pin ...)" suffix, or append if no suffix
+            auto paren = c.label.find(" (");
+            if (paren != std::string::npos)
+                c.label.insert(paren, "[" + std::to_string(idx) + "]");
+            else
+                c.label += "[" + std::to_string(idx) + "]";
+        }
     }
 }
 
@@ -176,17 +196,26 @@ std::set<int> CircuitDetector::detect_multipin(
 {
     std::set<int> claimed;
 
-    // --- HC-SR04 ---
-    // Look for defines containing TRIG and ECHO
-    int trig_pin = -1, echo_pin = -1;
+    // --- HC-SR04 (multiple sensors supported) ---
+    // Collect all TRIG and ECHO defines, keyed by the suffix after the keyword
+    // e.g. "TRIGPIN1" → suffix "PIN1", "ECHOPIN1" → suffix "PIN1" → they pair up
+    std::map<std::string, int> trig_map;  // suffix → pin
+    std::map<std::string, int> echo_map;
     for (const auto& d : defines) {
         std::string upper = to_upper(d.first);
         int pin = resolve_pin(d.second, defines);
         if (pin < 0) continue;
-        if (contains_any(upper, {"TRIG"})) trig_pin = pin;
-        if (contains_any(upper, {"ECHO"})) echo_pin = pin;
+        size_t pos;
+        if ((pos = upper.find("TRIG")) != std::string::npos)
+            trig_map[upper.substr(pos + 4)] = pin;
+        else if ((pos = upper.find("ECHO")) != std::string::npos)
+            echo_map[upper.substr(pos + 4)] = pin;
     }
-    if (trig_pin >= 0 && echo_pin >= 0) {
+    for (const auto& t : trig_map) {
+        auto e_it = echo_map.find(t.first);
+        if (e_it == echo_map.end()) continue;
+        int trig_pin = t.second;
+        int echo_pin = e_it->second;
         DetectedComponent comp;
         comp.type      = ComponentType::DistanceSensor;
         comp.pin       = echo_pin;

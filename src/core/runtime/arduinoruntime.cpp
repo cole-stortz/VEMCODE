@@ -81,7 +81,7 @@ void ArduinoRuntime::impl_analogWrite(int pin, int value) {
 int ArduinoRuntime::impl_analogRead(int pin) {
     if (!g_runtime) return 0;
     int analog_index = (pin >= g_runtime->profile_.analog_offset) ? pin - g_runtime->profile_.analog_offset : pin;
-    if (analog_index < 0 || analog_index >= 8) return 0;
+    if (analog_index < 0 || analog_index >= g_runtime->profile_.analog_count) return 0;
     return g_runtime->state_.analog_values[analog_index];
 }
 
