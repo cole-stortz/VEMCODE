@@ -229,7 +229,10 @@ void setup() {
 }
 
 void loop() {
+    Serial.println(" ");
+    Serial.print("x position: ");
     Serial.println(x_floating);
+    Serial.print("y position: ");
     Serial.println(y_pos);
     readColorSensors();
     ultrasonicRead();
@@ -274,7 +277,9 @@ void loop() {
     if (y_pos > 140 || colorsensorValues[0] == GREEN) {
         stopMotors();
         Serial.println("Finished");
-        delay(100000);
+        while (true){
+            Serial.println("'");
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////////
