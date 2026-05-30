@@ -3,12 +3,12 @@
 An open-source embedded systems simulator for writing, simulating, testing, and debugging Arduino code — no hardware required.
 
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## What it does
 
-Write standard Arduino sketches directly in the built-in editor and simulate them instantly — no Arduino board, no USB cable, no waiting. VirtualBench compiles your sketch to a native DLL and runs it against a virtual Arduino runtime in real time.
+Write standard Arduino sketches directly in the built-in editor and simulate them instantly — no Arduino board, no USB cable, no waiting. VirtualBench compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual Arduino runtime in real time.
 
 - **Write** Arduino code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
 - **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
@@ -81,12 +81,20 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 
 ### Prerequisites
 
+**Windows:**
 - Windows 10/11 64-bit
 - Qt 6.x with MinGW 64-bit — [download from qt.io](https://www.qt.io/download)
   - During install select: Qt 6.x → MinGW 64-bit, and Developer Tools → Ninja
 - CMake 3.20+
 
+**Linux:**
+- Qt 6 development packages (e.g. `qt6-qtbase-devel` on Fedora, `qt6-base-dev` on Ubuntu/Debian)
+- CMake 3.20+
+- g++ (GCC or Clang)
+
 ### Build from source
+
+**Windows:**
 
 ```powershell
 # Clone
@@ -105,13 +113,33 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VirtualBench.exe
 
 > **Note:** Ninja may be at a different path depending on your system. Run `where.exe ninja` to find it.
 
+**Linux:**
+
+```bash
+# Clone
+git clone https://github.com/cole-stortz/VirtualBench.git
+cd VirtualBench
+
+# Configure
+cmake -B build -S .
+
+# Build
+cmake --build build
+```
+
 ### First run
 
+**Windows:**
 ```powershell
 .\app\VirtualBench.exe
 ```
 
-On first launch VirtualBench will ask for your compiler path and project root. Point it at your `g++.exe` (e.g. `C:/Qt/Tools/mingw1310_64/bin/g++.exe`) and the root of the VirtualBench repo. These are saved to `app/settings.ini`.
+**Linux:**
+```bash
+./app/VirtualBench
+```
+
+On first launch VirtualBench will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VirtualBench repo. These are saved to `app/settings.ini`.
 
 ---
 
@@ -191,19 +219,19 @@ void loop() {
 
 ## Architecture
 
-VirtualBench compiles your sketch into a `.dll` using the system C++ compiler and loads it at runtime via `LoadLibrary`. The sketch calls back into the host through a function pointer table (`ArduinoAPI`) — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
+VirtualBench compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table (`ArduinoAPI`) — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
 
 ```
 Your sketch (.cpp)
-    → Preprocessor (transforms Arduino syntax → DLL format)
-    → g++ (compiles to .dll)
-    → SketchHost (LoadLibrary, extracts vb_init/vb_setup/vb_loop)
+    → Preprocessor (transforms Arduino syntax → shared library format)
+    → g++ (compiles to .so / .dll)
+    → SketchHost (dlopen/LoadLibrary, extracts vb_init/vb_setup/vb_loop)
     → SketchThread (runs vb_loop in background thread)
     → ArduinoRuntime (implements all API calls, fires callbacks)
     → UI (canvas, serial monitor, signal timeline, variable watch)
 ```
 
-Hot-reload works by watching the sketch file for changes and reloading the DLL while the simulation is running.
+Hot-reload works by watching the sketch file for changes and reloading the shared library while the simulation is running.
 
 ### Project structure
 

@@ -6,12 +6,13 @@ This document is the primary developer reference for VirtualBench. Keep it up to
 
 ## Overview
 
-VirtualBench compiles Arduino sketches to a Windows DLL and runs them against a virtual Arduino runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time.
+VirtualBench compiles Arduino sketches to a native shared library and runs them against a virtual Arduino runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time.
 
-**Platform:** Windows (MinGW), Qt 6.11.1  
-**Compiler:** `C:/Qt/Tools/mingw1310_64/bin/g++.exe`  
-**Qt path:** `C:/Qt/6.11.1/mingw_64`  
-**Exe:** `app/VirtualBench.exe`  
+**Platform:** Windows (MinGW) and Linux, Qt 6.x  
+**Windows compiler:** `C:/Qt/Tools/mingw1310_64/bin/g++.exe`  
+**Windows Qt path:** `C:/Qt/6.11.1/mingw_64`  
+**Linux compiler:** `/usr/bin/g++`  
+**Exe:** `app/VirtualBench.exe` (Windows), `app/VirtualBench` (Linux)  
 **Repo:** https://github.com/cole-stortz/VirtualBench
 
 ---
@@ -20,9 +21,9 @@ VirtualBench compiles Arduino sketches to a Windows DLL and runs them against a 
 
 ```
 User writes sketch (.cpp)
-    → Preprocessor transforms Arduino syntax → DLL format
-    → g++ compiles to sketch.dll
-    → SketchHost loads DLL via LoadLibrary
+    → Preprocessor transforms Arduino syntax → shared library format
+    → g++ compiles to sketch.so (Linux) / sketch.dll (Windows)
+    → SketchHost loads library via dlopen (Linux) / LoadLibrary (Windows)
     → SketchHost calls vb_init(&api) to inject function pointer table
     → SketchThread calls vb_setup() once, then vb_loop() in a loop
     → Sketch calls api->digitalWrite() etc.
@@ -142,23 +143,26 @@ struct DetectedComponent {
 };
 ```
 
-### BoardProfile (`src/core/runtime/boardprofile.h` — planned)
+### BoardProfile (`src/core/runtime/boardprofile.h`)
 
 Describes the hardware characteristics of a supported board. Selected in Settings, passed to the runtime and canvas at startup. Adding a new board means adding one entry here — nothing else changes.
 
 ```cpp
 struct BoardProfile {
-    const char* name;           // "Arduino Uno", "Teensy 4.1", "STM32F4"
-    int         pin_count;      // total pins (20, 42, 64)
-    int         analog_offset;  // pin number where A0 starts (14, 14, 16)
-    int         analog_count;   // number of analog pins (6, 18, 16)
-    int         pwm_resolution; // max analogWrite value (255, 4095, 4095)
+    const char* name;           // "Arduino Uno", "Teensy 4.1", ...
+    const char* chip;           // "ATmega328P", "IMXRT1062", ...
+    int         pin_count;      // total pins
+    int         analog_offset;  // pin number where A0 starts
+    int         analog_count;   // number of analog pins
+    int         pwm_resolution; // max analogWrite value (255 or 4095)
 };
 
 // Built-in profiles
-static const BoardProfile BOARD_UNO     = {"Arduino Uno",  20, 14, 6,  255};
-static const BoardProfile BOARD_TEENSY  = {"Teensy 4.1",   42, 14, 18, 4095};
-static const BoardProfile BOARD_STM32F4 = {"STM32F4",      64, 16, 16, 4095};
+static const BoardProfile BOARD_UNO    = {"Arduino Uno",       "ATmega328P",   20, 14,  6,  255};
+static const BoardProfile BOARD_NANO   = {"Arduino Nano",      "ATmega328P",   22, 14,  8,  255};
+static const BoardProfile BOARD_MEGA   = {"Arduino Mega 2560", "ATmega2560",   70, 54, 16,  255};
+static const BoardProfile BOARD_DUE    = {"Arduino Due",       "AT91SAM3X8E",  66, 54, 12, 4095};
+static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    42, 14, 18, 4095};
 ```
 
 **What consumes the profile:**
@@ -259,10 +263,10 @@ python3 -c "print(header_string.count('\n'))"
 
 ### SketchHost (`src/core/host/sketchhost.cpp`)
 
-Manages DLL lifecycle. Uses Windows file timestamp polling for hot-reload detection. Copies sketch.dll to sketch.tmp.dll before loading to avoid Windows file lock.
+Manages shared library lifecycle. Uses file timestamp polling for hot-reload detection. Copies the library to a temp file before loading (`.tmp.dll` / `.tmp.so` / `.tmp.dylib`) — on Windows this is required to avoid a file lock; on Linux it is harmless and keeps behaviour consistent.
 
 **Key methods:**
-- `load(path)` — copies to .tmp.dll, LoadLibrary, extracts vb_init/vb_setup/vb_loop, calls vb_init
+- `load(path)` — copies to temp file, loads via `LoadLibrary`/`dlopen`, extracts vb_init/vb_setup/vb_loop, calls vb_init
 - `reload_if_changed()` — polls file timestamp, reloads if changed
 - `inject_pin/inject_analog/inject_serial/set_speed` — delegate to runtime_
 - `inject_pulse_duration(pin, micros)` — inline, delegates to `runtime_.inject_pulse_duration`
@@ -420,6 +424,8 @@ LCD:           LCD, DISPLAY, SCREEN, OLED
 
 ## Build Commands
 
+**Windows:**
+
 ```powershell
 # Configure (all one line)
 cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw1310_64/bin/g++.exe" -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/Ninja/ninja.exe"
@@ -429,6 +435,22 @@ cmake --build build
 
 # Deploy Qt runtime (first time only)
 C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
+
+# Run
+.\app\VirtualBench.exe
+```
+
+**Linux:**
+
+```bash
+# Configure
+cmake -B build -S .
+
+# Build (incremental)
+cmake --build build
+
+# Run
+./app/VirtualBench
 ```
 
 ---
@@ -439,7 +461,7 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
 - **`inject_analog` and `impl_analogRead`** — both must apply `pin >= 14 ? pin-14 : pin` offset.
 - **`dragPin_`, `dragStartY_`, `dragStartValue_`** — must be in private section of canvaswidget.h.
 - **`runtime()` accessor** — already exists in sketchhost.h, don't add a duplicate.
-- **Windows file lock** — always load `.tmp.dll` copy, never `sketch.dll` directly.
+- **Windows file lock** — always load the `.tmp.dll`/`.tmp.so` copy, never the original directly. On Windows, loading the original locks it and the compiler can't overwrite it. On Linux the copy is harmless but keeps behaviour consistent.
 - **SketchThread callbacks** — fire on background thread, only emit Qt signals from them.
 - **String literals left operand** — `"literal" + String(x)` fails. Use `String("literal") + x`.
 - **`stopSketch()` order** — sets `stop_requested_` BEFORE `running_=false` then `wait()`.
@@ -553,8 +575,8 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Basic OLED — text and simple graphics
 
 ### Later
-- macOS / Linux support
-- Installer — bundle MinGW for zero-dependency install
+- macOS support
+- Installer — bundle MinGW for zero-dependency install (Windows); package for common Linux distros
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
 - Potentially FPGA support but unlikely
 
