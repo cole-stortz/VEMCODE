@@ -12,7 +12,7 @@
 #include <QElapsedTimer>
 #include <QDir>
 #include <QShortcut>
-#include <Qsettings>
+#include <QSettings>
 #include <QSlider>
 #include <QLineEdit>
 #include "src/core/host/sketchhostthread.h"

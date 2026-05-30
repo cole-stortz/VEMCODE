@@ -93,12 +93,12 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
     // Replace with export decorator + vb_setup
     std::regex setup_re(R"(void\s+setup\s*\(\s*\))");
     s = std::regex_replace(s, setup_re,
-        "extern \"C\" __declspec(dllexport)\nvoid vb_setup()");
+        "extern \"C\" VB_EXPORT\nvoid vb_setup()");
 
     // Match: void loop() with optional whitespace
     std::regex loop_re(R"(void\s+loop\s*\(\s*\))");
     s = std::regex_replace(s, loop_re,
-        "extern \"C\" __declspec(dllexport)\nvoid vb_loop()");
+        "extern \"C\" VB_EXPORT\nvoid vb_loop()");
 
     return s;
 }
@@ -110,7 +110,7 @@ std::string Preprocessor::inject_header(const std::string& source) {
         "#include <cstring>\n"
         "using namespace vb;\n\n"
         "static ArduinoAPI* api = nullptr;\n\n"
-        "extern \"C\" __declspec(dllexport)\n"
+        "extern \"C\" VB_EXPORT\n"
         "void vb_init(ArduinoAPI* a) { api = a; }\n\n"
         "// Serial overloads -- convert any type to string then call through\n"
         "template<typename T>\n"

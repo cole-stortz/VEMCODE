@@ -4,10 +4,22 @@
 #include <sstream>
 #include <regex>
 #include <cstdio>
+
+#ifdef _WIN32
 #include <windows.h>
+#endif
+
+// Platform shared-library extension
+#ifdef _WIN32
+static const std::string LIB_EXT = ".dll";
+#elif defined(__APPLE__)
+static const std::string LIB_EXT = ".dylib";
+#else
+static const std::string LIB_EXT = ".so";
+#endif
 
 Compiler::Compiler()
-    : compiler_path_("C:/Qt/Tools/mingw1310_64/bin/g++.exe")
+    : compiler_path_("g++")
     , include_path_(".")
     , output_dir_(".")
 {
@@ -16,8 +28,8 @@ Compiler::Compiler()
 CompileResult Compiler::compile(const std::string& sketch_path) {
     CompileResult result;
 
-    // Derive output DLL path from sketch filename
-    // e.g. sketches/blink/blink.cpp -> ./blink.dll
+    // Derive output library path from sketch filename
+    // e.g. sketches/blink/blink.cpp -> ./blink.so (or .dll on Windows)
     std::string sketch_name = sketch_path;
     size_t slash = sketch_name.find_last_of("/\\");
     if (slash != std::string::npos)
@@ -26,7 +38,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     if (dot != std::string::npos)
         sketch_name = sketch_name.substr(0, dot);
 
-    result.dll_path = output_dir_ + "/" + sketch_name + ".dll";
+    result.dll_path = output_dir_ + "/" + sketch_name + LIB_EXT;
 
     // Read the sketch source
     std::ifstream sketch_file(sketch_path);
@@ -46,24 +58,26 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     temp_file.close();
 
     // Build the g++ command
-    // -shared          = build a DLL not an exe
-    // -I include_path_ = find arduinoapi.h from project root
-    // -std=c++17       = C++17 features
-    // 2>&1             = merge stderr into stdout so we can capture errors
+    // -shared  = build a shared library (.so/.dll)
+    // -fPIC    = position-independent code (required on Linux/Mac)
+    // -I       = find arduinoapi.h from project root
     std::ostringstream cmd;
     cmd << "\"" << compiler_path_ << "\""
         << " -shared"
+        << " -fPIC"
+#ifdef _WIN32
         << " -static-libgcc"
         << " -static-libstdc++"
+#endif
         << " -o \"" << result.dll_path << "\""
-        << " \"" << temp_path << "\""          // <- temp file not original
+        << " \"" << temp_path << "\""
         << " -I\"" << include_path_ << "\""
-        << " -std=c++17";
+        << " -std=c++17"
+        << " 2>&1";
 
     result.raw_output = run_command(cmd.str());
     result.errors     = parse_errors(result.raw_output);
 
-    // If any errors (not just warnings) exist, compilation failed
     result.success = true;
     for (const auto& e : result.errors) {
         if (e.is_error) {
@@ -72,14 +86,14 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         }
     }
 
-    // Additional check: if output contains "error:" anywhere, it failed
     if (result.raw_output.find(": error:") != std::string::npos)
         result.success = false;
 
-    return result;  
+    return result;
 }
 
 std::string Compiler::run_command(const std::string& cmd) {
+#ifdef _WIN32
     std::string output;
 
     SECURITY_ATTRIBUTES sa;
@@ -87,7 +101,6 @@ std::string Compiler::run_command(const std::string& cmd) {
     sa.bInheritHandle       = TRUE;
     sa.lpSecurityDescriptor = nullptr;
 
-    // Create a pipe to capture stdout/stderr
     HANDLE pipe_read, pipe_write;
     if (!CreatePipe(&pipe_read, &pipe_write, &sa, 0))
         return "ERROR: Could not create pipe";
@@ -99,19 +112,13 @@ std::string Compiler::run_command(const std::string& cmd) {
     si.hStdOutput  = pipe_write;
     si.hStdError   = pipe_write;
     si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE; // don't flash a console window
+    si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi = {};
-
     std::string cmd_copy = cmd;
     BOOL created = CreateProcessA(
-        nullptr,
-        cmd_copy.data(),
-        nullptr, nullptr,
-        TRUE,           // inherit handles
-        CREATE_NO_WINDOW,
-        nullptr, nullptr,
-        &si, &pi
+        nullptr, cmd_copy.data(), nullptr, nullptr,
+        TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi
     );
 
     CloseHandle(pipe_write);
@@ -121,7 +128,6 @@ std::string Compiler::run_command(const std::string& cmd) {
         return "ERROR: Could not launch compiler";
     }
 
-    // Read all output from the pipe
     char buf[4096];
     DWORD bytes_read;
     while (ReadFile(pipe_read, buf, sizeof(buf) - 1, &bytes_read, nullptr) && bytes_read > 0) {
@@ -135,13 +141,23 @@ std::string Compiler::run_command(const std::string& cmd) {
     CloseHandle(pipe_read);
 
     return output;
+#else
+    std::string output;
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe)
+        return "ERROR: Could not launch compiler";
+    char buf[4096];
+    while (fgets(buf, sizeof(buf), pipe))
+        output += buf;
+    pclose(pipe);
+    return output;
+#endif
 }
 
 
 std::vector<CompileError> Compiler::parse_errors(const std::string& output) {
     std::vector<CompileError> errors;
 
-    // Match:  file:line:col: (error|warning): message
     std::regex pattern(R"(([^:]+):(\d+):(\d+):\s*(error|warning):\s*(.+))");
     std::istringstream stream(output);
     std::string line;

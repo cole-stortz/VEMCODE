@@ -17,7 +17,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QHBoxLayout* compilerRow = new QHBoxLayout();
     compilerRow->addWidget(new QLabel("Compiler path:"));
     compilerEdit_ = new QLineEdit();
-    compilerEdit_->setPlaceholderText("C:/Qt/Tools/mingw1310_64/bin/g++.exe");
+    compilerEdit_->setPlaceholderText("g++");
     compilerRow->addWidget(compilerEdit_);
     QPushButton* browseCompiler = new QPushButton("Browse");
     connect(browseCompiler, &QPushButton::clicked, this, &SettingsDialog::onBrowseCompiler);

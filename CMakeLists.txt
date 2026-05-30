@@ -4,8 +4,11 @@ project(VirtualBench VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Tell CMake where to find Qt6
-set(CMAKE_PREFIX_PATH "C:/Qt/6.11.1/mingw_64")
+# Generate compile_commands.json for IDE language servers (clangd, IntelliSense)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Prefer native system Qt6 over cross-compiled versions
+list(PREPEND CMAKE_PREFIX_PATH /usr/lib64)
 
 # Qt6 modules we need right now
 # We'll add WebEngineWidgets later for the Monaco editor
@@ -74,6 +77,11 @@ target_link_libraries(VirtualBench PRIVATE
     Qt6::Core
     Qt6::Widgets
 )
+
+# Linux: link against dl for dlopen/dlsym used by SketchHost
+if(UNIX AND NOT APPLE)
+    target_link_libraries(VirtualBench PRIVATE dl)
+endif()
 
 # Standalone visual test -- run test_visuals.exe to iterate on component shapes
 qt_add_executable(test_visuals testfiles/test_visuals.cpp)

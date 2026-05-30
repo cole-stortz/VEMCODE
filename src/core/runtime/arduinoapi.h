@@ -1,6 +1,13 @@
 #pragma once
 #include <cstdint>
 
+// Cross-platform symbol export for sketch shared libraries
+#ifdef _WIN32
+#  define VB_EXPORT __declspec(dllexport)
+#else
+#  define VB_EXPORT __attribute__((visibility("default")))
+#endif
+
 // The Arduino API contract.
 // This struct is filled by the host and injected into every sketch DLL.
 // Adding new fields at the END is backwards-compatible.

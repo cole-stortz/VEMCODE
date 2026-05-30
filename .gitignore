@@ -4,6 +4,8 @@
 # App runtime files -- keep sketches folder but ignore binaries
 /app/*.dll
 /app/*.exe
+/app/*.so
+/app/*.dylib
 /app/*.manifest
 /app/*.a
 /app/generic/
@@ -15,19 +17,30 @@
 /app/tls/
 /app/translations/
 
-# Compiled sketch artifacts inside sketches folders
+# Compiled sketch artifacts inside sketches folders (all platforms)
 sketches/**/*.dll
 sketches/**/*.tmp.dll
+sketches/**/*.so
+sketches/**/*.tmp.so
+sketches/**/*.dylib
+sketches/**/*.tmp.dylib
 app/sketches/**/*.dll
 app/sketches/**/*.tmp.dll
+app/sketches/**/*.so
+app/sketches/**/*.tmp.so
+app/sketches/**/*.dylib
+app/sketches/**/*.tmp.dylib
 app/sketches/**/_vb_temp.cpp
 
-# Test binaries only
+# Test binaries (all platforms)
 testfiles/*.exe
 testfiles/*.dll
+testfiles/*.so
+testfiles/*.dylib
 
 # CMake generated (root build only -- covered by /build/ above)
 CMakeCache.txt
+compile_commands.json
 
 # Qt generated
 *_autogen/
