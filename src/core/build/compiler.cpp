@@ -73,7 +73,10 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         << " \"" << temp_path << "\""
         << " -I\"" << include_path_ << "\""
         << " -std=c++17"
-        << " 2>&1";
+#ifndef _WIN32
+        << " 2>&1"
+#endif
+        ;
 
     result.raw_output = run_command(cmd.str());
     result.errors     = parse_errors(result.raw_output);

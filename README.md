@@ -66,7 +66,7 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Light sensor | PHOTO, LDR, PHOTORESISTOR | Type analog value (0-1023) |
 | Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Type analog value (0-1023) |
 | Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
-| LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering — Phase 2 |
+| LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering |
 
 > Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Supported boards: Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1. The selected board drives pin count, analog offset, PWM resolution, and the canvas board graphic.
 
@@ -225,6 +225,7 @@ VirtualBench/
 │   └── core/
 │       ├── runtime/
 │       │   ├── arduinoapi.h        # ArduinoAPI function pointer struct
+│       │   ├── boardprofile.h      # Structure for saved board profiles
 │       │   └── arduinoruntime.cpp/h
 │       ├── host/
 │       │   ├── sketchhost.cpp/h        # DLL load/unload + hot-reload

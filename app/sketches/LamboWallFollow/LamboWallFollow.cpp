@@ -277,9 +277,7 @@ void loop() {
     if (y_pos > 140 || colorsensorValues[0] == GREEN) {
         stopMotors();
         Serial.println("Finished");
-        while (true){
-            Serial.println("'");
-        }
+        delay(100000);
     }
 
     /////////////////////////////////////////////////////////////////////////////
