@@ -18,9 +18,9 @@ Write embedded sketches directly in the built-in editor and simulate them instan
 - **Hot-reload** — edit your sketch, hit Run again, simulation restarts instantly
 - **Speed control** — slow down or speed up simulation from 0.1x to 2.5x
 
-## Screenshots
+## Demo
 
-*Coming soon*
+![VirtualBench Demo](demo.gif)
 
 ---
 
