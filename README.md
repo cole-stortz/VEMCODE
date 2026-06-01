@@ -4,7 +4,7 @@ An open-source embedded systems simulator for writing, simulating, testing, and 
 
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-GPL%20v3-blue)
 
 ## What it does
 
@@ -280,7 +280,11 @@ VirtualBench/
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+VirtualBench is licensed under the [GNU General Public License v3.0](LICENSE).
+
+You are free to use, modify, and distribute this software under the terms of the GPL v3 — including for free and open source projects.
+
+**Commercial licensing:** If you want to use VirtualBench in a closed-source or commercial product without GPL obligations, contact me at cdstortz@gmail.com to arrange a commercial license.
 
 ## Contributing
 
