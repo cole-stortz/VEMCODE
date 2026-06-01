@@ -492,7 +492,7 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 
 **Total: 17 pins, all within 0-19**
 
-**Note:** The full Lambo sketch targets Teensy 4.1 with pins up to 41. The VirtualBench adaptation remaps to 0-19 until Teensy board profile support is added (Phase 4).
+**Note:** The full Lambo sketch targets Teensy 4.1 with pins up to 41. Board profile support was added in Phase 4 — the full sketch can now run without pin remapping by selecting Teensy 4.1 in Settings.
 
 **What it exercises:**
 - `pulseIn()` — ultrasonic duration + color sensor frequency
@@ -507,7 +507,55 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 
 ## Roadmap
 
-### Phase 1 — Component Completion ✓
+### Phase 0 — Core Infrastructure ✓
+
+- ✓ Initial file structure and CMakeLists.txt
+- ✓ `ArduinoAPI` function pointer table — all Arduino calls go through injected struct
+- ✓ `ArduinoRuntime` — implements all `impl_*` functions, owns simulation state
+- ✓ `SketchThread` — QThread running `vb_loop()` on a background thread
+- ✓ First working Qt6 GUI with serial monitor output
+- ✓ AutoCompile pipeline — file watch → g++ invocation → DLL hot-reload
+- ✓ Output DLL placed in sketch subfolder (not build dir)
+- ✓ Initial Preprocessor — transforms Arduino source to DLL format (`vb_init`, `vb_setup`, `vb_loop`)
+- ✓ Circuit canvas (`CanvasWidget`) with basic component rendering
+- ✓ Clickable Button component on canvas
+- ✓ `CircuitDetector` keyword scan — detects component types from `#define` names
+- ✓ Delay consistency — simulated delay tracks sketch timing
+
+> **Milestone:** "Blink" sketch compiles, loads, and toggles the LED on the canvas. ✓
+
+### Phase 1 — Editor and Language Features ✓
+
+- ✓ Syntax highlighting — blue keywords, yellow functions, green comments, orange strings
+- ✓ Compile error highlighting — red line backgrounds via `QTextEdit::ExtraSelection`
+- ✓ Error line number correction — subtracts `INJECTED_HEADER_LINES` so errors point to user sketch lines
+- ✓ Corrected error message names (temp file path stripped, `api->` prefix stripped)
+- ✓ Line number gutter — `EditorWithLines` + `LineNumberArea` subclass
+- ✓ Auto-indent and auto-dedent — Enter carries indentation, Tab inserts 4 spaces, `}` dedents
+- ✓ Variable watch panel — `QTableWidget` updated from `watch_variable()` callbacks
+- ✓ `Serial.println` type overloads — int, float, String, const char*
+- ✓ `String` class — wraps `std::string`, injected into preprocessor header
+- ✓ Math functions — `map()`, `constrain()`, `abs()`, `min()`, `max()`, `random()`
+- ✓ Safety delay injection — preprocessor inserts `api->delay(10)` if no delay found in `loop()`, prevents infinite loop crash
+
+> **Milestone:** Non-trivial sketches using String and math helpers compile and run without crashes. ✓
+
+### Phase 2 — UI Polish and User Workflow ✓
+
+- ✓ First-run settings dialog — compiler path and project root saved to `app/settings.ini`
+- ✓ New Sketch button — creates empty sketch in a new subfolder
+- ✓ Recent Sketches button — last 5 paths persisted in `settings.ini`
+- ✓ Speed slider — range 1–25 (= 0.1x–2.5x), passed to runtime as `speed_multiplier = 1/speed`
+- ✓ Stop delay fix — `impl_delay` sleeps in 10ms chunks, checks `stop_requested_` between each chunk
+- ✓ `Serial.available()` / `Serial.read()` — UI text input feeds `serial_buffer_`, consumed by runtime
+- ✓ Switch component — toggles state on click, persists in `switchStates_` QMap
+- ✓ Potentiometer component — drag up/down changes analog value 0–1023
+- ✓ Two-column canvas layout — inputs left, outputs right, pin-aligned wiring
+- ✓ Signal timeline — logic analyzer waveform view for digital pin state history
+
+> **Milestone:** Full interactive sketch workflow: open, edit, compile, run, adjust inputs, stop. ✓
+
+### Phase 3 — Component Completion ✓
 
 - ✓ `pulseIn(pin, value, timeout)` — fast path (distance sensor), color channel path (TCS3200), slow path (pin polling)
 - ✓ `delayMicroseconds` — busy-wait with stop check
@@ -519,10 +567,12 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - ✓ Servo angle display — live °label updated from analogWrite value
 - ✓ `Servo` class — injected inline by `strip_includes()` replacing `#include <Servo.h>`
 - ✓ Preprocessor `strip_includes()` step — runs before `replace_api_calls()`, handles library header replacement
+- ✓ Temperature, light, and generic analog sensor canvas inputs
+- ✓ HBridge motor PWM pin detection and speed display
 
 > **Milestone:** Target benchmark sketch compiles and runs correctly. ✓
 
-### Phase 2 — Board Profiles ✓
+### Phase 4 — Board Profiles ✓
 
 - ✓ `BoardProfile` struct in `src/core/runtime/boardprofile.h` — `name`, `chip`, `pin_count`, `analog_offset`, `analog_count`, `pwm_resolution`
 - ✓ Built-in profiles: Arduino Uno (ATmega328P), Arduino Nano (ATmega328P), Arduino Mega 2560 (ATmega2560), Arduino Due (AT91SAM3X8E), Teensy 4.1 (IMXRT1062)
@@ -533,27 +583,38 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - ✓ `setProfile()` chain: `SketchThread` → `SketchHost` → `ArduinoRuntime` — board change propagates to running runtime
 - ✓ Unlocks running the full Lambo sketch on Teensy 4.1 without pin remapping
 
-### Phase 3 — Simulation Realism
+### Phase 5 — Cross-Platform Support ✓
+
+- ✓ Linux shared library — `sketch.so` compiled and loaded via `dlopen` / `dlsym` / `dlclose`
+- ✓ Platform-abstracted DLL lifecycle — `#ifdef _WIN32` / `#else` guards in `SketchHost`
+- ✓ Temp copy strategy consistent across platforms — `.tmp.dll` (Windows), `.tmp.so` (Linux)
+- ✓ Linux compiler default — `/usr/bin/g++`, detected and pre-filled in settings dialog
+- ✓ CMakeLists.txt links `dl` on Linux, no extra libs on Windows
+- ✓ Build instructions for both platforms (CMake configure + build + run)
+
+> **Milestone:** Full compile-run-stop cycle verified on both Windows (MinGW) and Linux. ✓
+
+### Phase 6 — Simulation Realism
 - Floating pin simulation — undriven INPUT pins return random HIGH/LOW
 - Button bounce simulation — rapid toggles on click before settling (~10ms)
 - Optional gaussian noise on analog readings (off by default)
-- Simulated time counter for `micros()` / `delayMicroseconds()` — monotonic counter advancing by `elapsed * speed_multiplier`, decoupled from Windows wall clock so timing tracks simulation speed correctly
+- Simulated time counter for `micros()` / `delayMicroseconds()` — monotonic counter advancing by `elapsed * speed_multiplier`, decoupled from wall clock so timing tracks simulation speed correctly
 
-### Phase 4 — New Arduino Features
+### Phase 7 — New Arduino Features
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE
 - EEPROM simulation — 1024 bytes, optional disk persistence between sessions
 - Basic I2C simulation (`Wire.begin`, `Wire.write`, `Wire.read`) — byte-level protocol, virtual device responses; electrical bus characteristics not simulated
 - Basic SPI simulation (`SPI.begin`, `SPI.transfer`) — same scope as I2C
 - AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header, reads/writes mapped to the same pin state as `digitalWrite`/`digitalRead`; covers direct port manipulation libraries without requiring assembly or ISRs
 
-### Phase 5 — Multi-board Simulation
+### Phase 8 — Multi-board Simulation
 - Two SketchThread instances running simultaneously
 - Virtual serial pipe connecting them (TX of one → RX of other)
 - Enables master/slave and sensor node + controller patterns
 
-### Phase 6 — Memory Analysis
+### Phase 9 — Memory Analysis
 - `avr_gcc_path` in settings dialog
-- After successful Windows compile, run `avr-gcc` compile for size analysis only
+- After successful compile, run `avr-gcc` for size analysis only
 - Parse `avr-size` output for flash and RAM usage
 - Flash → hard enforce, block Run if over 32,256 bytes
 - Static RAM → hard enforce, block Run if globals exceed 2,048 bytes
@@ -562,13 +623,13 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - Auto-detect Arduino IDE avr-gcc path on first run
 - Warn at >75% usage before hitting limit
 
-### Phase 7 — Canvas Improvements
+### Phase 10 — Canvas Improvements
 - Canvas layout mode — "Layout" toolbar button, components become draggable
 - Positions saved to `sketch_name.vblayout` next to `.cpp` file
 - On load: use saved positions if file exists, otherwise auto-generate
 - Wire visualization improvements — color coded by signal type
 
-### Phase 8 — Component Visuals and Display Support
+### Phase 11 — Component Visuals and Display Support
 - Proper graphics for all component types replacing colored rectangles
 - 16x2 LCD — `LiquidCrystal` compatible, renders actual characters on canvas
 - 7-segment display — single and multi-digit

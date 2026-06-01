@@ -229,7 +229,7 @@ void setup() {
 }
 
 void loop() {
-    Serial.println(" ");
+    Serial.println("------------------");
     Serial.print("x position: ");
     Serial.println(x_floating);
     Serial.print("y position: ");
