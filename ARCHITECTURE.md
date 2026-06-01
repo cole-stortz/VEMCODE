@@ -6,7 +6,7 @@ This document is the primary developer reference for VirtualBench. Keep it up to
 
 ## Overview
 
-VirtualBench compiles Arduino sketches to a native shared library and runs them against a virtual Arduino runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time.
+VirtualBench compiles embedded sketches to a native shared library and runs them against a virtual runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time. Currently supports Arduino and Teensy boards (C++); MicroPython and CircuitPython boards are planned via a Python execution path (see Phase 12).
 
 **Platform:** Windows (MinGW) and Linux, Qt 6.x  
 **Windows compiler:** `C:/Qt/Tools/mingw1310_64/bin/g++.exe`  
@@ -148,13 +148,17 @@ struct DetectedComponent {
 Describes the hardware characteristics of a supported board. Selected in Settings, passed to the runtime and canvas at startup. Adding a new board means adding one entry here — nothing else changes.
 
 ```cpp
+// Phase 12 will add: enum class Language { Arduino, MicroPython, CircuitPython };
+// Preprocessor checks profile.language to pick the replacement table and execution path.
+
 struct BoardProfile {
-    const char* name;           // "Arduino Uno", "Teensy 4.1", ...
-    const char* chip;           // "ATmega328P", "IMXRT1062", ...
+    const char* name;           // "Arduino Uno", "Teensy 4.1", "Raspberry Pi Pico", ...
+    const char* chip;           // "ATmega328P", "IMXRT1062", "RP2040", ...
     int         pin_count;      // total pins
     int         analog_offset;  // pin number where A0 starts
     int         analog_count;   // number of analog pins
     int         pwm_resolution; // max analogWrite value (255 or 4095)
+    // Language    language;    // planned — Arduino (default), MicroPython, CircuitPython
 };
 
 // Built-in profiles
@@ -635,11 +639,58 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - 7-segment display — single and multi-digit
 - Basic OLED — text and simple graphics
 
+### Phase 12 — MicroPython / CircuitPython Support
+
+Adds a Python execution path that plugs into the same runtime, canvas, and signal timeline as the existing C++ path. Board selection drives which path is used — the rest of the simulation is unchanged.
+
+**How it works:**
+
+```
+Board = Raspberry Pi Pico (MicroPython)
+    → BoardProfile.language == Language::MicroPython
+    → Preprocessor replaces machine.Pin / utime calls with vb_runtime calls → writes temp.py
+    → Python host (pybind11) executes temp.py
+    → Same ArduinoRuntime state, same canvas callbacks
+```
+
+**Work items:**
+- Add `Language` enum to `BoardProfile` (`Arduino`, `MicroPython`, `CircuitPython`)
+- Raspberry Pi Pico board profile (`RP2040`, 30 pins, `Language::MicroPython`)
+- MicroPython preprocessor replace table:
+
+  | MicroPython | VirtualBench |
+  |---|---|
+  | `machine.Pin(N, OUT)` | `vb_pin_mode(N, OUT)` |
+  | `pin.value(1)` | `vb_digital_write(N, 1)` |
+  | `pin.value()` | `vb_digital_read(N)` |
+  | `utime.sleep_ms(500)` | `vb_delay(500)` |
+  | `utime.ticks_ms()` | `vb_millis()` |
+  | `ADC(pin).read_u16()` | `vb_analog_read(pin)` |
+
+- pybind11 integration — expose `ArduinoRuntime` as a Python module `vb_runtime`:
+  ```cpp
+  m.def("vb_digital_write", &impl_digitalWrite);
+  m.def("vb_digital_read",  &impl_digitalRead);
+  m.def("vb_delay",         &impl_delay);
+  m.def("vb_millis",        &impl_millis);
+  m.def("vb_analog_read",   &impl_analogRead);
+  ```
+  `temp.py` imports `vb_runtime` and calls back into the C++ host
+- Python-aware circuit detector — scan for `machine.Pin(N` patterns instead of `#define` to detect components
+- `SketchThread` Python execution path — alongside the existing DLL path, runs `temp.py` via embedded Python when `profile.language != Arduino`
+- CircuitPython replace table after MicroPython works — different import names (`import board`, `digitalio`) but same GPIO concepts
+
+**What stays the same across all boards:**
+- `ArduinoRuntime` pin/analog state
+- `CanvasWidget` and component interaction
+- Signal timeline
+- Variable watch
+- `SketchThread` loop execution model
+
 ### Later
 - macOS support
 - Installer — bundle MinGW for zero-dependency install (Windows); package for common Linux distros
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
-- Potentially FPGA support but unlikely
 
 ---
 

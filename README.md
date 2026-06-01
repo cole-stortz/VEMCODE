@@ -1,6 +1,6 @@
 # VirtualBench
 
-An open-source embedded systems simulator for writing, simulating, testing, and debugging Arduino code — no hardware required.
+An open-source embedded systems simulator for writing, simulating, testing, and debugging embedded code — no hardware required. Supports Arduino and Teensy boards today, with MicroPython and CircuitPython boards on the roadmap.
 
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
@@ -8,9 +8,9 @@ An open-source embedded systems simulator for writing, simulating, testing, and 
 
 ## What it does
 
-Write standard Arduino sketches directly in the built-in editor and simulate them instantly — no Arduino board, no USB cable, no waiting. VirtualBench compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual Arduino runtime in real time.
+Write embedded sketches directly in the built-in editor and simulate them instantly — no board, no USB cable, no waiting. VirtualBench compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual runtime in real time.
 
-- **Write** Arduino code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
+- **Write** embedded code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
 - **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
 - **Visualize** — the circuit canvas auto-detects components from your code and renders them automatically
 - **Interact** — click buttons, toggle switches, drag potentiometers, and type serial input to interact with the running simulation
@@ -37,7 +37,7 @@ Write standard Arduino sketches directly in the built-in editor and simulate the
 - New sketch, Open, Save, Recent sketches (last 5)
 
 ### Simulation
-- Full Arduino API support:
+- Full API support:
   - `pinMode`, `digitalWrite`, `digitalRead`
   - `analogWrite`, `analogRead`
   - `delay`, `delayMicroseconds`, `millis`, `micros`
@@ -145,7 +145,7 @@ On first launch VirtualBench will ask for your compiler path and project root. P
 
 ## Writing sketches
 
-VirtualBench accepts standard Arduino syntax — write exactly what you would write for a real Arduino:
+VirtualBench accepts standard embedded C++ syntax — write exactly what you would write for a real board:
 
 ```cpp
 #define LED_PIN    13
@@ -173,7 +173,7 @@ The preprocessor automatically transforms your sketch into the VirtualBench runt
 
 ### String support
 
-The full Arduino `String` class is available:
+The full `String` class is available:
 
 ```cpp
 String msg = String("Count: ") + String(counter);
@@ -219,19 +219,21 @@ void loop() {
 
 ## Architecture
 
-VirtualBench compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table (`ArduinoAPI`) — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
+VirtualBench compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
 
 ```
 Your sketch (.cpp)
-    → Preprocessor (transforms Arduino syntax → shared library format)
+    → Preprocessor (transforms sketch syntax → shared library format)
     → g++ (compiles to .so / .dll)
     → SketchHost (dlopen/LoadLibrary, extracts vb_init/vb_setup/vb_loop)
     → SketchThread (runs vb_loop in background thread)
-    → ArduinoRuntime (implements all API calls, fires callbacks)
+    → Runtime (implements all API calls, fires callbacks)
     → UI (canvas, serial monitor, signal timeline, variable watch)
 ```
 
 Hot-reload works by watching the sketch file for changes and reloading the shared library while the simulation is running.
+
+The board profile (selected in Settings) drives pin count, analog mapping, PWM resolution, and the canvas graphic. Adding a new board is a matter of adding a new `BoardProfile` entry — the rest of the simulation is board-agnostic.
 
 ### Project structure
 
@@ -252,15 +254,15 @@ VirtualBench/
 │   │   └── settingsdialog.cpp/h
 │   └── core/
 │       ├── runtime/
-│       │   ├── arduinoapi.h        # ArduinoAPI function pointer struct
-│       │   ├── boardprofile.h      # Structure for saved board profiles
+│       │   ├── arduinoapi.h        # API function pointer struct
+│       │   ├── boardprofile.h      # Board profiles (pin count, analog map, language)
 │       │   └── arduinoruntime.cpp/h
 │       ├── host/
 │       │   ├── sketchhost.cpp/h        # DLL load/unload + hot-reload
 │       │   └── sketchhostthread.cpp/h  # Background simulation thread
 │       ├── build/
 │       │   ├── compiler.cpp/h      # Invokes g++
-│       │   └── preprocessor.cpp/h  # Arduino → VirtualBench transform
+│       │   └── preprocessor.cpp/h  # Sketch → VirtualBench transform
 │       └── circuit/
 │           └── circuitdetector.cpp/h   # Auto component detection
 ├── sketches/                   # Example sketches
