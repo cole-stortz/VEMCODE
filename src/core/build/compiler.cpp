@@ -46,7 +46,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
                         std::istreambuf_iterator<char>());
     sketch_file.close();
 
-    // Preprocess -- transform Arduino syntax to VirtualBench format
+    // Preprocess -- transform Arduino syntax to VirtualEmbeddedProgrammer format
     Preprocessor preprocessor;
     std::string transformed = preprocessor.process(source);
     result.header_lines = preprocessor.injectedLines();

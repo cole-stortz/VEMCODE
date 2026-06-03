@@ -1,5 +1,5 @@
 // -------------------------------------------------------
-// VirtualBench Host -- proof of concept
+// VirtualEmbeddedProgrammer Host -- proof of concept
 //
 // Demonstrates:
 //   1. Implementing the ArduinoAPI (fake digitalWrite, delay, etc.)
@@ -54,7 +54,7 @@ std::string ts() {
 // -------------------------------------------------------
 // ArduinoAPI implementations
 // These are what actually run when the sketch calls digitalWrite() etc.
-// In VirtualBench proper, these will emit Qt signals to update the UI.
+// In VirtualEmbeddedProgrammer proper, these will emit Qt signals to update the UI.
 // -------------------------------------------------------
 
 void impl_pinMode(int pin, int mode) {
@@ -91,7 +91,7 @@ int impl_analogRead(int pin) {
 }
 
 void impl_delay(unsigned long ms) {
-    // Real delay -- in VirtualBench proper this will be virtual (
+    // Real delay -- in VirtualEmbeddedProgrammer proper this will be virtual (
     // advancing a simulation clock instead of actually sleeping).
     // For the POC, we sleep at 10x speed so you can see output quickly.
     std::this_thread::sleep_for(std::chrono::milliseconds(ms / 10));
@@ -212,7 +212,7 @@ int main() {
     const char* dll_path = "sketch.dll";
     state.start_time = std::chrono::steady_clock::now();
 
-    std::cout << "=== VirtualBench Host (POC) ===\n";
+    std::cout << "=== VirtualEmbeddedProgrammer Host (POC) ===\n";
     std::cout << "Watching: " << dll_path << "\n";
     std::cout << "Edit sketch.cpp, recompile, and watch it hot-reload!\n\n";
 

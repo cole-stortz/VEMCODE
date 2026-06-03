@@ -2,13 +2,13 @@
 #include <string>
 
 // Preprocessor transforms standard Arduino sketch syntax into
-// VirtualBench DLL format before compilation.
+// VirtualEmbeddedProgrammer DLL format before compilation.
 //
 // Input (Arduino style):
 //   void setup() { pinMode(13, OUTPUT); }
 //   void loop()  { digitalWrite(13, HIGH); }
 //
-// Output (VirtualBench DLL style):
+// Output (VirtualEmbeddedProgrammer DLL style):
 //   #include "src/core/runtime/arduinoapi.h"
 //   static ArduinoAPI* api = nullptr;
 //   extern "C" __declspec(dllexport) void vb_init(ArduinoAPI* a) { api = a; }
@@ -16,10 +16,10 @@
 //   extern "C" __declspec(dllexport) void vb_loop()  { api->digitalWrite(13, HIGH); }
 //
 // If the source already contains "vb_init" it is returned unchanged --
-// so existing VirtualBench format sketches pass through unmodified.
+// so existing VirtualEmbeddedProgrammer format sketches pass through unmodified.
 class Preprocessor {
 public:
-    // Transform Arduino sketch source into VirtualBench DLL source.
+    // Transform Arduino sketch source into VirtualEmbeddedProgrammer DLL source.
     // Returns the transformed source ready to write to a .cpp file.
     std::string process(const std::string& source);
     // Fixed lines of the VB boilerplate header injected above user code.
@@ -31,7 +31,7 @@ public:
 private:
     int injected_lines_ = INJECTED_HEADER_LINES;
 
-    // Returns true if source is already in VirtualBench format
+    // Returns true if source is already in VirtualEmbeddedProgrammer format
     bool is_already_transformed(const std::string& source);
 
     // Replace all Arduino API calls with api-> equivalents
@@ -40,7 +40,7 @@ private:
     // Wrap setup() and loop() with DLL exports
     std::string wrap_functions(const std::string& source);
 
-    // Inject the VirtualBench header and vb_init boilerplate
+    // Inject the VirtualEmbeddedProgrammer header and vb_init boilerplate
     std::string inject_header(const std::string& source);
 
     // Simple string replace -- replaces all occurrences of from with to

@@ -1,4 +1,4 @@
-# VirtualBench
+# VirtualEmbeddedProgrammer
 
 An open-source embedded systems simulator for writing, simulating, testing, and debugging embedded code — no hardware required. Supports Arduino and Teensy boards today, with MicroPython and CircuitPython boards on the roadmap.
 
@@ -8,7 +8,7 @@ An open-source embedded systems simulator for writing, simulating, testing, and 
 
 ## What it does
 
-Write embedded sketches directly in the built-in editor and simulate them instantly — no board, no USB cable, no waiting. VirtualBench compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual runtime in real time.
+Write embedded sketches directly in the built-in editor and simulate them instantly — no board, no USB cable, no waiting. VirtualEmbeddedProgrammer compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual runtime in real time.
 
 - **Write** embedded code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
 - **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
@@ -20,7 +20,7 @@ Write embedded sketches directly in the built-in editor and simulate them instan
 
 ## Demo
 
-![VirtualBench Demo](demo.gif)
+![VirtualEmbeddedProgrammer Demo](demo.gif)
 
 ---
 
@@ -98,8 +98,8 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 
 ```powershell
 # Clone
-git clone https://github.com/cole-stortz/VirtualBench.git
-cd VirtualBench
+git clone https://github.com/cole-stortz/VirtualEmbeddedProgrammer.git
+cd VirtualEmbeddedProgrammer
 
 # Configure (all one line)
 cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw1310_64/bin/g++.exe" -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/Ninja/ninja.exe"
@@ -108,7 +108,7 @@ cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMA
 cmake --build build
 
 # Deploy Qt runtime (first time only)
-C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VirtualBench.exe
+C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VirtualEmbeddedProgrammer.exe
 ```
 
 > **Note:** Ninja may be at a different path depending on your system. Run `where.exe ninja` to find it.
@@ -117,8 +117,8 @@ C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VirtualBench.exe
 
 ```bash
 # Clone
-git clone https://github.com/cole-stortz/VirtualBench.git
-cd VirtualBench
+git clone https://github.com/cole-stortz/VirtualEmbeddedProgrammer.git
+cd VirtualEmbeddedProgrammer
 
 # Configure
 cmake -B build -S .
@@ -131,21 +131,21 @@ cmake --build build
 
 **Windows:**
 ```powershell
-.\app\VirtualBench.exe
+.\app\VirtualEmbeddedProgrammer.exe
 ```
 
 **Linux:**
 ```bash
-./app/VirtualBench
+./app/VirtualEmbeddedProgrammer
 ```
 
-On first launch VirtualBench will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VirtualBench repo. These are saved to `app/settings.ini`.
+On first launch VirtualEmbeddedProgrammer will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VirtualEmbeddedProgrammer repo. These are saved to `app/settings.ini`.
 
 ---
 
 ## Writing sketches
 
-VirtualBench accepts standard embedded C++ syntax — write exactly what you would write for a real board:
+VirtualEmbeddedProgrammer accepts standard embedded C++ syntax — write exactly what you would write for a real board:
 
 ```cpp
 #define LED_PIN    13
@@ -169,7 +169,7 @@ void loop() {
 }
 ```
 
-The preprocessor automatically transforms your sketch into the VirtualBench runtime format. You never write any boilerplate.
+The preprocessor automatically transforms your sketch into the VirtualEmbeddedProgrammer runtime format. You never write any boilerplate.
 
 ### String support
 
@@ -219,7 +219,7 @@ void loop() {
 
 ## Architecture
 
-VirtualBench compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
+VirtualEmbeddedProgrammer compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
 
 ```
 Your sketch (.cpp)
@@ -238,7 +238,7 @@ The board profile (selected in Settings) drives pin count, analog mapping, PWM r
 ### Project structure
 
 ```
-VirtualBench/
+VirtualEmbeddedProgrammer/
 ├── app/                        # Runtime — exe + Qt DLLs
 │   ├── sketches/               # Saved sketches
 │   └── settings.ini            # Compiler path + recent sketches (gitignored)
@@ -262,7 +262,7 @@ VirtualBench/
 │       │   └── sketchhostthread.cpp/h  # Background simulation thread
 │       ├── build/
 │       │   ├── compiler.cpp/h      # Invokes g++
-│       │   └── preprocessor.cpp/h  # Sketch → VirtualBench transform
+│       │   └── preprocessor.cpp/h  # Sketch → VirtualEmbeddedProgrammer transform
 │       └── circuit/
 │           └── circuitdetector.cpp/h   # Auto component detection
 ├── sketches/                   # Example sketches
@@ -280,11 +280,11 @@ VirtualBench/
 
 ## License
 
-VirtualBench is licensed under the [GNU General Public License v3.0](LICENSE).
+VirtualEmbeddedProgrammer is licensed under the [GNU General Public License v3.0](LICENSE).
 
 You are free to use, modify, and distribute this software under the terms of the GPL v3 — including for free and open source projects.
 
-**Commercial licensing:** If you want to use VirtualBench in a closed-source or commercial product without GPL obligations, contact me at cdstortz@gmail.com to arrange a commercial license.
+**Commercial licensing:** If you want to use VirtualEmbeddedProgrammer in a closed-source or commercial product without GPL obligations, contact me at cdstortz@gmail.com to arrange a commercial license.
 
 ## Contributing
 

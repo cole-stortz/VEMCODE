@@ -1,19 +1,19 @@
-# VirtualBench — Architecture Reference
+# VirtualEmbeddedProgrammer — Architecture Reference
 
-This document is the primary developer reference for VirtualBench. Keep it up to date as the codebase evolves. New contributors and AI assistants should read this before touching any code.
+This document is the primary developer reference for VirtualEmbeddedProgrammer. Keep it up to date as the codebase evolves. New contributors and AI assistants should read this before touching any code.
 
 ---
 
 ## Overview
 
-VirtualBench compiles embedded sketches to a native shared library and runs them against a virtual runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time. Currently supports Arduino and Teensy boards (C++); MicroPython and CircuitPython boards are planned via a Python execution path (see Phase 12).
+VirtualEmbeddedProgrammer compiles embedded sketches to a native shared library and runs them against a virtual runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time. Currently supports Arduino and Teensy boards (C++); MicroPython and CircuitPython boards are planned via a Python execution path (see Phase 12).
 
 **Platform:** Windows (MinGW) and Linux, Qt 6.x  
 **Windows compiler:** `C:/Qt/Tools/mingw1310_64/bin/g++.exe`  
 **Windows Qt path:** `C:/Qt/6.11.1/mingw_64`  
 **Linux compiler:** `/usr/bin/g++`  
-**Exe:** `app/VirtualBench.exe` (Windows), `app/VirtualBench` (Linux)  
-**Repo:** https://github.com/cole-stortz/VirtualBench
+**Exe:** `app/VirtualEmbeddedProgrammer.exe` (Windows), `app/VirtualEmbeddedProgrammer` (Linux)  
+**Repo:** https://github.com/cole-stortz/VirtualEmbeddedProgrammer
 
 ---
 
@@ -37,9 +37,9 @@ User writes sketch (.cpp)
 ## File Structure
 
 ```
-VirtualBench/
+VirtualEmbeddedProgrammer/
 ├── app/                            # Runtime directory
-│   ├── VirtualBench.exe
+│   ├── VirtualEmbeddedProgrammer.exe
 │   ├── sketches/                   # User sketches (each in own subfolder)
 │   └── settings.ini                # QSettings — compiler path, recent sketches (gitignored)
 ├── src/
@@ -61,7 +61,7 @@ VirtualBench/
 │       │   └── sketchhostthread.cpp/h  # QThread wrapper, inject methods, signals
 │       ├── build/
 │       │   ├── compiler.cpp/h      # Invokes g++, parses errors
-│       │   └── preprocessor.cpp/h  # Arduino → VirtualBench source transform
+│       │   └── preprocessor.cpp/h  # Arduino → VirtualEmbeddedProgrammer source transform
 │       └── circuit/
 │           └── circuitdetector.cpp/h   # Keyword-based component detection
 ├── sketches/                       # Example/test sketches
@@ -229,7 +229,7 @@ Busy-waits in 50µs chunks, checks `stop_requested_` between each chunk. Not rea
 
 ### Preprocessor (`src/core/build/preprocessor.cpp`)
 
-Transforms standard Arduino source into VirtualBench DLL format. Steps in order:
+Transforms standard Arduino source into VirtualEmbeddedProgrammer DLL format. Steps in order:
 
 1. `is_already_transformed()` — detects `vb_init` or `ArduinoAPI` presence, returns unchanged if found
 2. `replace_api_calls()` — string replace all Arduino API calls with `api->` prefixed versions
@@ -438,10 +438,10 @@ cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMA
 cmake --build build
 
 # Deploy Qt runtime (first time only)
-C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualBench.exe
+C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe .\app\VirtualEmbeddedProgrammer.exe
 
 # Run
-.\app\VirtualBench.exe
+.\app\VirtualEmbeddedProgrammer.exe
 ```
 
 **Linux:**
@@ -454,7 +454,7 @@ cmake -B build -S .
 cmake --build build
 
 # Run
-./app/VirtualBench
+./app/VirtualEmbeddedProgrammer
 ```
 
 ---
@@ -658,7 +658,7 @@ Board = Raspberry Pi Pico (MicroPython)
 - Raspberry Pi Pico board profile (`RP2040`, 30 pins, `Language::MicroPython`)
 - MicroPython preprocessor replace table:
 
-  | MicroPython | VirtualBench |
+  | MicroPython | VirtualEmbeddedProgrammer |
   |---|---|
   | `machine.Pin(N, OUT)` | `vb_pin_mode(N, OUT)` |
   | `pin.value(1)` | `vb_digital_write(N, 1)` |

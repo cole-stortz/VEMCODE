@@ -8,7 +8,7 @@
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle("VirtualBench Settings");
+    setWindowTitle("VirtualEmbeddedProgrammer Settings");
     setMinimumWidth(500);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -28,7 +28,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QHBoxLayout* rootRow = new QHBoxLayout();
     rootRow->addWidget(new QLabel("Project root:"));
     rootEdit_ = new QLineEdit();
-    rootEdit_->setPlaceholderText("C:/Users/.../VirtualBench");
+    rootEdit_->setPlaceholderText("C:/Users/.../VirtualEmbeddedProgrammer");
     rootRow->addWidget(rootEdit_);
     QPushButton* browseRoot = new QPushButton("Browse");
     connect(browseRoot, &QPushButton::clicked, this, &SettingsDialog::onBrowseRoot);
@@ -93,6 +93,6 @@ void SettingsDialog::onBrowseCompiler() {
 
 void SettingsDialog::onBrowseRoot() {
     QString path = QFileDialog::getExistingDirectory(
-        this, "Select VirtualBench project root");
+        this, "Select VirtualEmbeddedProgrammer project root");
     if (!path.isEmpty()) rootEdit_->setText(path);
 }
