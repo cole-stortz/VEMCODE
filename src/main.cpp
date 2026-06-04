@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);           // Create the application
-    app.setApplicationName("VirtualEmbeddedProgrammer"); // with a title and version number
+    app.setApplicationName("VEMCODE"); // with a title and version number
     app.setApplicationVersion("0.1");
 
     MainWindow window;

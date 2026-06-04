@@ -8,7 +8,7 @@
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle("VirtualEmbeddedProgrammer Settings");
+    setWindowTitle("VEMCODE Settings");
     setMinimumWidth(500);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -28,7 +28,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QHBoxLayout* rootRow = new QHBoxLayout();
     rootRow->addWidget(new QLabel("Project root:"));
     rootEdit_ = new QLineEdit();
-    rootEdit_->setPlaceholderText("C:/Users/.../VirtualEmbeddedProgrammer");
+    rootEdit_->setPlaceholderText("C:/Users/.../VEMCODE");
     rootRow->addWidget(rootEdit_);
     QPushButton* browseRoot = new QPushButton("Browse");
     connect(browseRoot, &QPushButton::clicked, this, &SettingsDialog::onBrowseRoot);
@@ -93,6 +93,6 @@ void SettingsDialog::onBrowseCompiler() {
 
 void SettingsDialog::onBrowseRoot() {
     QString path = QFileDialog::getExistingDirectory(
-        this, "Select VirtualEmbeddedProgrammer project root");
+        this, "Select VEMCODE project root");
     if (!path.isEmpty()) rootEdit_->setText(path);
 }

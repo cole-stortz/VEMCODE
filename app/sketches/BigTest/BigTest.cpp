@@ -16,7 +16,7 @@ void setup() {
     pinMode(BUZZER_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pinMode(SWITCH_PIN, INPUT_PULLUP);
-    Serial.println("VirtualEmbeddedProgrammer component test ready");
+    Serial.println("VEMCODE component test ready");
 }
 
 void loop() {

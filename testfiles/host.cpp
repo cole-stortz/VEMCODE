@@ -1,5 +1,5 @@
 // -------------------------------------------------------
-// VirtualEmbeddedProgrammer Host -- proof of concept
+// VEMCODE Host -- proof of concept
 //
 // Demonstrates:
 //   1. Implementing the ArduinoAPI (fake digitalWrite, delay, etc.)
@@ -54,7 +54,7 @@ std::string ts() {
 // -------------------------------------------------------
 // ArduinoAPI implementations
 // These are what actually run when the sketch calls digitalWrite() etc.
-// In VirtualEmbeddedProgrammer proper, these will emit Qt signals to update the UI.
+// In VEMCODE proper, these will emit Qt signals to update the UI.
 // -------------------------------------------------------
 
 void impl_pinMode(int pin, int mode) {
@@ -91,7 +91,7 @@ int impl_analogRead(int pin) {
 }
 
 void impl_delay(unsigned long ms) {
-    // Real delay -- in VirtualEmbeddedProgrammer proper this will be virtual (
+    // Real delay -- in VEMCODE proper this will be virtual (
     // advancing a simulation clock instead of actually sleeping).
     // For the POC, we sleep at 10x speed so you can see output quickly.
     std::this_thread::sleep_for(std::chrono::milliseconds(ms / 10));
@@ -212,7 +212,7 @@ int main() {
     const char* dll_path = "sketch.dll";
     state.start_time = std::chrono::steady_clock::now();
 
-    std::cout << "=== VirtualEmbeddedProgrammer Host (POC) ===\n";
+    std::cout << "=== VEMCODE Host (POC) ===\n";
     std::cout << "Watching: " << dll_path << "\n";
     std::cout << "Edit sketch.cpp, recompile, and watch it hot-reload!\n\n";
 

@@ -1,4 +1,4 @@
-// VirtualEmbeddedProgrammer sensor injection test
+// VEMCODE sensor injection test
 
 // Distance sensor
 #define TRIG_PIN 11

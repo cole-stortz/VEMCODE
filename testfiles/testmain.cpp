@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main() {
-    std::cout << "=== VirtualEmbeddedProgrammer Core Test ===\n";
+    std::cout << "=== VEMCODE Core Test ===\n";
 
     SketchHost host;
 

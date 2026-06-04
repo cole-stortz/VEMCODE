@@ -6,7 +6,7 @@ int counter = 0;  // add this
 void setup() {
     Serial.begin(9600);
     pinMode(LED_PIN, OUTPUT);
-    Serial.println("VirtualEmbeddedProgrammer ready");
+    Serial.println("VEMCODE ready");
 }
 
 void loop() {

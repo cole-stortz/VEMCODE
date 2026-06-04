@@ -1,9 +1,9 @@
 /*
-  VirtualEmbeddedProgrammer adaptation of Lambo_LineFollow.ino
+  VEMCODE adaptation of Lambo_LineFollow.ino
   Changes from original:
     - Pins remapped to 0-19 range (Teensy 4.1 pins went up to 41)
     - 4 color sensors reduced to 1 (sensor index 2 from original: pins 14-18 fit within 0-19)
-    - Servo class replaced with analogWrite (Arm/Gripper not yet in VirtualEmbeddedProgrammer runtime)
+    - Servo class replaced with analogWrite (Arm/Gripper not yet in VEMCODE runtime)
     - pulseIn calls updated to 3-arg form (function pointer has no default timeout)
   Algorithm logic is unchanged.
 */
