@@ -1,6 +1,26 @@
 {
     "configurations": [
         {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/core/runtime",
+                "${workspaceFolder}/src/core/host",
+                "${workspaceFolder}/src/ui",
+                "C:/Qt/6.11.1/mingw_64/include",
+                "C:/Qt/6.11.1/mingw_64/include/QtCore",
+                "C:/Qt/6.11.1/mingw_64/include/QtWidgets",
+                "C:/Qt/6.11.1/mingw_64/include/QtGui"
+            ],
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "defines": ["_WIN32"],
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        },
+        {
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}",
