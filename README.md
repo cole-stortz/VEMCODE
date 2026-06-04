@@ -22,6 +22,8 @@ Write embedded sketches directly in the built-in editor and simulate them instan
 
 ![VirtualBench Demo](demo.gif)
 
+The demo runs the LamboWallFollow sketch, an obstacle avoidance algorithm for a three-wheeled omni-directional robot navigating a maze of horizontal walls with gaps at random positions. The robot continuously tracks its lateral position in the corridor. When the ultrasonic sensor detects a wall ahead, the algorithm checks which half of the corridor the robot is in and immediately moves the opposite direction toward the potential gap. Using this approach allows us to most likely approach the gap. If the robot reaches the edge of the corridor without finding a gap, it flips direction to cover the full width as a fallback. Once past the wall it drives forward again and repeats. A color sensor on the underside detects a green marker on the floor as the finish line, or the simulation ends when a maximum forward distance is reached.
+
 ---
 
 ## Features
