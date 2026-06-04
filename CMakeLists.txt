@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VirtualBench VERSION 0.1 LANGUAGES CXX)
+project(VirtualEmbeddedProgrammer VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -58,13 +58,13 @@ set(HEADERS
 )
 
 # Create the executable
-qt_add_executable(VirtualBench ${SOURCES} ${HEADERS})
-set_target_properties(VirtualBench PROPERTIES
+qt_add_executable(VirtualEmbeddedProgrammer ${SOURCES} ${HEADERS})
+set_target_properties(VirtualEmbeddedProgrammer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/app
 )
 
 # Include paths -- everything resolves from the project root
-target_include_directories(VirtualBench PRIVATE
+target_include_directories(VirtualEmbeddedProgrammer PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/core/runtime
@@ -73,14 +73,14 @@ target_include_directories(VirtualBench PRIVATE
 )
 
 # Link Qt modules
-target_link_libraries(VirtualBench PRIVATE
+target_link_libraries(VirtualEmbeddedProgrammer PRIVATE
     Qt6::Core
     Qt6::Widgets
 )
 
 # Linux: link against dl for dlopen/dlsym used by SketchHost
 if(UNIX AND NOT APPLE)
-    target_link_libraries(VirtualBench PRIVATE dl)
+    target_link_libraries(VirtualEmbeddedProgrammer PRIVATE dl)
 endif()
 
 # Standalone visual test -- run test_visuals.exe to iterate on component shapes
@@ -93,7 +93,7 @@ set_target_properties(test_visuals PROPERTIES
 # Windows-specific: hide the console window in release builds
 # In debug builds we keep it so we can see std::cout output
 if(WIN32)
-    set_target_properties(VirtualBench PROPERTIES
+    set_target_properties(VirtualEmbeddedProgrammer PROPERTIES
         WIN32_EXECUTABLE $<CONFIG:Release>
     )
 endif()

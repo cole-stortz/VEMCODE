@@ -83,7 +83,7 @@ static const QColor COLOR_ERROR_BG("#3a0000");
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("VirtualBench");
+    setWindowTitle("VirtualEmbeddedProgrammer");
     resize(1280, 720);
     setMinimumSize(900, 600);
 
@@ -159,7 +159,7 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     toolbar->setStyleSheet(STYLE_TOOLBAR);
     toolbar->setFixedHeight(42);
 
-    QLabel* title = new QLabel("VirtualBench", toolbar);
+    QLabel* title = new QLabel("VirtualEmbeddedProgrammer", toolbar);
     title->setStyleSheet(STYLE_TITLE);
     toolbarLayout->addWidget(title);
     toolbarLayout->addSpacing(8);
@@ -296,7 +296,7 @@ QWidget* MainWindow::buildEditorPanel() {
         "void setup() {\n"
         "    Serial.begin(9600);\n"
         "    pinMode(LED_PIN, OUTPUT);\n"
-        "    Serial.println(\"VirtualBench ready\");\n"
+        "    Serial.println(\"VirtualEmbeddedProgrammer ready\");\n"
         "}\n\n"
         "void loop() {\n"
         "    digitalWrite(LED_PIN, HIGH);\n"
@@ -460,7 +460,7 @@ void MainWindow::onRunClicked() {
             temp_file.close();
         }
         currentSketchPath_ = temp_path;
-        setWindowTitle("VirtualBench — unsaved sketch");
+        setWindowTitle("VirtualEmbeddedProgrammer — unsaved sketch");
     }
 
     serialMonitor_->clear();
@@ -579,7 +579,7 @@ void MainWindow::onOpenClicked() {
         file.close();
     }
 
-    setWindowTitle("VirtualBench — " + QFileInfo(path).fileName());
+    setWindowTitle("VirtualEmbeddedProgrammer — " + QFileInfo(path).fileName());
     statusBar()->showMessage("Opened: " + path);
     addToRecentSketches(path);
 }
@@ -609,7 +609,7 @@ void MainWindow::onSaveClicked() {
 
     // Update current path so Run compiles this file going forward
     currentSketchPath_ = file_path;
-    setWindowTitle("VirtualBench — " + name + ".cpp");
+    setWindowTitle("VirtualEmbeddedProgrammer — " + name + ".cpp");
     statusBar()->showMessage("Saved: " + file_path);
     addToRecentSketches(file_path);
 }
@@ -769,7 +769,7 @@ void MainWindow::onNewSketch() {
 
     codeEditor_->setPlainText(default_sketch);
     currentSketchPath_ = file_path;
-    setWindowTitle("VirtualBench — " + name + ".cpp");
+    setWindowTitle("VirtualEmbeddedProgrammer — " + name + ".cpp");
     statusBar()->showMessage("Created: " + file_path);
     addToRecentSketches(file_path);
 }
@@ -800,7 +800,7 @@ void MainWindow::onRecentSketches() {
                 codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
                 file.close();
             }
-            setWindowTitle("VirtualBench — " + QFileInfo(path).fileName());
+            setWindowTitle("VirtualEmbeddedProgrammer — " + QFileInfo(path).fileName());
             statusBar()->showMessage("Opened: " + path);
             addToRecentSketches(path);
         });

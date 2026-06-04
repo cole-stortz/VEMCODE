@@ -3,7 +3,7 @@
 #include <sstream>
 
 std::string Preprocessor::process(const std::string& source) {
-    // If already in VirtualBench format, pass through unchanged
+    // If already in VirtualEmbeddedProgrammer format, pass through unchanged
     if (is_already_transformed(source))
         return source;
 

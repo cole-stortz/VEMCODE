@@ -1,4 +1,4 @@
-// VirtualBench sensor injection test
+// VirtualEmbeddedProgrammer sensor injection test
 
 // Distance sensor
 #define TRIG_PIN 11

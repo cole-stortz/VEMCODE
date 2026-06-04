@@ -26,7 +26,7 @@ struct CompileResult {
 // Usage:
 //   Compiler compiler;
 //   compiler.set_compiler_path("C:/Qt/Tools/mingw1310_64/bin/g++.exe");
-//   compiler.set_include_path("C:/Users/.../VirtualBench");
+//   compiler.set_include_path("C:/Users/.../VirtualEmbeddedProgrammer");
 //   CompileResult result = compiler.compile("sketches/blink/blink.cpp");
 class Compiler {
 public:

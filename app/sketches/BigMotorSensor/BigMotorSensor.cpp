@@ -1,4 +1,4 @@
-// VirtualBench multi-pin detection test
+// VirtualEmbeddedProgrammer multi-pin detection test
 
 #define TRIG_PIN 11
 #define ECHO_PIN 12
