@@ -127,6 +127,16 @@ Fill out all commonly-used Arduino API surface that is currently missing or only
 - Keypad matrix — 4x4 or 3x4, detected from defines, clickable grid on canvas
 - AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`
 
+**Missing Serial formatting:**
+- `Serial.print(val, HEX)` / `Serial.print(val, BIN)` / `Serial.print(val, OCT)` / `Serial.print(val, DEC)` — format specifier overloads; preprocessor converts these to formatted string calls before compilation
+- `Serial.print(float, n)` — print float with n decimal places
+
+**Missing sketch structure:**
+- Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
+
+**Missing utility functions:**
+- `randomSeed(seed)` — runtime implementation (listed in syntax highlighter but not in runtime API)
+
 > **Milestone:** The vast majority of real-world Arduino sketches compile and run without modification.
 
 ---
@@ -252,7 +262,25 @@ Board = Raspberry Pi Pico (MicroPython)
 
 ---
 
-### Phase 12 — Full Component Visuals
+### Phase 12 — Editor Improvements
+
+Polish the editor into a first-class coding environment. All items are self-contained UI work with no runtime dependencies.
+
+- **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
+- **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
+- **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
+- **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
+- **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
+- **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
+- **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
+- **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
+- **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
+
+> **Milestone:** The editor feels complete for day-to-day sketch writing with no obvious missing shortcuts.
+
+---
+
+### Phase 13 — Full Component Visuals
 
 Replace colored rectangles with proper component graphics across the board. This is the "make it pretty" pass deferred from all earlier phases.
 
