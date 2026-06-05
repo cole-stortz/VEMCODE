@@ -48,6 +48,10 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 
     // Preprocess -- transform Arduino syntax to VirtualEmbeddedProgrammer format
     Preprocessor preprocessor;
+
+    // Extract // @board <name> hint and surface it to the caller via result
+    result.board_hint = preprocessor.extract_board_profile(source);
+
     std::string transformed = preprocessor.process(source);
     result.header_lines = preprocessor.injectedLines();
 

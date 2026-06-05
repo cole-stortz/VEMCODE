@@ -296,3 +296,14 @@ std::string Preprocessor::generate_forward_declarations(const std::string& sourc
 
     return decls;
 }
+
+std::string Preprocessor::extract_board_profile(const std::string& source) {
+    std::regex board_re(R"(//\s*@board\s+(.+))");
+    std::smatch match;
+    if (std::regex_search(source, match, board_re)) {
+        std::string profile_name = match[1].str();
+        profile_name.erase(profile_name.find_last_not_of(" \t\r\n") + 1); // trim trailing whitespace
+        return profile_name;
+    }
+    return "";
+}

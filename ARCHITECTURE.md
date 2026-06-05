@@ -177,6 +177,9 @@ static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    4
 - MainWindow toolbar — displays `profile.name`
 - Settings dialog — board selector, saved to `settings.ini`
 
+**Board hint override (`// @board <name>`):**
+A sketch can declare its target board by placing a `// @board <name>` comment anywhere near the top of the file (before the first function definition in practice). When the user hits Run, `Preprocessor::extract_board_profile()` scans the raw source for this comment and returns the board name. `MainWindow` resolves it to a `BoardProfile`, then calls the same three-call update chain used by the Settings dialog: `canvasWidget_->setProfile()`, `boardLabel_->setText()`, and `sketchThread_->setProfile()`. The resolved board name is also written back to `settings.ini` so it persists.
+
 ---
 
 ## Key Classes
@@ -229,7 +232,11 @@ Busy-waits in 50µs chunks, checks `stop_requested_` between each chunk. Not rea
 
 ### Preprocessor (`src/core/build/preprocessor.cpp`)
 
-Transforms standard Arduino source into VEMCODE DLL format. Steps in order:
+Transforms standard Arduino source into VEMCODE DLL format.
+
+**`extract_board_profile(source)`** — called by `Compiler::compile()` on the raw source *before* `process()`. Scans the first occurrence of `// @board <name>` using regex `//\s*@board\s+(.+)`, trims trailing whitespace, and returns the board name string (empty if not found). The result is surfaced in `CompileResult::board_hint` and applied by MainWindow after compilation.
+
+**`process()` steps in order:**
 
 1. `is_already_transformed()` — detects `vb_init` or `ArduinoAPI` presence, returns unchanged if found
 2. `replace_api_calls()` — string replace all Arduino API calls with `api->` prefixed versions
@@ -362,7 +369,9 @@ int analog_index = (pin >= 14) ? pin - 14 : pin;
 **Error highlighting:**
 `showCompileErrors()` uses `QTextEdit::ExtraSelection` with `COLOR_ERROR_BG("#3a0000")` to paint error lines red.
 
-**Settings:** Saved to `app/settings.ini` via `QSettings IniFormat`. Keys: `compiler/path`, `compiler/project_root`, `recent/sketches`.
+**Board hint application:** After `compiler.compile()` returns, if `result.board_hint` is non-empty, MainWindow resolves it to a `BoardProfile` and calls `canvasWidget_->setProfile()`, `boardLabel_->setText()`, and `sketchThread_->setProfile()` — the same three calls the Settings dialog makes on save. The board name is also persisted to `settings.ini` via `QSettings` so it survives a restart.
+
+**Settings:** Saved to `app/settings.ini` via `QSettings IniFormat`. Keys: `compiler/path`, `compiler/project_root`, `recent/sketches`, `board/name`.
 
 **Recent sketches:** Last 5 paths, stored as QStringList. `addToRecentSketches(path)` called on open/save/new.
 
@@ -473,7 +482,8 @@ cmake --build build
 - **Raw string header** — if ever switching back to raw string R"(...)", all `#include`, `#define`, `using`, `class`, `inline` must start at column 0 — no indentation.
 - **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
 - **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
-- **Pin count** — RuntimeState arrays sized by `BoardProfile.pin_count`. Default is Uno (20). Sketches targeting Teensy or Mega must select the matching board in Settings or remap pins manually until board profiles are implemented.
+- **`// @board` hint matching** — the board name in the comment must exactly match a `BoardProfile.name` string (e.g. `"Teensy 4.1"`, `"Arduino Uno"`). An unrecognized name silently falls back to the settings board — no error is shown.
+- **Pin count** — RuntimeState arrays sized by `BoardProfile.pin_count`. Default is Uno (20). Sketches targeting Teensy or Mega must select the matching board in Settings or use a `// @board` comment.
 - **Analog offset** — `inject_analog` and `impl_analogRead` will use `BoardProfile.analog_offset` instead of hardcoded `14`. When adding a board, set `analog_offset` correctly or `analogRead(A0)` returns wrong values.
 - **PWM resolution** — `BoardProfile.pwm_resolution` is 255 for Uno, 4095 for Teensy/STM32. Canvas servo angle calculation (`value * 180 / pwm_resolution`) must use the profile value, not a hardcoded 255.
 - **`pulseIn` requires all 3 args** — the function pointer has no default. Sketches calling `pulseIn(PIN, HIGH)` must use `pulseIn(PIN, HIGH, 1000000)`.
@@ -586,6 +596,7 @@ The simplified Lambo robot sketch is the primary milestone target for Phase 1 co
 - ✓ `CanvasWidget` fully profile-aware — pin loops, pin spacing, `BOARD_H`, servo angle, board name and chip label on canvas graphic
 - ✓ `setProfile()` chain: `SketchThread` → `SketchHost` → `ArduinoRuntime` — board change propagates to running runtime
 - ✓ Unlocks running the full Lambo sketch on Teensy 4.1 without pin remapping
+- ✓ `// @board <name>` sketch hint — `Preprocessor::extract_board_profile()` reads the comment from raw source, surfaced via `CompileResult::board_hint`, applied by MainWindow on run (canvas, label, runtime, and settings all update automatically)
 
 ### Phase 5 — Cross-Platform Support ✓
 

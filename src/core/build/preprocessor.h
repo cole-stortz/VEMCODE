@@ -27,6 +27,8 @@ public:
     // Actual lines injected (boilerplate + forward declarations) for the last process() call.
     // Use this value to offset compiler error line numbers back to the original source.
     int injectedLines() const { return injected_lines_; }
+    // Scan source for a board profile comment (e.g. // @board <name>) and extract the profile name if found.
+    std::string extract_board_profile(const std::string& source);
 
 private:
     int injected_lines_ = INJECTED_HEADER_LINES;

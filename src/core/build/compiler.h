@@ -18,6 +18,7 @@ struct CompileResult {
     std::string              raw_output;     // full stderr from g++
     std::vector<CompileError> errors;        // parsed errors and warnings
     int                      header_lines = 131; // injected lines before user code (for error line offsetting)
+    std::string              board_hint;     // board name from // @board comment, empty if not found
 };
 
 // Compiler wraps g++ to build a sketch .cpp file into a .dll.

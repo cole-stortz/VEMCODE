@@ -488,6 +488,25 @@ void MainWindow::onRunClicked() {
 
     CompileResult result = compiler.compile(sketch_path);
 
+    // Apply board hint from // @board comment if present
+    if (!result.board_hint.empty()) {
+        QString boardName = QString::fromStdString(result.board_hint);
+        if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
+        else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
+        else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
+        else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
+        else if (boardName == "Arduino Uno")        activeProfile_ = BOARD_UNO;
+
+        canvasWidget_->setProfile(activeProfile_);
+        boardLabel_->setText(activeProfile_.name);
+        if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+
+        QSettings settings(
+            QCoreApplication::applicationDirPath() + "/settings.ini",
+            QSettings::IniFormat);
+        settings.setValue("board/name", boardName);
+    }
+
     if (!result.success) {
         // GCC output references internal temp file paths and the preprocessor's
         // injected header lines -- clean it up before showing it to the user

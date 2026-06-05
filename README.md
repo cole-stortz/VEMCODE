@@ -71,6 +71,12 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering |
 
 > Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Supported boards: Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1. The selected board drives pin count, analog offset, PWM resolution, and the canvas board graphic.
+>
+> A sketch can override the saved board by adding a `// @board <name>` comment near the top of the file. When the sketch is run, VEMCODE reads the comment and switches to the specified board automatically — no need to change Settings manually. The override is also saved back to `settings.ini` so it persists for the next session.
+>
+> ```cpp
+> // @board Teensy 4.1
+> ```
 
 ### Debug Panel
 - **Serial monitor** — live `Serial.print` output, plus a text input box to send data to `Serial.read`
