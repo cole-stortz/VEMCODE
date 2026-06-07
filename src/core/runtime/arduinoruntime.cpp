@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <QtGlobal>
 
-static ArduinoRuntime* g_runtime = nullptr;
+thread_local ArduinoRuntime* g_runtime = nullptr;
 
 static std::string ts() {
     if (!g_runtime) return "[?ms] ";
@@ -25,6 +25,7 @@ ArduinoRuntime::ArduinoRuntime(BoardProfile profile) : profile_(profile) {
 
 ArduinoAPI ArduinoRuntime::get_api() {
     g_runtime = this;
+    state_.start_time = std::chrono::steady_clock::now();
     ArduinoAPI api;
     api.pinMode        = impl_pinMode;
     api.digitalWrite   = impl_digitalWrite;
@@ -69,10 +70,11 @@ int ArduinoRuntime::impl_digitalRead(int pin) {
     return g_runtime->state_.pin_values[pin]; // Return the pin value
 }
 
-// TODO: add on_analog_changed callback when potentiometer component is implemented
 void ArduinoRuntime::impl_analogWrite(int pin, int value) {
     if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return;
+    bool changed = (g_runtime->state_.pwm_values[pin] != value);
     g_runtime->state_.pwm_values[pin] = value;
+    if (!changed) return;
     if (g_runtime->on_pin_changed)
         g_runtime->on_pin_changed(pin, value);
 }
@@ -88,7 +90,7 @@ int ArduinoRuntime::impl_analogRead(int pin) {
 void ArduinoRuntime::impl_delay(unsigned long ms) {
     if (!g_runtime) return;
     unsigned long scaled = (unsigned long)(ms * g_runtime->speed_multiplier_);
-    
+
     // Sleep in 10ms chunks so stop requests are handled quickly
     unsigned long elapsed = 0;
     while (elapsed < scaled) {
@@ -100,19 +102,17 @@ void ArduinoRuntime::impl_delay(unsigned long ms) {
 }
 
 unsigned long ArduinoRuntime::impl_millis() {
-    if (!g_runtime) return 0; // if not running return
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() -
-        g_runtime->state_.start_time).count(); // start millisecond timer
-    return (unsigned long)ms; // return time
+    if (!g_runtime) return 0;
+    auto real_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - g_runtime->state_.start_time).count();
+    return (unsigned long)(real_us / g_runtime->speed_multiplier_ / 1000);
 }
 
 unsigned long ArduinoRuntime::impl_micros() {
-    if (!g_runtime) return 0; // if not running return
-    auto us = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now() -
-        g_runtime->state_.start_time).count(); // start microsecond timer
-    return (unsigned long)us; // return time
+    if (!g_runtime) return 0;
+    auto real_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - g_runtime->state_.start_time).count();
+    return (unsigned long)(real_us / g_runtime->speed_multiplier_);
 }
 
 void ArduinoRuntime::impl_Serial_begin(int baud) {
@@ -137,8 +137,8 @@ void ArduinoRuntime::impl_Serial_println(const char* s) {
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
-    if (pin >= 0 && pin < g_runtime->profile_.pin_count) 
-        state_.pin_values[pin] = value; // set pin state if in range
+    if (pin >= 0 && pin < profile_.pin_count)
+        state_.pin_values[pin] = value;
 }
 
 void ArduinoRuntime::impl_watch_variable(const char* name, int value) {

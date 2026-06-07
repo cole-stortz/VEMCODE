@@ -56,7 +56,7 @@ void CircuitDetector::detect(const std::string& source) {
     }
 
     // Phase 2b -- detect components from analogRead calls
-    std::regex analog_re(R"((?:api->)?analogRead\s*\(\s*(\w+)\s*\))");
+    static const std::regex analog_re(R"((?:api->)?analogRead\s*\(\s*(\w+)\s*\))");
     auto ab = std::sregex_iterator(source.begin(), source.end(), analog_re);
     auto ae = std::sregex_iterator();
 
@@ -136,7 +136,7 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
     std::map<std::string, std::string> defines;
 
     // Match: #define IDENTIFIER value
-    std::regex define_re(R"(#\s*define\s+(\w+)\s+\(?\s*(\w+)\s*\)?)");
+    static const std::regex define_re(R"(#\s*define\s+(\w+)\s+\(?\s*(\w+)\s*\)?)");
     auto begin = std::sregex_iterator(source.begin(), source.end(), define_re);
     auto end   = std::sregex_iterator();
     for (auto it = begin; it != end; ++it) {
@@ -146,7 +146,7 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
 
     // Also match: const int NAME = VALUE; (single value, not arrays)
     // This lets pin names like "const int trigPin1 = 9;" resolve just like #defines.
-    std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)");
+    static const std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)");
     begin = std::sregex_iterator(source.begin(), source.end(), const_int_re);
     end   = std::sregex_iterator();
     for (auto it = begin; it != end; ++it) {
@@ -164,7 +164,7 @@ std::map<std::string, std::vector<int>> CircuitDetector::parse_arrays(
     std::map<std::string, std::string> empty_defines;
 
     // Match: const int NAME[anything] = {v1, v2, v3, v4};
-    std::regex pattern(R"(const\s+int\s+(\w+)\s*\[.*?\]\s*=\s*\{([^}]+)\})");
+    static const std::regex pattern(R"(const\s+int\s+(\w+)\s*\[.*?\]\s*=\s*\{([^}]+)\})");
     auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
     auto end   = std::sregex_iterator();
 
@@ -360,7 +360,7 @@ std::set<int> CircuitDetector::detect_multipin(
     // --- Servo ---
     // Find "Servo Name;" declarations, then "Name.attach(pin)" calls
     {
-        std::regex servo_decl_re(R"(\bServo\s+(\w+)\s*;)");
+        static const std::regex servo_decl_re(R"(\bServo\s+(\w+)\s*;)");
         auto sd_begin = std::sregex_iterator(source.begin(), source.end(), servo_decl_re);
         auto sd_end   = std::sregex_iterator();
 
@@ -403,7 +403,7 @@ std::vector<CircuitDetector::PinModeCall> CircuitDetector::parse_pinmodes(
     std::vector<PinModeCall> calls;
 
     // Match: pinMode(token, MODE) or api->pinMode(token, MODE)
-    std::regex pattern(
+    static const std::regex pattern(
         R"((?:api->)?pinMode\s*\(\s*(\w+)\s*,\s*(INPUT_PULLUP|INPUT|OUTPUT)\s*\))"
     );
     auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);

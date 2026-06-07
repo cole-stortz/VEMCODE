@@ -115,7 +115,7 @@ Fill out all commonly-used Arduino API surface that is currently missing or only
 - `Serial1` / `Serial2` — additional hardware UARTs present on Mega, Due; same implementation as `Serial`, separate buffers
 
 **Missing timing correctness:**
-- `millis()` / `micros()` are currently wall-clock — make them advance by `elapsed * speed_multiplier` so timing-sensitive sketches (PID, debounce) behave correctly at non-1x speed
+- ✓ `millis()` / `micros()` — now return `real_elapsed / speed_multiplier` so timing-sensitive sketches (PID, debounce) behave correctly at non-1x speed; clock resets to 0 on each sketch load
 
 **Missing libraries (preprocessor injection, same approach as `Servo.h`):**
 - `SoftwareSerial` — injected class, same buffer model as `Serial`
@@ -165,6 +165,7 @@ The preprocessor injects a replacement `LiquidCrystal` class (same approach as `
 Run two boards simultaneously in the same session.
 
 - Two `SketchThread` instances running at the same time
+- Thread-safe state injection — replace `pin_values`, `analog_values`, and `pwm_values` arrays in `RuntimeState` with `std::atomic<int>` so UI inject calls and both sketch threads can't race on shared state
 - Virtual serial pipe — TX of one board feeds RX of the other
 - Both canvases visible simultaneously
 - Enables master/slave, sensor node + controller, and I2C peripheral sketches

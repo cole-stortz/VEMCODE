@@ -55,6 +55,10 @@ static const std::string TMP_SUFFIX = ".tmp.dylib";
 static const std::string TMP_SUFFIX = ".tmp.so";
 #endif
 
+SketchHost::~SketchHost() {
+    if (dll_.handle) lib_close(dll_.handle);
+}
+
 bool SketchHost::load(const std::string& dll_path) {
     dll_path_ = dll_path;
 

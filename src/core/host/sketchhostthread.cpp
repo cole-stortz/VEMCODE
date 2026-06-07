@@ -1,4 +1,5 @@
 #include "src/core/host/sketchhostthread.h"
+#include <chrono>
 
 
 SketchThread::SketchThread(QObject* parent)
@@ -17,10 +18,9 @@ void SketchThread::startSketch(const QString& dll_path) {
 
 void SketchThread::stopSketch() {
     running_ = false;
-    // Signal any sleeping delay to wake up
-    host_.runtime().stop_requested_ = true;
+    host_.runtime().request_stop();
     wait();
-    host_.runtime().stop_requested_ = false;
+    host_.runtime().clear_stop();
 }
 
 void SketchThread::run() {
@@ -50,18 +50,16 @@ void SketchThread::run() {
         return;
     }
 
-    int loop_count = 0;
+    auto last_reload_check = std::chrono::steady_clock::now();
 
     while (running_) {
         host_.run_loop();
-        loop_count++;
 
-        // Check for hot-reload every 5 iterations
-        if (loop_count % 5 == 0) {
-            if (host_.reload_if_changed()) {
+        auto now = std::chrono::steady_clock::now();
+        if (now - last_reload_check >= std::chrono::milliseconds(500)) {
+            last_reload_check = now;
+            if (host_.reload_if_changed())
                 emit sketchReloaded();
-                loop_count = 0;
-            }
         }
     }
 }

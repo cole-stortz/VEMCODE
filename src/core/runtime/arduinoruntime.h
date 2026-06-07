@@ -44,8 +44,10 @@ public:
         if (analog_index >= 0 && analog_index < profile_.analog_count)
             state_.analog_values[analog_index] = value;
     }
-    float speed_multiplier_ = 1.0f; // 0.5 = 2xspeed , 2.0 = 0.5xspeed
     void set_speed_multiplier(float speed);
+
+    void request_stop() { stop_requested_ = true;  }
+    void clear_stop()   { stop_requested_ = false; }
 
     void inject_serial(const std::string& data) {
         for (char c : data)
@@ -72,8 +74,6 @@ public:
     }
 
 
-    std::atomic<bool> stop_requested_ = false;
-
 private:
     RuntimeState state_;
 
@@ -96,4 +96,6 @@ private:
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;
+    std::atomic<bool> stop_requested_ = false;
+    float speed_multiplier_ = 1.0f;
 };

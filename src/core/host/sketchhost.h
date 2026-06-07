@@ -21,6 +21,8 @@ struct SketchDLL {
 // In the Qt app this is owned by SketchThread and run on a worker thread.
 class SketchHost {
 public:
+    ~SketchHost();
+
     // Load a sketch shared library from disk, inject the API, and call setup().
     // Returns true on success. Safe to call again for hot-reload.
     bool load(const std::string& dll_path);
