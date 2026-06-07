@@ -2,6 +2,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <cstdlib>
 using namespace vb;
 
 static ArduinoAPI* api = nullptr;
@@ -180,4 +181,11 @@ inline long   random(long min, long max) { return min + rand() % (max - min); }
 inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000UL) {
     return api->pulseIn(pin, value, timeout);
 }
+
+// PROGMEM / F() -- no-ops so common Arduino sketches compile without modification
+#define PROGMEM
+#define F(x) (x)
+
+// randomSeed -- seeds the same rand() used by random()
+inline void randomSeed(unsigned long seed) { srand((unsigned int)seed); }
 

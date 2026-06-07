@@ -119,7 +119,7 @@ Fill out all commonly-used Arduino API surface that is currently missing or only
 
 **Missing libraries (preprocessor injection, same approach as `Servo.h`):**
 - `SoftwareSerial` — injected class, same buffer model as `Serial`
-- `PROGMEM` / `F()` macro — `F("text")` and `PROGMEM` currently cause compile errors; inject no-op definitions so common sketches compile without modification
+- ✓ `PROGMEM` / `F()` macro — `#define PROGMEM` and `#define F(x) (x)` injected into header; common sketches using flash-string helpers now compile without modification
 - `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation, virtual device responses; no electrical bus characteristics
 - `SPI.begin` / `SPI.transfer` — same scope as Wire
 
@@ -135,7 +135,7 @@ Fill out all commonly-used Arduino API surface that is currently missing or only
 - Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
 
 **Missing utility functions:**
-- `randomSeed(seed)` — runtime implementation (listed in syntax highlighter but not in runtime API)
+- ✓ `randomSeed(seed)` — inline in injected header, seeds the same `rand()` used by `random()`
 
 > **Milestone:** The vast majority of real-world Arduino sketches compile and run without modification.
 
