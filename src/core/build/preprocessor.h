@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+extern const char* g_injected_header;
+
 // Preprocessor transforms standard Arduino sketch syntax into
 // VirtualEmbeddedProgrammer DLL format before compilation.
 //
@@ -22,8 +24,6 @@ public:
     // Transform Arduino sketch source into VirtualEmbeddedProgrammer DLL source.
     // Returns the transformed source ready to write to a .cpp file.
     std::string process(const std::string& source);
-    // Fixed lines of the VB boilerplate header injected above user code.
-    static constexpr int INJECTED_HEADER_LINES = 131;
     // Actual lines injected (boilerplate + forward declarations) for the last process() call.
     // Use this value to offset compiler error line numbers back to the original source.
     int injectedLines() const { return injected_lines_; }
@@ -31,7 +31,7 @@ public:
     std::string extract_board_profile(const std::string& source);
 
 private:
-    int injected_lines_ = INJECTED_HEADER_LINES;
+    int injected_lines_ = 0;
 
     // Returns true if source is already in VirtualEmbeddedProgrammer format
     bool is_already_transformed(const std::string& source);

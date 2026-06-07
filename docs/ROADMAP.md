@@ -128,8 +128,8 @@ Fill out all commonly-used Arduino API surface that is currently missing or only
 - AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`
 
 **Missing Serial formatting:**
-- `Serial.print(val, HEX)` / `Serial.print(val, BIN)` / `Serial.print(val, OCT)` / `Serial.print(val, DEC)` — format specifier overloads; preprocessor converts these to formatted string calls before compilation
-- `Serial.print(float, n)` — print float with n decimal places
+- ✓ `Serial.print(val, HEX)` / `Serial.print(val, BIN)` / `Serial.print(val, OCT)` / `Serial.print(val, DEC)` — format specifier overloads in injected header
+- ✓ `Serial.print(float, n)` — print float with n decimal places
 
 **Missing sketch structure:**
 - Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it

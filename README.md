@@ -45,6 +45,8 @@ The demo runs the LamboWallFollow sketch, an obstacle avoidance algorithm for a 
   - `delay`, `delayMicroseconds`, `millis`, `micros`
   - `pulseIn(pin, value, timeout)` — fast path for sensors, color channel routing for TCS3200, pin polling fallback
   - `Serial.begin`, `Serial.print`, `Serial.println`, `Serial.available`, `Serial.read`
+  - `Serial.print(val, HEX/BIN/OCT/DEC)` — format specifier overloads
+  - `Serial.print(float, n)` — float with n decimal places
   - `tone`, `noTone`
   - `map`, `constrain`, `abs`, `min`, `max`, `random`
 - Full `String` class — construction, concatenation, search, manipulation, conversion

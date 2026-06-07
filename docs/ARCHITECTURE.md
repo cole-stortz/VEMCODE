@@ -60,8 +60,10 @@ VEMCODE/
 │       │   ├── sketchhost.cpp/h        # LoadLibrary, hot-reload, DLL lifecycle
 │       │   └── sketchhostthread.cpp/h  # QThread wrapper, inject methods, signals
 │       ├── build/
-│       │   ├── compiler.cpp/h      # Invokes g++, parses errors
-│       │   └── preprocessor.cpp/h  # Arduino → VEMCODE source transform
+│       │   ├── compiler.cpp/h          # Invokes g++, parses errors
+│       │   ├── preprocessor.cpp/h      # Arduino → VEMCODE source transform
+│       │   ├── injected_header.inc       # Header injected above every sketch (edit this to add API)
+│       │   └── injected_header.cpp.in  # CMake template — wraps injected_header.inc as a C string
 │       └── circuit/
 │           └── circuitdetector.cpp/h   # Keyword-based component detection
 ├── sketches/                       # Example/test sketches
@@ -244,13 +246,7 @@ Transforms standard Arduino source into VEMCODE DLL format.
 4. `inject_safety_delay()` — if no `api->delay(` found, inserts `api->delay(10)` before last `}`
 5. `inject_header()` — prepends full header string
 
-**CRITICAL: `INJECTED_HEADER_LINES = 129`**
-
-Must match the exact number of `\n` characters in the injected header string. Used to subtract from compiler error line numbers so errors point to the correct user sketch line. Run the line counter script if the header ever changes:
-
-```python
-python3 -c "print(header_string.count('\n'))"
-```
+**Injected header line count** is computed dynamically at runtime by counting `\n` characters in `g_injected_header`. No manual constant to update when the header changes.
 
 **replace_api_calls order matters:**
 - `Serial.println` before `Serial.print` (partial match avoidance)
@@ -260,14 +256,19 @@ python3 -c "print(header_string.count('\n'))"
 - `tone`/`noTone` — replaced but not yet implemented in runtime
 - `#include <Servo.h>` stripped — **planned**
 
+**Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.
+
 **Injected header contains:**
-- `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`
+- `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`, `<sstream>`
 - `using namespace vb`
 - `static ArduinoAPI* api = nullptr` + `vb_init`
-- Serial overloads (template + const char* + String specializations)
+- Serial overloads: template (any type), `const char*`, `char`, `String` specializations
+- Serial format overloads: `Serial_print(T, int base)` — HEX/BIN/OCT/DEC via `HEX=16`, `BIN=2`, `OCT=8`, `DEC=10` constants
+- Serial float precision: `Serial_print(float, int decimals)` — uses `std::fixed` + `std::setprecision`
 - Full `String` class (wraps std::string)
 - `map()`, `constrain()`, `vb_abs/min/max`, `random()`
 - `#define abs/min/max` macros
+- `pulseIn` inline wrapper
 - Planned: `Servo` class + `#include <Servo.h>` stripping (so sketches using `Servo.h` compile without changes)
 
 ---
@@ -361,7 +362,7 @@ int analog_index = (pin >= 14) ? pin - 14 : pin;
 1. Compiler writes temp file `sketch_dir/_vb_temp.cpp`
 2. Error output contains temp file path + raw line numbers
 3. MainWindow regex-replaces path with `line N:`
-4. Subtracts `INJECTED_HEADER_LINES` from all line numbers
+4. Subtracts `preprocessor.injectedLines()` from all line numbers (dynamic — counts `\n` in header + forward declarations)
 5. Strips gcc context lines (`\n\s*\d+\s*\|`)
 6. Restores `Serial.println(` etc. (preprocessor renamed them)
 7. Strips `api->` prefix
@@ -470,7 +471,6 @@ cmake --build build
 
 ## Known Gotchas
 
-- **`INJECTED_HEADER_LINES = 129`** — must match header `\n` count exactly. Run python counter if header changes.
 - **`inject_analog` and `impl_analogRead`** — both must apply `pin >= 14 ? pin-14 : pin` offset.
 - **`dragPin_`, `dragStartY_`, `dragStartValue_`** — must be in private section of canvaswidget.h.
 - **`runtime()` accessor** — already exists in sketchhost.h, don't add a duplicate.
@@ -479,7 +479,7 @@ cmake --build build
 - **String literals left operand** — `"literal" + String(x)` fails. Use `String("literal") + x`.
 - **`stopSketch()` order** — sets `stop_requested_` BEFORE `running_=false` then `wait()`.
 - **Preprocessor replace order** — println before print, digitalRead before digitalWrite, delayMicroseconds before delay.
-- **Raw string header** — if ever switching back to raw string R"(...)", all `#include`, `#define`, `using`, `class`, `inline` must start at column 0 — no indentation.
+- **`injected_header.inc` changes require cmake re-run** — `set_property(CMAKE_CONFIGURE_DEPENDS)` makes the build system detect the change automatically, but only if you build via cmake (`cmake --build build`), not by invoking g++ directly.
 - **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
 - **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
 - **`// @board` hint matching** — the board name in the comment must exactly match a `BoardProfile.name` string (e.g. `"Teensy 4.1"`, `"Arduino Uno"`). An unrecognized name silently falls back to the settings board — no error is shown.

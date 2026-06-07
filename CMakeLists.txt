@@ -22,6 +22,17 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+# Embed injected_header.h as a C string at configure time.
+# set_property tells the build system to re-run cmake when the file changes.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc")
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc" INJECTED_HEADER_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/injected_header.cpp"
+    @ONLY
+)
+
 # All source files for the main application
 set(SOURCES
     src/main.cpp
@@ -38,6 +49,7 @@ set(SOURCES
     src/core/build/compiler.cpp
     src/core/build/preprocessor.cpp
     src/core/circuit/circuitdetector.cpp
+    ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
 )
 
 set(HEADERS
