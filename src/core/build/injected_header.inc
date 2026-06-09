@@ -3,6 +3,9 @@
 #include <cstring>
 #include <sstream>
 #include <cstdlib>
+#include <cstdint>
+#include <cmath>
+#include <climits>
 using namespace vb;
 
 static ArduinoAPI* api = nullptr;

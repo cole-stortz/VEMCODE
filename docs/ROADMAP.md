@@ -130,6 +130,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 **Missing functions:**
 - `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE; ISR called synchronously when pin state changes in the simulation
+- `noInterrupts()` / `interrupts()` — stripped by preprocessor, replaced with no-ops; global interrupt disable/enable has no equivalent in simulation
 - `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte simulated array, optional disk persistence between sessions
 - `Serial1` / `Serial2` — additional hardware UARTs present on Mega, Due; same implementation as `Serial`, separate buffers
 

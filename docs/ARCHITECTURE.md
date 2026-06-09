@@ -259,7 +259,7 @@ Transforms standard Arduino source into VEMCODE DLL format.
 **Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.
 
 **Injected header contains:**
-- `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`, `<sstream>`
+- `#include "src/core/runtime/arduinoapi.h"`, `<string>`, `<cstring>`, `<sstream>`, `<cstdlib>`, `<cstdint>`, `<cmath>`, `<climits>`
 - `using namespace vb`
 - `static ArduinoAPI* api = nullptr` + `vb_init`
 - Serial overloads: template (any type), `const char*`, `char`, `String` specializations
@@ -495,31 +495,6 @@ cmake --build build
 
 ---
 
-## Target Benchmark Sketch
-
-The simplified Lambo robot sketch is the primary milestone target for Phase 1 completion. When this sketch compiles and runs correctly, Phase 1 is done.
-
-**Components:**
-- 1x TCS3200 color sensor (S0-S3 + OUT, pins 14-18)
-- 1x HC-SR04 ultrasonic sensor (TRIG pin 12, ECHO pin 13)
-- 3x H-bridge DC motors (3 pins each: PWM + CW + ACW, pins 3-11)
-- 1x Servo arm (pin 2)
-
-**Total: 17 pins, all within 0-19**
-
-**Note:** The full Lambo sketch targets Teensy 4.1 with pins up to 41. Board profile support was added in Phase 4 — the full sketch can now run without pin remapping by selecting Teensy 4.1 in Settings.
-
-**What it exercises:**
-- `pulseIn()` — ultrasonic duration + color sensor frequency
-- `delayMicroseconds()` — ultrasonic trigger pulse
-- `analogWrite()` — motor PWM speed control
-- `digitalWrite/digitalRead` — motor direction, color sensor S-pins
-- `Servo.attach/write` — arm positioning
-- Array-based pin access — `S0[i]`, `sensorOut[i]`
-- Multi-pin component grouping — color sensor arrays, motor H-bridge groups
-
----
-
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for the full phase-by-phase plan.
@@ -532,3 +507,4 @@ See [ROADMAP.md](ROADMAP.md) for the full phase-by-phase plan.
 - AVR assembly instructions (`asm volatile`) — CPU instructions don't exist on x86
 - Hardware interrupt vectors (`ISR(TIMER1_OVF_vect)` etc.) — the interrupt hardware doesn't exist
 - Real electrical behavior (voltage, current, short circuits) — requires SPICE-level simulation
+- `int` is 32-bit on x86 vs 16-bit on AVR — sketches that rely on `int` wrapping at 32767 will behave differently in simulation; use fixed-width types (`int16_t`, `uint16_t`, `uint8_t`, etc.) for exact-width behavior. All `<cstdint>` types work correctly and are available via the injected header.
