@@ -7,6 +7,7 @@
     - pulseIn calls updated to 3-arg form (function pointer has no default timeout)
   Algorithm logic is unchanged.
 */
+
 // @board Arduino Uno
 
 // Motor A (left)
