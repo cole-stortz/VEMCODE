@@ -33,12 +33,6 @@ app/sketches/**/*.dylib
 app/sketches/**/*.tmp.dylib
 app/sketches/**/_vb_temp.cpp
 
-# Test binaries (all platforms)
-testfiles/*.exe
-testfiles/*.dll
-testfiles/*.so
-testfiles/*.dylib
-
 # CMake generated (root build only -- covered by /build/ above)
 CMakeCache.txt
 compile_commands.json
