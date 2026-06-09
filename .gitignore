@@ -2,6 +2,7 @@
 /build/
 
 # App runtime files -- keep sketches folder but ignore binaries
+/app/VEMCODE
 /app/*.dll
 /app/*.exe
 /app/*.so
