@@ -139,6 +139,13 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 **Missing sketch structure:**
 - Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
 
+**New components:**
+- RGB LED — three PWM pins (R/G/B), detected from `#define` pin names; canvas shows a colored circle that blends the three channel values in real time
+- Rotary encoder — two digital pins (CLK/DT) plus optional button pin; canvas shows a turn dial; pairs with `attachInterrupt` for accurate pulse counting
+
+**Serial Plotter:**
+- Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
+
 **Simulation realism:**
 - Floating pin simulation — undriven INPUT pins return random HIGH/LOW
 - Button bounce simulation — rapid toggles on click before settling (~10ms)
@@ -158,6 +165,7 @@ Heavier API and component work requiring more architectural changes: bus protoco
 
 **Complex components:**
 - Joystick — two analog axes (X/Y, 0–1023) plus a digital button; detected from `#define` pin names; canvas shows dual sliders and a clickable button
+- Stepper motor — step count and direction tracked from STEP/DIR or IN1-IN4 pin patterns; canvas displays a position counter and rotation indicator
 - Keypad matrix — 4x4 or 3x4, detected from defines, clickable grid on canvas
 - AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`
 
@@ -178,6 +186,8 @@ Polish the editor into a first-class coding environment. All items are self-cont
 - **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
 - **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
 - **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
+- **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
+- **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, Servo Sweep, Analog Read, PID loop); selected template copied into the new sketch folder
 
 > **Milestone:** The editor feels complete for day-to-day sketch writing with no obvious missing shortcuts.
 
@@ -196,8 +206,9 @@ Give the user realistic flash and RAM usage figures without requiring a real AVR
 - Memory bar in UI: `████░░░░ 1234 / 32256 bytes (3%)`
 - Warn at >75% usage before hitting the limit
 - Auto-detect Arduino IDE `avr-gcc` path on first run
+- Export `.hex` — toolbar button generates a flashable `.hex` for real hardware once avr-gcc is configured; output placed in the sketch subfolder alongside the compiled DLL
 
-> **Milestone:** Flash and RAM usage shown for every compile; over-limit sketches are blocked from running.
+> **Milestone:** Flash and RAM usage shown for every compile; over-limit sketches are blocked from running; `.hex` can be exported for flashing to real hardware.
 
 ---
 
@@ -307,3 +318,4 @@ Board = Raspberry Pi Pico (MicroPython)
 - Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows, package for common Linux distros
 - macOS support
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
+- Step-through debugger — pause execution at a line and step statement by statement; implemented by injecting `vb_breakpoint(line)` calls in the preprocessor and blocking on a condition variable when paused; UI adds clickable gutter breakpoints and a step/resume toolbar
