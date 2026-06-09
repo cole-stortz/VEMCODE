@@ -1,7 +1,6 @@
 #include "src/core/build/preprocessor.h"
 #include <cstring>
 #include <regex>
-#include <sstream>
 
 std::string Preprocessor::process(const std::string& source) {
     // If already in VirtualEmbeddedProgrammer format, pass through unchanged
