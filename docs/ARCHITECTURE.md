@@ -6,7 +6,7 @@ This document is the primary developer reference for VEMCODE. Keep it up to date
 
 ## Overview
 
-VEMCODE compiles embedded sketches to a native shared library and runs them against a virtual runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time. Currently supports Arduino and Teensy boards (C++); MicroPython and CircuitPython boards are planned via a Python execution path (see Phase 11 in ROADMAP.md).
+VEMCODE compiles embedded sketches to a native shared library and runs them against a virtual runtime. The sketch calls back into the host through a function pointer table. The UI renders component state in real time. Currently supports Arduino and Teensy boards (C++); MicroPython and CircuitPython boards are planned via a Python execution path (see Phase 14 in ROADMAP.md).
 
 **Platform:** Windows (MinGW) and Linux, Qt 6.x  
 **Windows compiler:** `C:/Qt/Tools/mingw1310_64/bin/g++.exe`  
@@ -109,10 +109,10 @@ constexpr int A0=14, A1=15, A2=16, A3=17, A4=18, A5=19;
 
 ```cpp
 struct RuntimeState {
-    int  pin_modes[20]    = {};
-    int  pin_values[20]   = {};  // digital pin state (LOW/HIGH)
-    int  analog_values[8] = {};  // injected analog values, index = pin - 14
-    int  pwm_values[20]   = {};  // analogWrite values (0-255), used for servo angle
+    int  pin_modes[80]    = {};
+    int  pin_values[80]   = {};  // digital pin state (LOW/HIGH)
+    int  analog_values[20] = {}; // injected analog values, index = pin - analog_offset
+    int  pwm_values[80]   = {};  // analogWrite values (0-255 or 0-4095), used for servo angle
     bool serial_started   = false;
     int  serial_baud      = 0;
     unsigned long pulse_durations_[20] = {};  // pre-set pulseIn return values (µs), e.g. distance sensor
@@ -150,7 +150,7 @@ struct DetectedComponent {
 Describes the hardware characteristics of a supported board. Selected in Settings, passed to the runtime and canvas at startup. Adding a new board means adding one entry here — nothing else changes.
 
 ```cpp
-// Phase 12 will add: enum class Language { Arduino, MicroPython, CircuitPython };
+// Phase 14 will add: enum class Language { Arduino, MicroPython, CircuitPython };
 // Preprocessor checks profile.language to pick the replacement table and execution path.
 
 struct BoardProfile {
@@ -254,7 +254,7 @@ Transforms standard Arduino source into VEMCODE DLL format.
 - `delayMicroseconds` before `delay` (partial match avoidance)
 - `pulseIn(` → `api->pulseIn(` (all 3 args required; no default-arg wrapper in injected header)
 - `tone`/`noTone` — replaced but not yet implemented in runtime
-- `#include <Servo.h>` stripped — **planned**
+- `#include <Servo.h>` stripped and replaced by built-in `Servo` class in injected header
 
 **Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.
 
@@ -266,10 +266,11 @@ Transforms standard Arduino source into VEMCODE DLL format.
 - Serial format overloads: `Serial_print(T, int base)` — HEX/BIN/OCT/DEC via `HEX=16`, `BIN=2`, `OCT=8`, `DEC=10` constants
 - Serial float precision: `Serial_print(float, int decimals)` — uses `std::fixed` + `std::setprecision`
 - Full `String` class (wraps std::string)
-- `map()`, `constrain()`, `vb_abs/min/max`, `random()`
+- `map()`, `constrain()`, `vb_abs/min/max`, `random()`, `randomSeed()`
 - `#define abs/min/max` macros
+- `#define PROGMEM` and `#define F(x) (x)` — flash-string helpers compile without modification
 - `pulseIn` inline wrapper
-- Planned: `Servo` class + `#include <Servo.h>` stripping (so sketches using `Servo.h` compile without changes)
+- `Servo` class — injected when `#include <Servo.h>` is stripped by `strip_includes()`
 
 ---
 
