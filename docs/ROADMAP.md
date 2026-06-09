@@ -104,46 +104,9 @@ Completed phases are marked ✓. Active and future phases are in order of planne
 
 ---
 
-### Phase 6 — Arduino API Completion
+### Phase 6 — LCD Component
 
-Fill out all commonly-used Arduino API surface that is currently missing or only partially correct.
-
-**Missing functions:**
-- `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
-- `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE; ISR called synchronously when pin state changes in the simulation
-- `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte simulated array, optional disk persistence between sessions
-- `Serial1` / `Serial2` — additional hardware UARTs present on Mega, Due; same implementation as `Serial`, separate buffers
-
-**Missing timing correctness:**
-- ✓ `millis()` / `micros()` — now return `real_elapsed / speed_multiplier` so timing-sensitive sketches (PID, debounce) behave correctly at non-1x speed; clock resets to 0 on each sketch load
-
-**Missing libraries (preprocessor injection, same approach as `Servo.h`):**
-- `SoftwareSerial` — injected class, same buffer model as `Serial`
-- ✓ `PROGMEM` / `F()` macro — `#define PROGMEM` and `#define F(x) (x)` injected into header; common sketches using flash-string helpers now compile without modification
-- `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation, virtual device responses; no electrical bus characteristics
-- `SPI.begin` / `SPI.transfer` — same scope as Wire
-
-**Missing components:**
-- Keypad matrix — 4x4 or 3x4, detected from defines, clickable grid on canvas
-- AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`
-
-**Missing Serial formatting:**
-- ✓ `Serial.print(val, HEX)` / `Serial.print(val, BIN)` / `Serial.print(val, OCT)` / `Serial.print(val, DEC)` — format specifier overloads in injected header
-- ✓ `Serial.print(float, n)` — print float with n decimal places
-
-**Missing sketch structure:**
-- Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
-
-**Missing utility functions:**
-- ✓ `randomSeed(seed)` — inline in injected header, seeds the same `rand()` used by `random()`
-
-> **Milestone:** The vast majority of real-world Arduino sketches compile and run without modification.
-
----
-
-### Phase 7 — LCD Component
-
-Add a working 16x2 LCD to the canvas. Rudimentary visuals only — characters displayed in a fixed-width grid, no pixel-accurate graphics. Pretty rendering comes later in Phase 12.
+Add a working 16x2 LCD to the canvas. Rudimentary visuals only — characters displayed in a fixed-width grid, no pixel-accurate graphics. Pretty rendering comes later in Phase 11.
 
 **How it works:**
 
@@ -160,21 +123,67 @@ The preprocessor injects a replacement `LiquidCrystal` class (same approach as `
 
 ---
 
-### Phase 8 — Multi-board Simulation
+### Phase 7 — Arduino API Completion: Simple Surface + Simulation Realism
 
-Run two boards simultaneously in the same session.
+Fill out the remaining commonly-used Arduino API surface and add low-level simulation realism. All items are self-contained runtime or preprocessor changes with no inter-dependencies.
 
-- Two `SketchThread` instances running at the same time
-- Thread-safe state injection — replace `pin_values`, `analog_values`, and `pwm_values` arrays in `RuntimeState` with `std::atomic<int>` so UI inject calls and both sketch threads can't race on shared state
-- Virtual serial pipe — TX of one board feeds RX of the other
-- Both canvases visible simultaneously
-- Enables master/slave, sensor node + controller, and I2C peripheral sketches
+**Missing functions:**
+- `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
+- `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE; ISR called synchronously when pin state changes in the simulation
+- `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte simulated array, optional disk persistence between sessions
+- `Serial1` / `Serial2` — additional hardware UARTs present on Mega, Due; same implementation as `Serial`, separate buffers
 
-> **Milestone:** Two sketches communicate over virtual Serial and both canvases update correctly.
+**Missing libraries (preprocessor injection, same approach as `Servo.h`):**
+- `SoftwareSerial` — injected class, same buffer model as `Serial`
+
+**Missing sketch structure:**
+- Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
+
+**Simulation realism:**
+- Floating pin simulation — undriven INPUT pins return random HIGH/LOW
+- Button bounce simulation — rapid toggles on click before settling (~10ms)
+- Optional gaussian noise on analog readings (off by default)
+
+> **Milestone:** Simple sketches using timers, interrupts, EEPROM, and additional serial ports run correctly; the simulation behaves realistically on common hardware edge cases.
 
 ---
 
-### Phase 9 — Memory Analysis
+### Phase 8 — Arduino API Completion: Protocol Libraries + Complex Components
+
+Heavier API and component work requiring more architectural changes: bus protocol simulation, virtual device responses, and complex canvas components.
+
+**Protocol libraries (preprocessor injection + virtual device responses):**
+- `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation, virtual device responses; no electrical bus characteristics
+- `SPI.begin` / `SPI.transfer` — same scope as Wire
+
+**Complex components:**
+- Joystick — two analog axes (X/Y, 0–1023) plus a digital button; detected from `#define` pin names; canvas shows dual sliders and a clickable button
+- Keypad matrix — 4x4 or 3x4, detected from defines, clickable grid on canvas
+- AVR hardware register simulation — `DDRB`, `PORTB`, `PINB`, etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`
+
+> **Milestone:** Sketches using I2C/SPI sensor libraries compile and run; joystick, keypad, and direct register access all work on the canvas.
+
+---
+
+### Phase 9 — Editor Improvements
+
+Polish the editor into a first-class coding environment. All items are self-contained UI work with no runtime dependencies.
+
+- **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
+- **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
+- **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
+- **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
+- **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
+- **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
+- **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
+- **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
+- **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
+
+> **Milestone:** The editor feels complete for day-to-day sketch writing with no obvious missing shortcuts.
+
+---
+
+### Phase 10 — Memory Analysis
 
 Give the user realistic flash and RAM usage figures without requiring a real AVR toolchain on the hot path.
 
@@ -192,14 +201,13 @@ Give the user realistic flash and RAM usage figures without requiring a real AVR
 
 ---
 
-### Phase 10 — Simulation Realism + Canvas Improvements
+### Phase 11 — Component Visual Upgrades + Canvas Improvements
 
-Run these together — both are polish passes with no new component work.
+Replace colored rectangles with proper component graphics and give the canvas a layout system. Both are polish passes on existing functionality with no new runtime work.
 
-**Simulation realism:**
-- Floating pin simulation — undriven INPUT pins return random HIGH/LOW
-- Button bounce simulation — rapid toggles on click before settling (~10ms)
-- Optional gaussian noise on analog readings (off by default)
+**Component visual upgrades:**
+- Proper graphics for all component types (sensor housings, chip outlines, etc.)
+- LCD 16x2 — pixel-accurate character cell rendering, backlight color, cursor blink
 
 **Canvas improvements:**
 - Canvas layout mode — "Layout" toolbar button, components become draggable
@@ -207,11 +215,37 @@ Run these together — both are polish passes with no new component work.
 - On load: use saved positions if file exists, otherwise auto-generate
 - Wire visualization improvements — color-coded by signal type (digital, analog, PWM)
 
-> **Milestone:** Simulation behaves realistically on edge cases; canvas layout can be saved and restored.
+> **Milestone:** The canvas looks polished with recognizable component graphics; layout can be saved and restored.
 
 ---
 
-### Phase 11 — MicroPython / CircuitPython Support
+### Phase 12 — New Display Components
+
+Add new output components with full runtime and canvas support. Each requires a new injected library class, runtime state, and canvas widget.
+
+- 7-segment display — single and multi-digit, segment-accurate rendering
+- Basic OLED — text and simple graphics (SSD1306-compatible)
+- NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length
+
+> **Milestone:** Sketches using 7-segment displays, OLEDs, and NeoPixel strips render correctly on the canvas.
+
+---
+
+### Phase 13 — Multi-board Simulation
+
+Run two boards simultaneously in the same session.
+
+- Two `SketchThread` instances running at the same time
+- Thread-safe state injection — replace `pin_values`, `analog_values`, and `pwm_values` arrays in `RuntimeState` with `std::atomic<int>` so UI inject calls and both sketch threads can't race on shared state
+- Virtual serial pipe — TX of one board feeds RX of the other
+- Both canvases visible simultaneously
+- Enables master/slave, sensor node + controller, and I2C peripheral sketches
+
+> **Milestone:** Two sketches communicate over virtual Serial and both canvases update correctly.
+
+---
+
+### Phase 14 — MicroPython / CircuitPython Support
 
 Adds a Python execution path that plugs into the same runtime, canvas, and signal timeline as the existing C++ path. Board selection drives which path is used — the rest of the simulation is unchanged.
 
@@ -260,38 +294,6 @@ Board = Raspberry Pi Pico (MicroPython)
 - `SketchThread` loop execution model
 
 > **Milestone:** A MicroPython blink sketch runs on the Pico profile and toggles the canvas LED.
-
----
-
-### Phase 12 — Editor Improvements
-
-Polish the editor into a first-class coding environment. All items are self-contained UI work with no runtime dependencies.
-
-- **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
-- **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
-- **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
-- **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
-- **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
-- **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
-- **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
-- **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
-- **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
-
-> **Milestone:** The editor feels complete for day-to-day sketch writing with no obvious missing shortcuts.
-
----
-
-### Phase 13 — Full Component Visuals
-
-Replace colored rectangles with proper component graphics across the board. This is the "make it pretty" pass deferred from all earlier phases.
-
-- Proper graphics for all component types (sensor housings, chip outlines, etc.)
-- LCD 16x2 — pixel-accurate character cell rendering, backlight color, cursor blink
-- 7-segment display — single and multi-digit, segment-accurate rendering
-- Basic OLED — text and simple graphics (SSD1306-compatible)
-- NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length
-
-> **Milestone:** The canvas looks like a real breadboard layout with recognizable component graphics.
 
 ---
 
