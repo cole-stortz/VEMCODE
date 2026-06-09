@@ -83,8 +83,10 @@ public:
     // Concatenation
     String operator+(const String& o) const { return String(s_ + o.s_); }
     String operator+(const char* o)   const { return String(s_ + o); }
+    String operator+(char c)          const { return String(s_ + c); }
     String& operator+=(const String& o) { s_ += o.s_; return *this; }
     String& operator+=(const char* o)   { s_ += o;    return *this; }
+    String& operator+=(char c)          { s_ += c;    return *this; }
     String& operator+=(int v)           { s_ += std::to_string(v); return *this; }
 
     // Comparison
