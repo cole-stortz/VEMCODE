@@ -201,6 +201,11 @@ Give the user realistic flash and RAM usage figures without requiring a real AVR
 
 ---
 
+> ### Beta Release
+> Tag `v1.0-beta` after Phase 10 is complete. The tool is feature-complete enough for real-world use: the editor is polished, the API surface covers the common cases, and users get meaningful memory feedback. Installer and auto-update (QtIFW + GitHub Releases as update repository) ships with the stable `v1.0` release — not before.
+
+---
+
 ### Phase 11 — Component Visual Upgrades + Canvas Improvements
 
 Replace colored rectangles with proper component graphics and give the canvas a layout system. Both are polish passes on existing functionality with no new runtime work.
@@ -297,8 +302,8 @@ Board = Raspberry Pi Pico (MicroPython)
 
 ---
 
-### Later
+### Later (post-stable)
 
+- Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows, package for common Linux distros
 - macOS support
-- Installer — bundle MinGW for zero-dependency install (Windows); package for common Linux distros
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
