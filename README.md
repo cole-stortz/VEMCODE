@@ -1,10 +1,47 @@
 # VEMCODE — Virtual Embedded Code Development Environment
 
-An open-source embedded systems simulator for writing, simulating, testing, and debugging embedded code — no hardware required. Supports Arduino and Teensy boards today, with MicroPython and CircuitPython boards on the roadmap.
+Write a sketch, hit Run — VEMCODE automatically detects your components, builds the circuit, and simulates your firmware in real time. No hardware, no wiring, no setup.
 
-![Status](https://img.shields.io/badge/status-active%20development-orange)
+![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-GPL%20v3-blue)
+
+![LED DEMO](docs/led_demo.gif)
+
+## What is VEMCODE?
+
+VEMCODE is an open-source firmware development and testing environment for embedded C++, not a circuit simulator. Write a sketch exactly as you would for a real board, hit Run, and watch it execute against a virtual Arduino or Teensy in real time. No board, no USB cable, no flash cycle — and no manual circuit design. VEMCODE reads your sketch and builds the circuit automatically.
+
+The goal is to shorten the feedback loop between writing embedded code and observing its behavior. VEMCODE is built for developers who want to test firmware logic, validate algorithms, and debug serial output without waiting for hardware.
+
+## Why VEMCODE?
+
+Most embedded simulators focus on circuit design: component datasheets, voltage levels, electrical characteristics. VEMCODE focuses on the firmware layer — the C++ code you actually write and ship.
+
+**VEMCODE is for you if:**
+- You write embedded C++ for Arduino or Teensy boards
+- You want to test firmware logic before (or without) physical hardware
+- You iterate frequently and need fast compile-run cycles
+- You need a serial monitor, signal timeline, or variable watch during development
+
+**No circuit design step.** Most simulators require you to manually place and wire components before running any code. VEMCODE reads your `#define` names and `pinMode` calls and builds the circuit canvas automatically. Write a sketch, hit Run — that's it.
+
+**VEMCODE is not a circuit simulator.** It does not model voltage, current, or electrical behavior. If you need SPICE-level accuracy, tools like SimulIDE are better suited. VEMCODE's strength is rapid firmware testing and software validation without requiring physical boards.
+
+## How it compares
+
+| | VEMCODE | Wokwi | Velxio | SimulIDE | Renode |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Open Source | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Desktop App | ✓ | Browser | Browser | ✓ | ✓ |
+| Firmware Dev Focus | ✓ | Partial | ✓ | ✗ | ✓ |
+| Circuit Simulation | ✗ | Partial | Partial | ✓ | ✗ |
+| Arduino Support | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Teensy Support | ✓ | Partial | ✗ | ✗ | ✗ |
+| Native Compilation | ✓ | ✗ | ✗ | ✗ | ✗ |
+| No Account Required | ✓ | ✗ | ✓ | ✓ | ✓ |
+
+> Wokwi also offers a VS Code extension and CLI. Velxio is self-hostable via Docker and supports ESP32 and Raspberry Pi boards. SimulIDE has strong circuit simulation depth. Renode targets complex ARM/RISC-V SoC firmware rather than Arduino-style sketches.
 
 ## What it does
 
@@ -12,7 +49,7 @@ Write embedded sketches directly in the built-in editor and simulate them instan
 
 - **Write** embedded code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
 - **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
-- **Visualize** — the circuit canvas auto-detects components from your code and renders them automatically
+- **Visualize** — no circuit design step; VEMCODE reads your sketch and builds the canvas automatically — components, layout, and all
 - **Interact** — click buttons, toggle switches, drag potentiometers, and type serial input to interact with the running simulation
 - **Debug** — serial monitor, signal timeline (logic analyzer view), and variable watch panel
 - **Hot-reload** — edit your sketch, hit Run again, simulation restarts instantly
@@ -281,12 +318,41 @@ VEMCODE/
 
 ---
 
-### Known limitations
+## Project Status
 
+VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, incomplete features, and breaking changes should be expected.
+
+### What works
+- Full Arduino API simulation (`digitalWrite`, `analogRead`, `Serial`, `millis`, `pulseIn`, and more)
+- Auto-detection and rendering of components from pin names
+- Serial monitor with send/receive
+- Signal timeline (logic analyzer view)
+- Variable watch panel
+- Speed control (0.1x – 2.5x)
+- Hot-reload on sketch save
+- Arduino Uno, Nano, Mega 2560, Due, and Teensy 4.1 board profiles
+- Per-sketch board override via `// @board` comment
+
+### In progress
+- MicroPython and CircuitPython board support
+- Expanded component library
+- Packaged installers and downloadable releases
+
+### Known limitations
 - AVR assembly instructions and hardware interrupt vectors (`ISR()`) — require a full CPU emulator, incompatible with the compile-to-native approach
 - Real electrical behavior (voltage, current, short circuits) — not simulatable without SPICE-level modeling
 
+See [ROADMAP.md](docs/ROADMAP.md) for planned features and future direction.
+
 ---
+
+## Contributing
+
+Contributions are welcome. VEMCODE is in early development, so feedback on rough edges, missing API calls, or unintuitive behavior is just as valuable as code contributions.
+
+- **Bug reports** — open an issue describing what happened and how to reproduce it
+- **Feature requests** — check [ROADMAP.md](docs/ROADMAP.md) first to see if it's already planned, then open an issue to discuss before submitting a PR
+- **Code contributions** — fork the repo, make your changes on a branch, and open a pull request; keep changes focused (one feature or fix per PR)
 
 ## License
 
@@ -295,7 +361,3 @@ VEMCODE is licensed under the [GNU General Public License v3.0](LICENSE).
 You are free to use, modify, and distribute this software under the terms of the GPL v3 — including for free and open source projects.
 
 **Commercial licensing:** If you want to use VEMCODE in a closed-source or commercial product without GPL obligations, contact me at cdstortz@gmail.com to arrange a commercial license.
-
-## Contributing
-
-Pull requests welcome. If you find a bug or want a feature, open an issue.

@@ -1,3 +1,5 @@
+// @board Arduino Uno
+
 #define LED_PIN 13
 
 int counter = 0;
