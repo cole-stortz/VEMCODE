@@ -104,22 +104,25 @@ Completed phases are marked ✓. Active and future phases are in order of planne
 
 ---
 
-### Phase 6 — LCD Component
+### Phase 6 — LCD Component ✓
 
 Add a working 16x2 LCD to the canvas. Rudimentary visuals only — characters displayed in a fixed-width grid, no pixel-accurate graphics. Pretty rendering comes later in Phase 11.
 
 **How it works:**
 
-The preprocessor injects a replacement `LiquidCrystal` class (same approach as `Servo.h`). The constructor `LiquidCrystal lcd(rs, en, d4, d5, d6, d7)` registers the LCD with the runtime using the actual pin numbers passed in — no naming conventions required. This makes it fully universal: any sketch using `#include <LiquidCrystal.h>` works automatically regardless of how the user named their pin variables.
+The preprocessor injects a replacement `LiquidCrystal` class in `strip_includes()` (same approach as `Servo.h`). The constructor stores the RS pin as the component identifier. `lcd.print()`, `lcd.clear()`, and `lcd.setCursor()` call `api->lcd_print(rs, row, text)` — a new entry in `ArduinoAPI` that fires a callback up through `ArduinoRuntime` → `SketchThread` → `CanvasWidget`, where `QGraphicsTextItem` labels on each row are updated in real time.
 
-**Work items:**
-- Inject `LiquidCrystal` replacement class in `strip_includes()` — constructor registers pin mapping with runtime
-- `lcd.begin(cols, rows)` — runtime stores display dimensions
-- `lcd.print(val)` / `lcd.setCursor(col, row)` / `lcd.clear()` / `lcd.home()` — runtime maintains 16x2 character buffer
-- Canvas renders the character buffer as a dark green box with monospace text — 16 characters × 2 rows
-- Circuit detector LCD detection (already partially implemented) kept as fallback for sketches that don't include `LiquidCrystal.h`
+- ✓ `LiquidCrystal` replacement class injected by `strip_includes()` — `LiquidCrystal(rs, en, d4, d5, d6, d7)`, same approach as `Servo.h`
+- ✓ `lcd.begin(cols, rows)` — signals LCD active via `digitalWrite(rs, HIGH)` and clears both rows
+- ✓ `lcd.print(const char*)` / `lcd.print(String)` / `lcd.print(int)` / `lcd.print(float)` — all overloads call `api->lcd_print`
+- ✓ `lcd.setCursor(col, row)` — tracks current row for subsequent `print()` calls
+- ✓ `lcd.clear()` — clears both rows via `lcd_print`
+- ✓ `lcd_print` API function — new entry at end of `ArduinoAPI` struct; `impl_lcd_print` in `ArduinoRuntime` fires `on_lcd_print` callback
+- ✓ Qt signal chain — `on_lcd_print` → `emit lcdPrint(pin, row, text)` on `SketchThread` → `updateLcdText()` slot on `CanvasWidget`
+- ✓ Canvas renders LCD as a cyan rectangle with two rows of `QGraphicsTextItem` (Courier New 7pt, 16 chars wide), keyed in `lcdRow0Labels_` / `lcdRow1Labels_` by RS pin
+- ✓ CircuitDetector LCD detection — RS + EN + D4–D7 define group detected in `detect_multipin()`; RS pin used as representative; other 5 pins claimed to prevent duplicate single-pin entries
 
-> **Milestone:** A sketch using `LiquidCrystal` prints text and the canvas displays it correctly.
+> **Milestone:** A sketch using `LiquidCrystal` prints text and the canvas displays it correctly. ✓
 
 ---
 

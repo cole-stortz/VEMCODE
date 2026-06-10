@@ -86,6 +86,7 @@ The demo runs the LamboWallFollow sketch, an obstacle avoidance algorithm for a 
   - `Serial.print(float, n)` — float with n decimal places
   - `tone`, `noTone`
   - `map`, `constrain`, `abs`, `min`, `max`, `random`
+- Library support: `#include <Servo.h>` and `#include <LiquidCrystal.h>` — replaced by built-in classes at compile time, no installation required
 - Full `String` class — construction, concatenation, search, manipulation, conversion
 - Speed slider — 0.1x to 2.5x simulation speed
 - Stop is instant — no waiting for long delays to finish
@@ -107,7 +108,7 @@ Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
 | Light sensor | PHOTO, LDR, PHOTORESISTOR | Type analog value (0-1023) |
 | Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Type analog value (0-1023) |
 | Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
-| LCD / OLED | LCD, DISPLAY, SCREEN, OLED | Character rendering |
+| LCD (16×2) | LCD, DISPLAY, SCREEN, OLED | Live text — `lcd.print()` text appears on the canvas in real time |
 
 > Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Supported boards: Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1. The selected board drives pin count, analog offset, PWM resolution, and the canvas board graphic.
 >
@@ -324,7 +325,8 @@ VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, 
 
 ### What works
 - Full Arduino API simulation (`digitalWrite`, `analogRead`, `Serial`, `millis`, `pulseIn`, and more)
-- Auto-detection and rendering of components from pin names
+- Library support — `#include <Servo.h>` and `#include <LiquidCrystal.h>` work out of the box
+- Auto-detection and rendering of components from pin names (including 16×2 LCD with live text)
 - Serial monitor with send/receive
 - Signal timeline (logic analyzer view)
 - Variable watch panel

@@ -99,6 +99,7 @@ struct ArduinoAPI {
     int  (*Serial_read)();
     unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
     // Note: tone/noTone are in preprocessor replace list but not yet implemented in runtime
+    void (*lcd_print)(int pin, int row, const char* text);
 };
 
 namespace vb { INPUT=0, OUTPUT=1, INPUT_PULLUP=2, LOW=0, HIGH=1 }
@@ -194,7 +195,7 @@ Owns all simulation state. All `impl_*` functions are static and access state vi
 - `float speed_multiplier_` — scales delay duration. `1.0/speed` where speed is display multiplier
 - `std::atomic<bool> stop_requested_` — set by SketchThread to interrupt sleeping delays
 - `std::deque<char> serial_buffer_` — bytes injected by UI, consumed by `impl_Serial_read`
-- `on_pin_changed`, `on_serial_output`, `on_variable_changed` — callbacks set by SketchHost
+- `on_pin_changed`, `on_serial_output`, `on_variable_changed`, `on_lcd_print` — callbacks set by SketchHost; fire on background thread, only emit Qt signals from them
 
 **Key methods:**
 - `get_api()` — builds and returns the ArduinoAPI struct, sets `g_runtime = this`
@@ -254,7 +255,7 @@ Transforms standard Arduino source into VEMCODE DLL format.
 - `delayMicroseconds` before `delay` (partial match avoidance)
 - `pulseIn(` → `api->pulseIn(` (all 3 args required; no default-arg wrapper in injected header)
 - `tone`/`noTone` — replaced but not yet implemented in runtime
-- `#include <Servo.h>` stripped and replaced by built-in `Servo` class in injected header
+- `#include <Servo.h>` and `#include <LiquidCrystal.h>` — stripped and replaced by built-in stub classes injected inline at the `#include` site by `strip_includes()`
 
 **Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.
 
@@ -304,6 +305,7 @@ QThread subclass. Runs vb_loop in a tight loop on a background thread.
 - `serialOutput(QString)`
 - `pinChanged(int pin, int value)`
 - `variableChanged(QString name, int value)`
+- `lcdPrint(int pin, int row, QString text)` — emitted from `on_lcd_print` callback; connected to `CanvasWidget::updateLcdText`
 - `sketchReloaded()`
 - `loadFailed(QString reason)`
 
@@ -340,6 +342,9 @@ Multi-pin components draw one wire per pin. Each wire is L-shaped: horizontal to
 
 **Servo angle display:**
 `servoLabels_` QMap stores a `QGraphicsTextItem*` per servo pin. Created in `drawComponent`, updated in `updatePin` when `analogWrite` fires: `angle = value * 180 / 255`, label text is `"°" + angle`.
+
+**LCD text display:**
+`lcdRow0Labels_` and `lcdRow1Labels_` QMaps store a `QGraphicsTextItem*` per row, keyed by RS pin number. Created as children of the LCD `QGraphicsRectItem` in `drawComponent` (so they move with the box and don't need explicit scene add). Updated via `updateLcdText(pin, row, text)` — the `CanvasWidget` slot connected to `SketchThread::lcdPrint`. Text is clamped to 16 characters via `QString::left(16).leftJustified(16)`. Cleared in `refresh()` before each redraw.
 
 **Analog index conversion:**
 Both `inject_analog` (CanvasWidget → SketchThread) and `impl_analogRead` (runtime) apply:
@@ -481,7 +486,10 @@ cmake --build build
 - **`stopSketch()` order** — sets `stop_requested_` BEFORE `running_=false` then `wait()`.
 - **Preprocessor replace order** — println before print, digitalRead before digitalWrite, delayMicroseconds before delay.
 - **`injected_header.inc` changes require cmake re-run** — `set_property(CMAKE_CONFIGURE_DEPENDS)` makes the build system detect the change automatically, but only if you build via cmake (`cmake --build build`), not by invoking g++ directly.
-- **`#include <Servo.h>`** — must be stripped in preprocessor, replaced by built-in Servo class in injected header.
+- **`#include <Servo.h>` and `#include <LiquidCrystal.h>`** — must be stripped in preprocessor and replaced by built-in stub classes. `strip_includes()` handles both; LiquidCrystal before Servo in the replacement order.
+- **`LiquidCrystal` global constructor safety** — `LiquidCrystal lcd(rs, en, d4, d5, d6, d7)` is typically declared at global scope and its constructor runs before `vb_init`. The stub constructor only stores `rs_` as an int; it never calls `api->`. Safe — `api` is only called in `begin()`, `print()`, `clear()`, and `setCursor()`, which run after `vb_init`.
+- **LCD text items are children of the rect, not the scene** — `QGraphicsTextItem` for LCD rows is parented to the `QGraphicsRectItem` (not added via `scene_->addItem()`). Double-adding a child item to the scene causes a crash. Creating it as a child of the rect is sufficient.
+- **LCD RS pin as representative** — `CanvasWidget` maps LCD text items by RS pin number. Only the RS pin is registered in `pinItems_`; the other 5 LCD pins are not tracked individually.
 - **Motor vs Servo** — MOTOR keyword → Motor (H-bridge), SRV/SERVO → Servo (PWM). These are different component types with different pin counts and behaviors.
 - **`// @board` hint matching** — the board name in the comment must exactly match a `BoardProfile.name` string (e.g. `"Teensy 4.1"`, `"Arduino Uno"`). An unrecognized name silently falls back to the settings board — no error is shown.
 - **Pin count** — RuntimeState arrays sized by `BoardProfile.pin_count`. Default is Uno (20). Sketches targeting Teensy or Mega must select the matching board in Settings or use a `// @board` comment.

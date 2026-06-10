@@ -243,6 +243,52 @@ The `#include <Servo.h>` line is stripped by the preprocessor and replaced with 
 
 ---
 
+## LiquidCrystal (16×2 LCD)
+
+Include and use exactly as you would with a real Arduino:
+
+```cpp
+// @board Arduino Uno
+#include <LiquidCrystal.h>
+
+#define LCD_RS 12
+#define LCD_EN 11
+#define LCD_D4  5
+#define LCD_D5  4
+#define LCD_D6  3
+#define LCD_D7  2
+
+LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
+void setup() {
+    lcd.begin(16, 2);
+    lcd.print("Hello, VEMCODE!");
+}
+
+void loop() {
+    lcd.setCursor(0, 1);
+    lcd.print(millis() / 1000);
+    delay(500);
+}
+```
+
+The `#include <LiquidCrystal.h>` line is stripped by the preprocessor and replaced with a built-in `LiquidCrystal` class. Text passed to `lcd.print()` appears on the canvas LCD in real time.
+
+**Supported methods:**
+
+```cpp
+lcd.begin(cols, rows);        // initializes display — call in setup()
+lcd.print("text");            // const char*, String, int, float
+lcd.setCursor(col, row);      // row 0 or 1; col is ignored (text always starts at col 0)
+lcd.clear();                  // clears both rows
+```
+
+Text is truncated to 16 characters per row. The canvas LCD shows two rows of monospace text, updated immediately whenever `lcd.print()` is called.
+
+**Canvas detection:** VEMCODE detects the LCD from the `LCD_RS`, `LCD_EN`, `LCD_D4`–`LCD_D7` `#define` names. Use those naming conventions and the LCD component will appear on the canvas automatically.
+
+---
+
 ## PROGMEM and F()
 
 Flash-string helpers are no-ops in VEMCODE — they compile without modification but do nothing special:
@@ -272,6 +318,7 @@ VEMCODE infers what components are in your circuit by reading your sketch source
 | Distance Sensor (HC-SR04) | paired `TRIG_PIN` + `ECHO_PIN` defines |
 | H-Bridge Motor | grouped `MOTOR1_PWM`, `MOTOR1_CW`, `MOTOR1_ANTI` defines |
 | Color Sensor (TCS3200) | `s0Pins[]`, `s1Pins[]`, `s2Pins[]`, `s3Pins[]`, `sensorOut[]` arrays |
+| LCD (16×2) | `LCD_RS`, `LCD_EN`, `LCD_D4`–`LCD_D7` defines (6-pin group) |
 
 Components detected via `analogRead(A0)` calls (with no matching `#define`) fall back to `AnalogSensor`.
 
