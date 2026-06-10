@@ -384,13 +384,14 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     else
         wire_pins = { comp.pin };
 
+    int i = 0;
     for (int wpin : wire_pins) {
-        if (wpin < 0) continue;
+        if (wpin < 0) { i++; continue; }
 
         QPointF target = pinLocation(wpin);
 
-        // Clamp attachment point to component box bounds at the pin's Y
-        float attach_y = qBound((float)comp_y, (float)target.y(), (float)(comp_y + comp_h));
+        // Each wire attaches at a different y so they don't stack
+        float attach_y = comp_y + 15.0f + i * WIRE_SPACING;
 
         QPointF comp_edge = is_output
             ? QPointF(comp_x, attach_y)
@@ -398,23 +399,25 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
 
         bool pin_is_analog = (wpin >= profile_.analog_offset);
         if (pin_is_analog) {
-            // Analog: 3-segment route around board left edge
-            QPointF mid1 = QPointF(BOARD_X - 80, target.y());
-            QPointF mid2 = QPointF(BOARD_X - 80, attach_y);
+            // Analog: 3-segment route around board left edge, staggered per wire
+            float inter_x = BOARD_X - 80 - i * WIRE_SPACING;
+            QPointF mid1(inter_x, target.y());
+            QPointF mid2(inter_x, attach_y);
             drawWire(target, mid1);
             drawWire(mid1, mid2);
             drawWire(mid2, comp_edge);
-        } else if (std::abs(target.y() - attach_y) < 1.0f) {
-            // Pin Y is within component box -- straight horizontal wire
-            drawWire(target, comp_edge);
         } else {
-            // Pin Y is outside component box -- L-shaped turn
-            QPointF corner = is_output
-                ? QPointF(comp_x, target.y())
-                : QPointF(comp_x + comp_w, target.y());
-            drawWire(target, corner);
-            drawWire(corner, comp_edge);
+            // Digital: horizontal from pin, vertical at staggered x, horizontal into component
+            float inter_x = is_output
+                ? comp_x - 10.0f - i * WIRE_SPACING
+                : comp_x + comp_w + 10.0f + i * WIRE_SPACING;
+            QPointF mid1(inter_x, target.y());
+            QPointF mid2(inter_x, attach_y);
+            drawWire(target, mid1);
+            drawWire(mid1, mid2);
+            drawWire(mid2, comp_edge);
         }
+        i++;
     }
 }
 

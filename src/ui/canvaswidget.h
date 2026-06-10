@@ -63,4 +63,6 @@ private:
     int dragStartValue_  = 512;
 
     BoardProfile profile_ = BOARD_UNO;
+
+    static constexpr float WIRE_SPACING = 10.0f;
 };
