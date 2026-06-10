@@ -38,6 +38,7 @@ static const QColor COLOR_POT_ACTIVE         ("#44ffcc");
 static const QColor COLOR_LIGHT_ACTIVE       ("#ffff44");
 static const QColor COLOR_TEMP_ACTIVE        ("#ff6644");
 static const QColor COLOR_ANALOG_ACTIVE      ("#aaaaaa");
+static const QColor COLOR_LCD_ACTIVE          ("#00ffdd");
 
 // Component inactive colors (default state)
 static const QColor COLOR_LED_INACTIVE        ("#3a3000");
@@ -79,6 +80,8 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     buttonStates_.clear();
     analogValues_.clear();
     servoLabels_.clear();
+    lcdRow0Labels_.clear();
+    lcdRow1Labels_.clear();
     dragPin_ = -1;
 
     drawBoard();
@@ -133,6 +136,12 @@ void CanvasWidget::updatePin(int pin, int value) {
     }
 }
 
+void CanvasWidget::updateLcdText(int pin, int row, const QString& text) {
+    auto& map = (row == 0) ? lcdRow0Labels_ : lcdRow1Labels_;
+    auto it = map.find(pin);
+    if (it == map.end()) return;
+    it.value()->setPlainText(text.left(16).leftJustified(16));
+}
 
 void CanvasWidget::drawBoard() {
     scene_->addRect(
@@ -193,12 +202,14 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
                       comp.type == ComponentType::Buzzer       ||
                       comp.type == ComponentType::Servo        ||
                       comp.type == ComponentType::HBridgeMotor ||
+                      comp.type == ComponentType::LCD          ||
                       comp.type == ComponentType::GenericOutput);
 
 
     int comp_w = 100;
     int comp_h = (comp.type == ComponentType::ColorSensor)  ? 64
                : (comp.type == ComponentType::HBridgeMotor) ? 54
+               : (comp.type == ComponentType::LCD)          ? 54
                : 44;
 
     QPointF pin_pos = pinLocation(comp.pin);
@@ -362,6 +373,19 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         servoLabels_[comp.pin] = angleText;
     }
 
+    if (comp.type == ComponentType::LCD) {
+        QGraphicsTextItem* row0 = new QGraphicsTextItem("                ", rect);
+        row0->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+        row0->setFont(QFont("Courier New", 7));
+        row0->setPos(6, 22);
+        lcdRow0Labels_[comp.pin] = row0;
+
+        QGraphicsTextItem* row1 = new QGraphicsTextItem("                ", rect);
+        row1->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+        row1->setFont(QFont("Courier New", 7));
+        row1->setPos(6, 36);
+        lcdRow1Labels_[comp.pin] = row1;
+    }
 
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);
@@ -516,7 +540,7 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::DistanceSensor, QColor("#44ffff") },
         { ComponentType::HBridgeMotor,   QColor("#ff44aa") },
         { ComponentType::ColorSensor,    QColor("#aa44ff") },
-
+        { ComponentType::LCD,            COLOR_LCD_ACTIVE  },
     };
 
     static const std::map<ComponentType, QColor> inactiveColors = {
@@ -532,6 +556,7 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::DistanceSensor, QColor("#003a3a") },
         { ComponentType::HBridgeMotor,   QColor("#3a0020") },
         { ComponentType::ColorSensor,    QColor("#1a0040") },
+        { ComponentType::LCD,            COLOR_LCD_INACTIVE},
     };
 
     const auto& colors = active ? activeColors : inactiveColors;

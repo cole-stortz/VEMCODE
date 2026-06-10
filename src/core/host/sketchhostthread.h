@@ -57,6 +57,9 @@ signals:
     // Check to see if a variable changed for watch vairable
     void variableChanged(QString name, int value);
 
+    // Emitted when the sketch calls lcd.print()
+    void lcdPrint(int pin, int row, QString text);
+
 protected:
     // QThread entry point -- runs on the background thread
     void run() override;

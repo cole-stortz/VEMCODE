@@ -41,6 +41,9 @@ struct ArduinoAPI {
 
     // PulseIn
     unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
+
+    // LCD display
+    void (*lcd_print)(int pin, int row, const char* text);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

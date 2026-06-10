@@ -43,6 +43,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.Serial_read      = impl_Serial_read;
     api.pulseIn          = impl_pulseIn;
     api.delayMicroseconds = impl_delayMicroseconds;
+    api.lcd_print        = impl_lcd_print;
     return api;
 }
 
@@ -146,6 +147,11 @@ void ArduinoRuntime::impl_watch_variable(const char* name, int value) {
         g_runtime->on_variable_changed(std::string(name), value);
     else
         std::cout << ts() << "  watch: " << name << " = " << value << "\n";
+}
+
+void ArduinoRuntime::impl_lcd_print(int pin, int row, const char* text) {
+    if (g_runtime && g_runtime->on_lcd_print)
+        g_runtime->on_lcd_print(pin, row, std::string(text ? text : ""));
 }
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {

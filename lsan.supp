@@ -1,0 +1,5 @@
+leak:libwayland-client.so
+leak:libxkbcommon.so
+leak:KF6WindowSystemKWaylandPlugin.so
+leak:libQt6WaylandClient.so
+leak:breeze6.so

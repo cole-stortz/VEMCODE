@@ -69,6 +69,25 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
 std::string Preprocessor::strip_includes(const std::string& source) {
     std::string s = source;
 
+    s = replace_all(s, "#include <LiquidCrystal.h>",
+    "#ifndef VB_LIQUIDCRYSTAL_H\n"
+    "#define VB_LIQUIDCRYSTAL_H\n"
+    "#include <string>\n"
+    "class LiquidCrystal {\n"
+    "public:\n"
+    "    LiquidCrystal(int rs, int, int, int, int, int) : rs_(rs), row_(0) {}\n"
+    "    void begin(int, int) { if (api) { api->digitalWrite(rs_, 1); api->lcd_print(rs_, 0, \"\"); api->lcd_print(rs_, 1, \"\"); } }\n"
+    "    void clear() { if (api) { api->lcd_print(rs_, 0, \"\"); api->lcd_print(rs_, 1, \"\"); } row_ = 0; }\n"
+    "    void setCursor(int, int row) { row_ = row; }\n"
+    "    void print(const char* s) { if (api) api->lcd_print(rs_, row_, s ? s : \"\"); }\n"
+    "    void print(const String& s) { if (api) api->lcd_print(rs_, row_, s.c_str()); }\n"
+    "    void print(int v) { if (api) { auto s = std::to_string(v); api->lcd_print(rs_, row_, s.c_str()); } }\n"
+    "    void print(float v) { if (api) { auto s = std::to_string(v); api->lcd_print(rs_, row_, s.c_str()); } }\n"
+    "private:\n"
+    "    int rs_, row_;\n"
+    "};\n"
+    "#endif\n");
+
     s = replace_all(s, "#include <Servo.h>",
     "#ifndef VB_SERVO_H\n"
     "#define VB_SERVO_H\n"

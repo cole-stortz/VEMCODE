@@ -34,6 +34,7 @@ public:
     std::function<void(const std::string&)> on_serial_output;
     std::function<void(int pin, int value)> on_pin_changed;
     std::function<void(const std::string&, int)> on_variable_changed;
+    std::function<void(int pin, int row, const std::string&)> on_lcd_print;
 
     void inject_pin(int pin, int value);
 
@@ -91,6 +92,7 @@ private:
     static void          impl_Serial_println (const char* s);
     static void          impl_watch_variable (const char* name, int value);
     static unsigned long impl_pulseIn        (int pin, int value, unsigned long timeout);
+    static void          impl_lcd_print      (int pin, int row, const char* text);
     static int           impl_Serial_available();
     static int           impl_Serial_read    ();
 

@@ -18,6 +18,7 @@ public:
     explicit CanvasWidget(QWidget* parent = nullptr);
     void refresh(const std::vector<DetectedComponent>& components);
     void updatePin(int pin, int value);
+    void updateLcdText(int pin, int row, const QString& text);
     void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
     
 signals:
@@ -46,6 +47,8 @@ private:
     QMap<int, ComponentType>      pinTypes_;
     QMap<int, int>                analogValues_;
     QMap<int, QGraphicsTextItem*> servoLabels_;
+    QMap<int, QGraphicsTextItem*> lcdRow0Labels_;
+    QMap<int, QGraphicsTextItem*> lcdRow1Labels_;
 
     struct MotorState { int pwm = 0, cwise = 0, anti_cwise = 0; };
     QMap<int, MotorState>         motorStates_;       // keyed by rep pin (comp.pin = PWM pin)

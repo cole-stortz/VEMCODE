@@ -134,8 +134,10 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSketchReloaded);
     connect(sketchThread_, &SketchThread::loadFailed,
             this, &MainWindow::onLoadFailed);
-    connect(sketchThread_, &SketchThread::variableChanged,  
+    connect(sketchThread_, &SketchThread::variableChanged,
             variableWatch_, &VariableWatch::onVariableChanged);
+    connect(sketchThread_, &SketchThread::lcdPrint,
+            canvasWidget_, &CanvasWidget::updateLcdText);
 
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);

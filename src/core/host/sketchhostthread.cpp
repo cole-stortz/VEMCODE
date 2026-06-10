@@ -42,6 +42,11 @@ void SketchThread::run() {
     // Check to see if a variable changed and emit that signal
     runtime.on_variable_changed = [this](const std::string& name, int value) {
         emit variableChanged(QString::fromStdString(name), value);
+    };
+
+    // LCD text output
+    runtime.on_lcd_print = [this](int pin, int row, const std::string& text) {
+        emit lcdPrint(pin, row, QString::fromStdString(text));
     };  
 
     // Load the sketch DLL
