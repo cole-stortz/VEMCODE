@@ -144,7 +144,7 @@ void CanvasWidget::drawBoard() {
     QGraphicsTextItem* label = scene_->addText(profile_.name);
     label->setDefaultTextColor(COLOR_BOARD_LABEL);
     label->setFont(QFont("Courier New", 9));
-    label->setPos(BOARD_X + BOARD_W/2 - 40, BOARD_Y + 10);
+    label->setPos(BOARD_X + BOARD_W / 2.0 - 40, BOARD_Y + 10);
 
     scene_->addRect(
         BOARD_X + 40, BOARD_Y + 80, 120, 60,
@@ -499,7 +499,7 @@ QPointF CanvasWidget::pinLocation(int pin) {
         float y = BOARD_Y + spacing * (pin - profile_.analog_offset + 1);
         return QPointF(BOARD_X, y);
     }
-    return QPointF(BOARD_X + BOARD_W / 2, BOARD_Y);
+    return QPointF(BOARD_X + BOARD_W / 2.0, BOARD_Y);
 }
 
 QColor CanvasWidget::componentColor(ComponentType type, bool active) {
