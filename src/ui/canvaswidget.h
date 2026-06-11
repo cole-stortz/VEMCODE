@@ -67,5 +67,5 @@ private:
 
     BoardProfile profile_ = BOARD_UNO;
 
-    static constexpr float WIRE_SPACING = 10.0f;
+    static constexpr float WIRE_SPACING = 5.0f;
 };

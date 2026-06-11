@@ -38,7 +38,10 @@ static const QColor COLOR_POT_ACTIVE         ("#44ffcc");
 static const QColor COLOR_LIGHT_ACTIVE       ("#ffff44");
 static const QColor COLOR_TEMP_ACTIVE        ("#ff6644");
 static const QColor COLOR_ANALOG_ACTIVE      ("#aaaaaa");
-static const QColor COLOR_LCD_ACTIVE          ("#00ffdd");
+static const QColor COLOR_LCD_ACTIVE          ("#3d0076");
+static const QColor COLOR_DISTANCE_ACTIVE     ("#44ffff");
+static const QColor COLOR_HBRIDGE_ACTIVE      ("#ff44aa");
+static const QColor COLOR_COLORSENSOR_ACTIVE ("#aa44ff");
 
 // Component inactive colors (default state)
 static const QColor COLOR_LED_INACTIVE        ("#3a3000");
@@ -46,12 +49,15 @@ static const QColor COLOR_BUTTON_INACTIVE     ("#003a15");
 static const QColor COLOR_BUZZER_INACTIVE     ("#3a1a00");
 static const QColor COLOR_SERVO_INACTIVE      ("#001a3a");
 static const QColor COLOR_POT_INACTIVE        ("#1a1a3a");
-static const QColor COLOR_LCD_INACTIVE        ("#001a1a");
+static const QColor COLOR_LCD_INACTIVE        ("#0b0213");
 static const QColor COLOR_GENERIC_INACTIVE    ("#2a2a2a");
 static const QColor COLOR_SWITCH_INACTIVE    ("#003a15");
 static const QColor COLOR_LIGHT_INACTIVE     ("#3a3a00");
 static const QColor COLOR_TEMP_INACTIVE      ("#3a1500");
 static const QColor COLOR_ANALOG_INACTIVE    ("#2a2a2a");
+static const QColor COLOR_DISTANCE_INACTIVE  ("#003a3a");
+static const QColor COLOR_HBRIDGE_INACTIVE   ("#3a0020");
+static const QColor COLOR_COLORSENSOR_INACTIVE ("#1a0040");
 
 // Component text colors
 static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
@@ -258,7 +264,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         QGraphicsTextItem* motorLabel = new QGraphicsTextItem("STOP\nPWM: 0", rect);
         motorLabel->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         motorLabel->setFont(QFont("Courier New", 8));
-        motorLabel->setPos(6, 30);
+        motorLabel->setPos(6, 20);
         motorLabels_[rep] = motorLabel;
     }
 
@@ -369,7 +375,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         QGraphicsTextItem* angleText = new QGraphicsTextItem("0°", rect);
         angleText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         angleText->setFont(QFont("Courier New", 9));
-        angleText->setPos(comp_w - 36, 10);
+        angleText->setPos(comp_w - 36, 15);
         servoLabels_[comp.pin] = angleText;
     }
 
@@ -392,14 +398,15 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     typeText->setPlainText(QString::fromStdString(comp.label));
     typeText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
     typeText->setFont(QFont("Courier New", 8));
-    typeText->setPos(6, 6);
+    typeText->setPos(6, 2);
 
+    // Pin name sublabel, if available (e.g. "LED_PIN" or "Echo Pin")
     if (!comp.pin_name.empty()) {
         QGraphicsTextItem* nameText = new QGraphicsTextItem(rect);
         nameText->setPlainText(QString::fromStdString(comp.pin_name));
         nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
         nameText->setFont(QFont("Courier New", 7));
-        nameText->setPos(6, 24);
+        nameText->setPos(6, -15);
     }
 
     std::vector<int> wire_pins;
@@ -537,9 +544,9 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::LightSensor,   COLOR_LIGHT_ACTIVE   },
         { ComponentType::TempSensor,    COLOR_TEMP_ACTIVE    },
         { ComponentType::AnalogSensor,  COLOR_ANALOG_ACTIVE  },
-        { ComponentType::DistanceSensor, QColor("#44ffff") },
-        { ComponentType::HBridgeMotor,   QColor("#ff44aa") },
-        { ComponentType::ColorSensor,    QColor("#aa44ff") },
+        { ComponentType::DistanceSensor,COLOR_DISTANCE_ACTIVE },
+        { ComponentType::HBridgeMotor,  COLOR_HBRIDGE_ACTIVE },
+        { ComponentType::ColorSensor,   COLOR_COLORSENSOR_ACTIVE },
         { ComponentType::LCD,            COLOR_LCD_ACTIVE  },
     };
 
@@ -553,9 +560,9 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
         { ComponentType::LightSensor,   COLOR_LIGHT_INACTIVE },
         { ComponentType::TempSensor,    COLOR_TEMP_INACTIVE  },
         { ComponentType::AnalogSensor,  COLOR_ANALOG_INACTIVE},
-        { ComponentType::DistanceSensor, QColor("#003a3a") },
-        { ComponentType::HBridgeMotor,   QColor("#3a0020") },
-        { ComponentType::ColorSensor,    QColor("#1a0040") },
+        { ComponentType::DistanceSensor,COLOR_DISTANCE_INACTIVE },
+        { ComponentType::HBridgeMotor,  COLOR_HBRIDGE_INACTIVE },
+        { ComponentType::ColorSensor,   COLOR_COLORSENSOR_INACTIVE },
         { ComponentType::LCD,            COLOR_LCD_INACTIVE},
     };
 
