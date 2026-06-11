@@ -132,10 +132,11 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 **Missing functions:**
 - ✓ `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
-- `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE; ISR called synchronously when pin state changes in the simulation
-- `noInterrupts()` / `interrupts()` — stripped by preprocessor, replaced with no-ops; global interrupt disable/enable has no equivalent in simulation
-- `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte simulated array, optional disk persistence between sessions
-- `Serial1` / `Serial2` — additional hardware UARTs present on Mega, Due; same implementation as `Serial`, separate buffers
+- ✓ `attachInterrupt(pin, ISR, mode)` — `RISING`, `FALLING`, `CHANGE` constants added to `vb` namespace; callback and mode stored in `RuntimeState`; `impl_attachInterrupt` registers the ISR but does not fire it automatically on pin changes — hardware interrupt simulation requires a CPU emulator and is outside the compile-to-native scope
+- ✓ `noInterrupts()` / `interrupts()` — track enabled state in `RuntimeState::interrupts_enabled_`; preprocessor replaces calls with `api->` prefixed versions
+- ✓ `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte `std::array<uint8_t, 1024>` in `RuntimeState`; bounds-checked (out-of-range returns `0xFF`); `update()` skips write if value unchanged; `#include <EEPROM.h>` stripped by preprocessor; no disk persistence between sessions
+- ✓ `Serial1` / `Serial2` runtime — additional hardware UARTs on Mega 2560, Due, Teensy 4.1; same implementation as `Serial`, separate buffers and callbacks (`on_serial1_output`, `on_serial2_output`); preprocessor maps `Serial1.*` / `Serial2.*` calls to `api->Serial1_*` / `api->Serial2_*`
+- `Serial1` / `Serial2` split monitor UI — when a board with `serial_count > 1` is active, the Serial monitor tab splits horizontally: Serial on the left, Serial1 and Serial2 stacked on the right; driven by a new `serial_count` field on `BoardProfile`; `SketchThread` emits `serial1Output` / `serial2Output` signals wired to the new monitor panes
 
 **Missing libraries (preprocessor injection, same approach as `Servo.h`):**
 - `SoftwareSerial` — injected class, same buffer model as `Serial`

@@ -22,6 +22,16 @@ struct RuntimeState {
     std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
     std::map<int, int> tone_frequencies_; // pin → frequency
     std::chrono::steady_clock::time_point start_time;
+    std::map<int, void(*)()> interrupt_callbacks_; // pin → callback
+    std::map<int, int> interrupt_modes_; // pin → mode
+    bool interrupts_enabled_ = true;
+    std::array<uint8_t, 1024> eeprom_;
+    bool serial1_started   = false;
+    int  serial1_baud_      = 0;
+    std::deque<char> serial1_buffer_;
+    bool serial2_started   = false;
+    int  serial2_baud_      = 0;
+    std::deque<char> serial2_buffer_;
 };
 
 class ArduinoRuntime {
@@ -36,6 +46,8 @@ public:
     std::function<void(int pin, int value)> on_pin_changed;
     std::function<void(const std::string&, int)> on_variable_changed;
     std::function<void(int pin, int row, const std::string&)> on_lcd_print;
+    std::function<void(const std::string&)> on_serial1_output;
+    std::function<void(const std::string&)> on_serial2_output;
 
     void inject_pin(int pin, int value);
 
@@ -98,6 +110,18 @@ private:
     static int           impl_Serial_read    ();
     static void          impl_tone           (int pin, int frequency, int duration_ms);
     static void          impl_noTone         (int pin);
+    static void          impl_attachInterrupt (int pin, void (*callback)(), int mode);
+    static void          impl_noInterrupts   ();
+    static void          impl_interrupts     ();
+    static void          impl_EEPROM_write   (int address, uint8_t value);
+    static uint8_t       impl_EEPROM_read    (int address);
+    static void          impl_EEPROM_update  (int address, uint8_t value);
+    static void          impl_Serial1_begin  (int baud);
+    static void          impl_Serial1_print  (const char* s);
+    static void          impl_Serial1_println(const char* s);
+    static void          impl_Serial2_begin  (int baud);
+    static void          impl_Serial2_print  (const char* s);
+    static void          impl_Serial2_println(const char* s);
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

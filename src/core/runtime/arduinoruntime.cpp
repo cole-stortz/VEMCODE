@@ -46,6 +46,18 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.lcd_print        = impl_lcd_print;
     api.tone             = impl_tone;
     api.noTone           = impl_noTone;
+    api.attachInterrupt = impl_attachInterrupt;
+    api.interrupts     = impl_interrupts;
+    api.noInterrupts   = impl_noInterrupts;
+    api.EEPROM_read    = impl_EEPROM_read;
+    api.EEPROM_write   = impl_EEPROM_write;
+    api.EEPROM_update  = impl_EEPROM_update;
+    api.Serial1_begin  = impl_Serial1_begin;
+    api.Serial1_print  = impl_Serial1_print;
+    api.Serial1_println= impl_Serial1_println;
+    api.Serial2_begin  = impl_Serial2_begin;
+    api.Serial2_print  = impl_Serial2_print;
+    api.Serial2_println= impl_Serial2_println;
     return api;
 }
 
@@ -245,3 +257,77 @@ void ArduinoRuntime::impl_noTone(int pin) {
     g_runtime->state_.tone_frequencies_[pin] = 0;
     if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, 0);
 }
+
+void ArduinoRuntime::impl_attachInterrupt(int pin, void (*callback)(), int mode) {
+    if (!g_runtime) return;
+    g_runtime->state_.interrupt_callbacks_[pin] = callback;
+    g_runtime->state_.interrupt_modes_[pin] = mode;
+}
+
+void ArduinoRuntime::impl_noInterrupts() {
+    if (!g_runtime) return;
+    g_runtime->state_.interrupts_enabled_ = false;
+}
+
+void ArduinoRuntime::impl_interrupts() {
+    if (!g_runtime) return;
+    g_runtime->state_.interrupts_enabled_ = true;
+}
+
+void ArduinoRuntime::impl_EEPROM_write(int address, uint8_t value) {
+    if (!g_runtime || address < 0 || address >= 1024) return;
+    g_runtime->state_.eeprom_[address] = value;
+}
+
+uint8_t ArduinoRuntime::impl_EEPROM_read(int address) {
+    if (!g_runtime || address < 0 || address >= 1024) return 0xFF;
+    return g_runtime->state_.eeprom_[address];
+}
+
+void ArduinoRuntime::impl_EEPROM_update(int address, uint8_t value) {
+    if (!g_runtime || address < 0 || address >= 1024) return;
+    if (g_runtime->state_.eeprom_[address] != value)
+        g_runtime->state_.eeprom_[address] = value;
+}
+
+void ArduinoRuntime::impl_Serial1_begin(int baud) {
+    if (!g_runtime) return;
+    g_runtime->state_.serial1_started = true;
+    g_runtime->state_.serial1_baud_ = baud;
+}
+
+void ArduinoRuntime::impl_Serial1_print(const char* s) {
+    if (g_runtime && g_runtime->on_serial1_output) // send output to device
+        g_runtime->on_serial1_output(std::string(s));
+    else
+        std::cout << ts() << "  Serial[1] >> " << s; // output to console
+    
+}
+
+void ArduinoRuntime::impl_Serial1_println(const char* s) {
+    if (g_runtime && g_runtime->on_serial1_output) // send output to device
+        g_runtime->on_serial1_output(std::string(s) + "\n");
+    else
+        std::cout << ts() << "  Serial[1] >> " << s << "\n"; // send to console
+}
+
+void ArduinoRuntime::impl_Serial2_begin(int baud) {
+    if (!g_runtime) return;
+    g_runtime->state_.serial2_started = true;
+    g_runtime->state_.serial2_baud_ = baud;
+}
+
+void ArduinoRuntime::impl_Serial2_print(const char* s) {
+    if (g_runtime && g_runtime->on_serial2_output) // send output to device
+        g_runtime->on_serial2_output(std::string(s));
+    else
+        std::cout << ts() << "  Serial[2] >> " << s; // output to console
+}
+
+void ArduinoRuntime::impl_Serial2_println(const char* s) {
+    if (g_runtime && g_runtime->on_serial2_output) // send output to device
+        g_runtime->on_serial2_output(std::string(s) + "\n");
+    else
+        std::cout << ts() << "  Serial[2] >> " << s << "\n"; // send to console
+}
+

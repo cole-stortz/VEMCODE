@@ -65,6 +65,24 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
 
     // tone/noTone are handled by inline wrappers (with default duration) in injected_header
 
+    // Interupts
+    s = replace_all(s, "attachInterrupt(",   "api->attachInterrupt(");
+    s = replace_all(s, "noInterrupts()",   "api->noInterrupts()");
+    s = replace_all(s, "interrupts()",     "api->interrupts()");
+
+    // EEPROM
+    s = replace_all(s, "EEPROM.write(",    "api->EEPROM_write(");
+    s = replace_all(s, "EEPROM.read(",     "api->EEPROM_read(");
+    s = replace_all(s, "EEPROM.update(",   "api->EEPROM_update(");
+
+    // Serial1 and Serial2
+    s = replace_all(s, "Serial1.begin(",    "api->Serial1_begin(");
+    s = replace_all(s, "Serial1.print(",   "api->Serial1_print(");
+    s = replace_all(s, "Serial1.println(", "api->Serial1_println(");
+    s = replace_all(s, "Serial2.begin(",    "api->Serial2_begin(");
+    s = replace_all(s, "Serial2.print(",   "api->Serial2_print(");
+    s = replace_all(s, "Serial2.println(", "api->Serial2_println(");
+
     return s;
 }
 
@@ -89,6 +107,8 @@ std::string Preprocessor::strip_includes(const std::string& source) {
     "    int rs_, row_;\n"
     "};\n"
     "#endif\n");
+
+    s = replace_all(s, "#include <EEPROM.h>", "");
 
     s = replace_all(s, "#include <Servo.h>",
     "#ifndef VB_SERVO_H\n"

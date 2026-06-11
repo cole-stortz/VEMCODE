@@ -48,6 +48,24 @@ struct ArduinoAPI {
     // Tone generation
     void (*tone)(int pin, int frequency, int duration_ms);
     void (*noTone)(int pin);
+
+    // Interrupts
+    void (*attachInterrupt)(int pin, void (*callback)(), int mode);
+    void (*noInterrupts)();
+    void (*interrupts)();
+
+    // EEPROM read, write, and update
+    void (*EEPROM_write)(int address, uint8_t value);
+    uint8_t (*EEPROM_read)(int address);
+    void (*EEPROM_update)(int address, uint8_t value);
+
+    // Serial1 and Serial 2 for boards with multiple serial ports
+    void (*Serial1_begin)(int baud);
+    void (*Serial1_print)(const char* s);
+    void (*Serial1_println)(const char* s);
+    void (*Serial2_begin)(int baud);
+    void (*Serial2_print)(const char* s);
+    void (*Serial2_println)(const char* s);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h
@@ -60,6 +78,11 @@ namespace vb {
     constexpr int INPUT_PULLUP = 2;
     constexpr int LOW          = 0;
     constexpr int HIGH         = 1;
+
+    // Interrupt modes
+    constexpr int CHANGE  = 1;
+    constexpr int FALLING = 2;
+    constexpr int RISING  = 3;
 }
 
 // Analog pin constants -- global scope so they work in #define statements
