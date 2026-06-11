@@ -194,3 +194,7 @@ inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000
 // randomSeed -- seeds the same rand() used by random()
 inline void randomSeed(unsigned long seed) { srand((unsigned int)seed); }
 
+// tone -- two overloads matching Arduino's API: with and without duration
+inline void tone(int pin, int frequency)                  { api->tone(pin, frequency, 0); }
+inline void tone(int pin, int frequency, int duration_ms) { api->tone(pin, frequency, duration_ms); }
+inline void noTone(int pin)                               { api->noTone(pin); }

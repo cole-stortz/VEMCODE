@@ -44,6 +44,10 @@ struct ArduinoAPI {
 
     // LCD display
     void (*lcd_print)(int pin, int row, const char* text);
+
+    // Tone generation
+    void (*tone)(int pin, int frequency, int duration_ms);
+    void (*noTone)(int pin);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

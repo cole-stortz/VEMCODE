@@ -98,7 +98,8 @@ struct ArduinoAPI {
     int  (*Serial_available)();
     int  (*Serial_read)();
     unsigned long (*pulseIn)(int pin, int value, unsigned long timeout);
-    // Note: tone/noTone are in preprocessor replace list but not yet implemented in runtime
+    void (*tone)(int pin, int frequency, int duration_ms);
+    void (*noTone)(int pin);
     void (*lcd_print)(int pin, int row, const char* text);
 };
 
@@ -254,7 +255,7 @@ Transforms standard Arduino source into VEMCODE DLL format.
 - `digitalRead` before `digitalWrite` (partial match avoidance)
 - `delayMicroseconds` before `delay` (partial match avoidance)
 - `pulseIn(` → `api->pulseIn(` (all 3 args required; no default-arg wrapper in injected header)
-- `tone`/`noTone` — replaced but not yet implemented in runtime
+- `tone`/`noTone` — handled by inline wrappers in injected_header (two overloads: with and without duration); wrappers call `api->tone` / `api->noTone` directly, no preprocessor replacement
 - `#include <Servo.h>` and `#include <LiquidCrystal.h>` — stripped and replaced by built-in stub classes injected inline at the `#include` site by `strip_includes()`
 
 **Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.

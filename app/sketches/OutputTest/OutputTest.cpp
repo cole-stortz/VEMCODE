@@ -27,11 +27,11 @@ void loop() {
     Serial.println("LED OFF");
 
     // Buzzer
-    //tone(BUZZER_PIN, 440);
-    //Serial.println("Buzzer ON");
-    //delay(500);
-    //noTone(BUZZER_PIN);
-    //Serial.println("Buzzer OFF");
+    tone(BUZZER_PIN, 440);
+    Serial.println("Buzzer ON");
+    delay(500);
+    noTone(BUZZER_PIN);
+    Serial.println("Buzzer OFF");
 
     // Servo sweep 0 -> 180
     Serial.println("Servo sweep");

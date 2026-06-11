@@ -334,7 +334,7 @@ These are permanent limitations of the compile-to-native-DLL architecture:
 | `ISR(TIMER1_OVF_vect)` etc. | Hardware interrupt vectors don't exist in simulation |
 | Real electrical behavior | No voltage/current/short-circuit simulation |
 | `int` wrapping at 32767 | `int` is 32-bit on x86 vs 16-bit on AVR — use `int16_t` if exact-width behavior matters |
-| `tone()` / `noTone()` | Replaced by preprocessor but not yet implemented in the runtime — calls are silently swallowed |
+| No audio output | `tone()`/`noTone()` track frequency state and update the buzzer canvas colour, but produce no actual sound |
 
 If your sketch uses `int16_t`, `uint8_t`, or other fixed-width types from `<cstdint>`, they work correctly.
 

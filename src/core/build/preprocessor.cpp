@@ -63,6 +63,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     // Watch Variable
     s = replace_all(s, "watch_variable(", "api->watch_variable(");
 
+    // tone/noTone are handled by inline wrappers (with default duration) in injected_header
+
     return s;
 }
 

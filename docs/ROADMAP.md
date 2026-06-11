@@ -131,7 +131,7 @@ The preprocessor injects a replacement `LiquidCrystal` class in `strip_includes(
 Fill out the remaining commonly-used Arduino API surface and add low-level simulation realism. All items are self-contained runtime or preprocessor changes with no inter-dependencies.
 
 **Missing functions:**
-- `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
+- ✓ `tone(pin, frequency)` / `tone(pin, frequency, duration)` / `noTone(pin)` — buzzer/piezo support; no actual audio, just tracks state for canvas display
 - `attachInterrupt(pin, ISR, mode)` — RISING, FALLING, CHANGE; ISR called synchronously when pin state changes in the simulation
 - `noInterrupts()` / `interrupts()` — stripped by preprocessor, replaced with no-ops; global interrupt disable/enable has no equivalent in simulation
 - `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte simulated array, optional disk persistence between sessions

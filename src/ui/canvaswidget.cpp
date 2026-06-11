@@ -132,13 +132,18 @@ void CanvasWidget::updatePin(int pin, int value) {
         return;
     }
 
-    it.value()->setBrush(QBrush(componentColor(type, value == 1)));
+    it.value()->setBrush(QBrush(componentColor(type, value > 0)));
 
     if (type == ComponentType::Servo) {
         int angle = value * 180 / profile_.pwm_resolution;
         auto label_it = servoLabels_.find(pin);
         if (label_it != servoLabels_.end())
             label_it.value()->setPlainText(QString::number(angle) + "°");
+    }
+    if (type == ComponentType::Buzzer) {
+        auto label_it = servoLabels_.find(pin);
+        if (label_it != servoLabels_.end())
+            label_it.value()->setPlainText("PWM: " + QString::number(value));
     }
 }
 
@@ -392,7 +397,14 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         row1->setPos(6, 36);
         lcdRow1Labels_[comp.pin] = row1;
     }
-
+    if (comp.type == ComponentType::Buzzer) {
+        // Display current PWM value for buzzer
+        QGraphicsTextItem* pwmText = new QGraphicsTextItem("PWM: 0", rect);
+        pwmText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+        pwmText->setFont(QFont("Courier New", 8));
+        pwmText->setPos(6, 20);
+        servoLabels_[comp.pin] = pwmText;
+    }
     // Component label -- child of rect so clicks on text find the rect
     QGraphicsTextItem* typeText = new QGraphicsTextItem(rect);
     typeText->setPlainText(QString::fromStdString(comp.label));

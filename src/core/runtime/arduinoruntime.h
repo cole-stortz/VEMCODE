@@ -20,6 +20,7 @@ struct RuntimeState {
     std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
     std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
     std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
+    std::map<int, int> tone_frequencies_; // pin → frequency
     std::chrono::steady_clock::time_point start_time;
 };
 
@@ -95,6 +96,8 @@ private:
     static void          impl_lcd_print      (int pin, int row, const char* text);
     static int           impl_Serial_available();
     static int           impl_Serial_read    ();
+    static void          impl_tone           (int pin, int frequency, int duration_ms);
+    static void          impl_noTone         (int pin);
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;
