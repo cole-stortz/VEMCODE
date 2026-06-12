@@ -40,12 +40,14 @@ public:
     void injectPulseDuration(int pin, unsigned long micros);
     void injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
     void setProfile(BoardProfile p);
+    void injectSoftSerial(int rxPin, const QString& data);
 
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);
     void serial1Output(QString text);
     void serial2Output(QString text);
+    void softSerialOutput(int rxPin, QString text);
 
     // Emitted when the sketch calls digitalWrite() and the value changes
     void pinChanged(int pin, int value);

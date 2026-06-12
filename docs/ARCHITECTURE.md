@@ -101,6 +101,25 @@ struct ArduinoAPI {
     void (*tone)(int pin, int frequency, int duration_ms);
     void (*noTone)(int pin);
     void (*lcd_print)(int pin, int row, const char* text);
+    void (*attachInterrupt)(int pin, void (*callback)(), int mode);
+    void (*noInterrupts)();
+    void (*interrupts)();
+    void (*EEPROM_write)(int address, uint8_t value);
+    uint8_t (*EEPROM_read)(int address);
+    void (*EEPROM_update)(int address, uint8_t value);
+    void (*Serial1_begin)(int baud);
+    void (*Serial1_print)(const char* s);
+    void (*Serial1_println)(const char* s);
+    void (*Serial2_begin)(int baud);
+    void (*Serial2_print)(const char* s);
+    void (*Serial2_println)(const char* s);
+    // SoftwareSerial -- keyed by RX pin so multiple instances are distinguishable
+    void (*soft_serial_begin)    (int rxPin, int baud);
+    void (*soft_serial_print)    (int rxPin, const char* s);
+    void (*soft_serial_println)  (int rxPin, const char* s);
+    int  (*soft_serial_available)(int rxPin);
+    int  (*soft_serial_read)     (int rxPin);
+    int  (*soft_serial_peek)     (int rxPin);
 };
 
 namespace vb { INPUT=0, OUTPUT=1, INPUT_PULLUP=2, LOW=0, HIGH=1 }
@@ -258,7 +277,10 @@ Transforms standard Arduino source into VEMCODE DLL format.
 - `delayMicroseconds` before `delay` (partial match avoidance)
 - `pulseIn(` → `api->pulseIn(` (all 3 args required; no default-arg wrapper in injected header)
 - `tone`/`noTone` — handled by inline wrappers in injected_header (two overloads: with and without duration); wrappers call `api->tone` / `api->noTone` directly, no preprocessor replacement
-- `#include <Servo.h>` and `#include <LiquidCrystal.h>` — stripped and replaced by built-in stub classes injected inline at the `#include` site by `strip_includes()`
+- `#include <Servo.h>`, `#include <LiquidCrystal.h>`, `#include <SoftwareSerial.h>` — stripped and replaced by built-in stub classes injected inline at the `#include` site by `strip_includes()`
+
+**`replace_token` vs `replace_all`:**
+All `Serial.*`, `Serial1.*`, and `Serial2.*` replacements use `replace_token()` instead of `replace_all()`. `replace_token` skips any match where the character immediately before it is a word character (`a-z`, `A-Z`, `0-9`, `_`). This prevents user variable names like `mySerial.println(` or `gpsSerial2.begin(` from being mis-rewritten as `mySerial_println(` / `myapi->Serial2_begin(`.
 
 **Injected header** lives in `src/core/build/injected_header.inc` — edit that file directly to add or change API surface. CMake reads it at configure time and embeds it as `g_injected_header` via `injected_header.cpp.in`. `inject_header()` just prepends `g_injected_header` to the source.
 
@@ -489,7 +511,10 @@ cmake --build build
 - **`stopSketch()` order** — sets `stop_requested_` BEFORE `running_=false` then `wait()`.
 - **Preprocessor replace order** — println before print, digitalRead before digitalWrite, delayMicroseconds before delay.
 - **`injected_header.inc` changes require cmake re-run** — `set_property(CMAKE_CONFIGURE_DEPENDS)` makes the build system detect the change automatically, but only if you build via cmake (`cmake --build build`), not by invoking g++ directly.
-- **`#include <Servo.h>` and `#include <LiquidCrystal.h>`** — must be stripped in preprocessor and replaced by built-in stub classes. `strip_includes()` handles both; LiquidCrystal before Servo in the replacement order.
+- **`#include <Servo.h>`, `#include <LiquidCrystal.h>`, `#include <SoftwareSerial.h>`** — must be stripped in preprocessor and replaced by built-in stub classes. `strip_includes()` handles all three; LiquidCrystal before Servo in the replacement order.
+- **SoftwareSerial output** — routed to the main serial monitor (not a dedicated pane) with a `[SW:N]` prefix where N is the RX pin. `MainWindow::softSerialLineStart_` (a `QMap<int, bool>`) tracks per-port line position so the prefix only appears once per line regardless of how many `print()` calls build it up.
+- **SoftwareSerial variable names** — `Serial.*` replacements use `replace_token()` not `replace_all()`. If you add new `Serial`-prefixed API replacements, use `replace_token()` to prevent user variable names ending in `Serial` from being mis-rewritten.
+- **`SoftwareSerial` RX injection** — call `ArduinoRuntime::inject_soft_serial(rxPin, data)` (or `SketchThread::injectSoftSerial(rxPin, data)`) to push bytes into the per-port receive buffer. `available()`, `read()`, and `peek()` all operate on that buffer.
 - **`LiquidCrystal` global constructor safety** — `LiquidCrystal lcd(rs, en, d4, d5, d6, d7)` is typically declared at global scope and its constructor runs before `vb_init`. The stub constructor only stores `rs_` as an int; it never calls `api->`. Safe — `api` is only called in `begin()`, `print()`, `clear()`, and `setCursor()`, which run after `vb_init`.
 - **LCD text items are children of the rect, not the scene** — `QGraphicsTextItem` for LCD rows is parented to the `QGraphicsRectItem` (not added via `scene_->addItem()`). Double-adding a child item to the scene causes a crash. Creating it as a child of the rect is sufficient.
 - **LCD RS pin as representative** — `CanvasWidget` maps LCD text items by RS pin number. Only the RS pin is registered in `pinItems_`; the other 5 LCD pins are not tracked individually.

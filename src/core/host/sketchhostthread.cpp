@@ -42,6 +42,10 @@ void SketchThread::run() {
         emit serial2Output(QString::fromStdString(text));
     };
 
+    runtime.on_soft_serial_output = [this](int rxPin, const std::string& text) {
+        emit softSerialOutput(rxPin, QString::fromStdString(text));
+    };
+
     // Override pin change -- emit signal instead of printing to console
     runtime.on_pin_changed = [this](int pin, int value) {
         emit pinChanged(pin, value);
@@ -108,4 +112,9 @@ void SketchThread::injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g
 void SketchThread::setProfile(BoardProfile p) {
     QMutexLocker lock(&inject_mutex_);
     host_.setProfile(p);
+}
+
+void SketchThread::injectSoftSerial(int rxPin, const QString& data) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.runtime().inject_soft_serial(rxPin, data.toStdString());
 }

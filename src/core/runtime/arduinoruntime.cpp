@@ -58,6 +58,12 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.Serial2_begin  = impl_Serial2_begin;
     api.Serial2_print  = impl_Serial2_print;
     api.Serial2_println= impl_Serial2_println;
+    api.soft_serial_begin     = impl_soft_serial_begin;
+    api.soft_serial_print     = impl_soft_serial_print;
+    api.soft_serial_println   = impl_soft_serial_println;
+    api.soft_serial_available = impl_soft_serial_available;
+    api.soft_serial_read      = impl_soft_serial_read;
+    api.soft_serial_peek      = impl_soft_serial_peek;
     return api;
 }
 
@@ -331,3 +337,47 @@ void ArduinoRuntime::impl_Serial2_println(const char* s) {
         std::cout << ts() << "  Serial[2] >> " << s << "\n"; // send to console
 }
 
+void ArduinoRuntime::impl_soft_serial_begin(int rxPin, int baud) {
+    if (!g_runtime) return;
+    (void)baud;
+    g_runtime->state_.soft_serial_buffers_[rxPin]; // ensure buffer entry exists
+}
+
+void ArduinoRuntime::impl_soft_serial_print(int rxPin, const char* s) {
+    if (!g_runtime) return;
+    if (g_runtime->on_soft_serial_output)
+        g_runtime->on_soft_serial_output(rxPin, std::string(s));
+    else
+        std::cout << ts() << "  SW:" << rxPin << " >> " << s;
+}
+
+void ArduinoRuntime::impl_soft_serial_println(int rxPin, const char* s) {
+    if (!g_runtime) return;
+    if (g_runtime->on_soft_serial_output)
+        g_runtime->on_soft_serial_output(rxPin, std::string(s) + "\n");
+    else
+        std::cout << ts() << "  SW:" << rxPin << " >> " << s << "\n";
+}
+
+int ArduinoRuntime::impl_soft_serial_available(int rxPin) {
+    if (!g_runtime) return 0;
+    auto it = g_runtime->state_.soft_serial_buffers_.find(rxPin);
+    if (it == g_runtime->state_.soft_serial_buffers_.end()) return 0;
+    return (int)it->second.size();
+}
+
+int ArduinoRuntime::impl_soft_serial_read(int rxPin) {
+    if (!g_runtime) return -1;
+    auto it = g_runtime->state_.soft_serial_buffers_.find(rxPin);
+    if (it == g_runtime->state_.soft_serial_buffers_.end() || it->second.empty()) return -1;
+    char c = it->second.front();
+    it->second.pop_front();
+    return (int)(unsigned char)c;
+}
+
+int ArduinoRuntime::impl_soft_serial_peek(int rxPin) {
+    if (!g_runtime) return -1;
+    auto it = g_runtime->state_.soft_serial_buffers_.find(rxPin);
+    if (it == g_runtime->state_.soft_serial_buffers_.end() || it->second.empty()) return -1;
+    return (int)(unsigned char)it->second.front();
+}

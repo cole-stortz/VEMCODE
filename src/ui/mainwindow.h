@@ -41,6 +41,7 @@ private slots:
     void onSerialOutput(QString text);
     void onSerial1Output(QString text);
     void onSerial2Output(QString text);
+    void onSoftSerialOutput(int rxPin, QString text);
     void onPinChanged(int pin, int value);
     void onSketchReloaded();
     void onLoadFailed(QString reason);
@@ -105,4 +106,7 @@ private:
 
     // Serial Input
     QLineEdit* serialInput_ = nullptr;
+
+    // Per-port line-start tracking for SoftwareSerial prefix insertion
+    QMap<int, bool> softSerialLineStart_;
 };

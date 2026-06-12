@@ -50,6 +50,13 @@ private:
                             const std::string& from,
                             const std::string& to);
 
+    // Like replace_all but skips matches where the character immediately before
+    // the match is a word character (letter, digit, _). Prevents "Serial." from
+    // matching inside "mySerial." or other identifiers ending in "Serial".
+    std::string replace_token(const std::string& source,
+                              const std::string& from,
+                              const std::string& to);
+
     // Quick check to see if loop delay exists, add delay(10) if missing
     std::string inject_safety_delay(const std::string& source);
 

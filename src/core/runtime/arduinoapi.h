@@ -66,6 +66,14 @@ struct ArduinoAPI {
     void (*Serial2_begin)(int baud);
     void (*Serial2_print)(const char* s);
     void (*Serial2_println)(const char* s);
+
+    // SoftwareSerial -- keyed by RX pin so multiple instances are distinguishable
+    void (*soft_serial_begin)    (int rxPin, int baud);
+    void (*soft_serial_print)    (int rxPin, const char* s);
+    void (*soft_serial_println)  (int rxPin, const char* s);
+    int  (*soft_serial_available)(int rxPin);
+    int  (*soft_serial_read)     (int rxPin);
+    int  (*soft_serial_peek)     (int rxPin);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

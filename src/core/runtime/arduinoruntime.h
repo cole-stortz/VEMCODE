@@ -32,6 +32,7 @@ struct RuntimeState {
     bool serial2_started   = false;
     int  serial2_baud_      = 0;
     std::deque<char> serial2_buffer_;
+    std::map<int, std::deque<char>> soft_serial_buffers_; // rxPin → RX buffer
 };
 
 class ArduinoRuntime {
@@ -48,6 +49,7 @@ public:
     std::function<void(int pin, int row, const std::string&)> on_lcd_print;
     std::function<void(const std::string&)> on_serial1_output;
     std::function<void(const std::string&)> on_serial2_output;
+    std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
 
     void inject_pin(int pin, int value);
 
@@ -66,6 +68,11 @@ public:
     void inject_serial(const std::string& data) {
         for (char c : data)
             serial_buffer_.push_back(c);
+    }
+
+    void inject_soft_serial(int rxPin, const std::string& data) {
+        for (char c : data)
+            state_.soft_serial_buffers_[rxPin].push_back(c);
     }
 
     void setProfile(BoardProfile p) { profile_ = p; }
@@ -122,6 +129,12 @@ private:
     static void          impl_Serial2_begin  (int baud);
     static void          impl_Serial2_print  (const char* s);
     static void          impl_Serial2_println(const char* s);
+    static void          impl_soft_serial_begin    (int rxPin, int baud);
+    static void          impl_soft_serial_print    (int rxPin, const char* s);
+    static void          impl_soft_serial_println  (int rxPin, const char* s);
+    static int           impl_soft_serial_available(int rxPin);
+    static int           impl_soft_serial_read     (int rxPin);
+    static int           impl_soft_serial_peek     (int rxPin);
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

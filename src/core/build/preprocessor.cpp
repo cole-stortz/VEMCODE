@@ -39,12 +39,14 @@ bool Preprocessor::is_already_transformed(const std::string& source) {
 std::string Preprocessor::replace_api_calls(const std::string& source) {
     std::string s = source;
 
-    // Serial -- must do println before print to avoid partial match
-    s = replace_all(s, "Serial.println(", "Serial_println(");
-    s = replace_all(s, "Serial.print(",   "Serial_print(");
-    s = replace_all(s, "Serial.begin(",    "api->Serial_begin(");
-    s = replace_all(s, "Serial.available(","api->Serial_available(");
-    s = replace_all(s, "Serial.read(",     "api->Serial_read(");
+    // Serial -- must do println before print to avoid partial match.
+    // replace_token skips matches preceded by a word char so "mySerial.println"
+    // is not incorrectly rewritten as "mySerial_println".
+    s = replace_token(s, "Serial.println(", "Serial_println(");
+    s = replace_token(s, "Serial.print(",   "Serial_print(");
+    s = replace_token(s, "Serial.begin(",    "api->Serial_begin(");
+    s = replace_token(s, "Serial.available(","api->Serial_available(");
+    s = replace_token(s, "Serial.read(",     "api->Serial_read(");
 
     // GPIO -- digitalRead before digitalWrite to avoid partial match
     s = replace_all(s, "digitalRead(",     "api->digitalRead(");
@@ -76,12 +78,12 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_all(s, "EEPROM.update(",   "api->EEPROM_update(");
 
     // Serial1 and Serial2
-    s = replace_all(s, "Serial1.begin(",    "api->Serial1_begin(");
-    s = replace_all(s, "Serial1.print(",   "api->Serial1_print(");
-    s = replace_all(s, "Serial1.println(", "api->Serial1_println(");
-    s = replace_all(s, "Serial2.begin(",    "api->Serial2_begin(");
-    s = replace_all(s, "Serial2.print(",   "api->Serial2_print(");
-    s = replace_all(s, "Serial2.println(", "api->Serial2_println(");
+    s = replace_token(s, "Serial1.begin(",    "api->Serial1_begin(");
+    s = replace_token(s, "Serial1.print(",   "api->Serial1_print(");
+    s = replace_token(s, "Serial1.println(", "api->Serial1_println(");
+    s = replace_token(s, "Serial2.begin(",    "api->Serial2_begin(");
+    s = replace_token(s, "Serial2.print(",   "api->Serial2_print(");
+    s = replace_token(s, "Serial2.println(", "api->Serial2_println(");
 
     return s;
 }
@@ -126,6 +128,35 @@ std::string Preprocessor::strip_includes(const std::string& source) {
     "};\n"
     "#endif\n");
 
+    s = replace_all(s, "#include <SoftwareSerial.h>",
+    "#ifndef VB_SOFTWARESERIAL_H\n"
+    "#define VB_SOFTWARESERIAL_H\n"
+    "class SoftwareSerial {\n"
+    "public:\n"
+    "    SoftwareSerial(int rxPin, int txPin) : rxPin_(rxPin), txPin_(txPin) {}\n"
+    "    void begin(int baud) { if (api) api->soft_serial_begin(rxPin_, baud); }\n"
+    "    void print(const char* s) { if (api) api->soft_serial_print(rxPin_, s ? s : \"\"); }\n"
+    "    void print(const String& s) { if (api) api->soft_serial_print(rxPin_, s.c_str()); }\n"
+    "    void print(int v) { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
+    "    void print(float v) { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
+    "    void println(const char* s) { if (api) api->soft_serial_println(rxPin_, s ? s : \"\"); }\n"
+    "    void println(const String& s) { if (api) api->soft_serial_println(rxPin_, s.c_str()); }\n"
+    "    void println(int v) { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
+    "    void println(float v) { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
+    "    int available() { return api ? api->soft_serial_available(rxPin_) : 0; }\n"
+    "    int read() { return api ? api->soft_serial_read(rxPin_) : -1; }\n"
+    "    int peek() { return api ? api->soft_serial_peek(rxPin_) : -1; }\n"
+    "    void write(uint8_t b) { if (api) { char s[2] = {(char)b, '\\0'}; api->soft_serial_print(rxPin_, s); } }\n"
+    "    void write(const uint8_t* buf, size_t n) { for (size_t i = 0; i < n; ++i) write(buf[i]); }\n"
+    "    void println() { if (api) api->soft_serial_println(rxPin_, \"\"); }\n"
+    "    bool listen() { return true; }\n"
+    "    bool isListening() { return true; }\n"
+    "    bool overflow() { return false; }\n"
+    "private:\n"
+    "    int rxPin_, txPin_;\n"
+    "};\n"
+    "#endif\n");
+
     return s;
 }
 
@@ -148,6 +179,33 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
 
 std::string Preprocessor::inject_header(const std::string& source) {
     return std::string(g_injected_header) + source;
+}
+
+std::string Preprocessor::replace_token(const std::string& source,
+                                         const std::string& from,
+                                         const std::string& to) {
+    if (from.empty()) return source;
+    std::string result;
+    result.reserve(source.size());
+    size_t pos = 0;
+    while (true) {
+        size_t found = source.find(from, pos);
+        if (found == std::string::npos) {
+            result.append(source, pos, std::string::npos);
+            break;
+        }
+        bool preceded_by_word = (found > 0 &&
+            (std::isalnum((unsigned char)source[found - 1]) || source[found - 1] == '_'));
+        if (preceded_by_word) {
+            result.append(source, pos, found - pos + 1);
+            pos = found + 1;
+        } else {
+            result.append(source, pos, found - pos);
+            result.append(to);
+            pos = found + from.size();
+        }
+    }
+    return result;
 }
 
 std::string Preprocessor::replace_all(const std::string& source,

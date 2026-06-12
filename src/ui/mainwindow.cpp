@@ -131,6 +131,8 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSerial1Output);
     connect(sketchThread_, &SketchThread::serial2Output,
             this, &MainWindow::onSerial2Output);
+    connect(sketchThread_, &SketchThread::softSerialOutput,
+            this, &MainWindow::onSoftSerialOutput);
     connect(sketchThread_, &SketchThread::pinChanged,
             this, &MainWindow::onPinChanged);
     connect(sketchThread_, &SketchThread::sketchReloaded,
@@ -503,6 +505,23 @@ void MainWindow::onSerial2Output(QString text) {
     serialMonitor2_->moveCursor(QTextCursor::End);
     serialMonitor2_->insertPlainText(text);
     serialMonitor2_->moveCursor(QTextCursor::End);
+}
+
+void MainWindow::onSoftSerialOutput(int rxPin, QString text) {
+    bool atStart = !softSerialLineStart_.contains(rxPin) || softSerialLineStart_[rxPin];
+    QString out;
+    for (QChar c : text) {
+        if (atStart) {
+            out += QString("[SW:%1] ").arg(rxPin);
+            atStart = false;
+        }
+        out += c;
+        if (c == '\n') atStart = true;
+    }
+    softSerialLineStart_[rxPin] = atStart;
+    serialMonitor_->moveCursor(QTextCursor::End);
+    serialMonitor_->insertPlainText(out);
+    serialMonitor_->moveCursor(QTextCursor::End);
 }
 
 void MainWindow::onPinChanged(int pin, int value) {
