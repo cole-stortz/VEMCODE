@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QDialogButtonBox>
 #include <QFileDialog>
+#include <QCheckBox>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
@@ -47,6 +48,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     boardRow->addWidget(boardCombo_);
     layout->addLayout(boardRow);
 
+    // Simulation options
+    analogNoiseCheck_ = new QCheckBox("Analog noise (gaussian ±2 ADC counts on analogRead)");
+    layout->addWidget(analogNoiseCheck_);
+
     // Save/Cancel buttons
     QDialogButtonBox* buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Cancel);
@@ -83,6 +88,14 @@ BoardProfile SettingsDialog::selectedBoard() const {
 void SettingsDialog::setSelectedBoard(const QString& name) {
     int i = boardCombo_->findText(name);
     if (i >= 0) boardCombo_->setCurrentIndex(i);
+}
+
+bool SettingsDialog::analogNoise() const {
+    return analogNoiseCheck_->isChecked();
+}
+
+void SettingsDialog::setAnalogNoise(bool enabled) {
+    analogNoiseCheck_->setChecked(enabled);
 }
 
 void SettingsDialog::onBrowseCompiler() {

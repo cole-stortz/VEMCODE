@@ -17,6 +17,7 @@ void CircuitDetector::detect(const std::string& source) {
     static const std::map<ComponentType, std::string> type_labels = {
         { ComponentType::LED,           "LED"           },
         { ComponentType::Button,        "Button"        },
+        { ComponentType::ButtonClean,   "Button (Clean)" },
         { ComponentType::Switch,        "Switch"        },
         { ComponentType::Buzzer,        "Buzzer"        },
         { ComponentType::Servo,         "Servo"         },
@@ -439,6 +440,10 @@ ComponentType CircuitDetector::infer_type(
 
     if (contains_any(upper, {"LED", "LIGHT", "LAMP", "INDICATOR"}))
         return ComponentType::LED;
+
+    // TACT/CLEAN/IDEAL checked before BTN/BUTTON so they take priority
+    if (contains_any(upper, {"TACT", "CLEAN", "IDEAL"}))
+        return ComponentType::ButtonClean;
 
     if (contains_any(upper, {"BTN", "BUTTON", "KEY"}))
         return ComponentType::Button;

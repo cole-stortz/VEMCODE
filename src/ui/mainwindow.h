@@ -100,6 +100,7 @@ private:
     QString compilerPath_;
     QString projectRoot_;
     BoardProfile activeProfile_ = BOARD_UNO;
+    bool analogNoise_ = false;
 
     // Speed Slider
     QSlider* speedSlider_ = nullptr;

@@ -29,7 +29,9 @@ public:
     // Stop the simulation loop and wait for the thread to finish.
     void stopSketch();
 
-    void injectPin(int pin, int value); 
+    void injectPin(int pin, int value);
+    void injectButtonBounce(int pin, int value);
+    void setAnalogNoise(bool enabled);
 
     void injectAnalog(int pin, int value);
 

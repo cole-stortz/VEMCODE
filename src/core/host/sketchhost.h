@@ -37,6 +37,7 @@ public:
     bool reload_if_changed();
 
     void inject_pin(int pin, int value);
+    void inject_button_bounce(int pin, int value) { runtime_.inject_button_bounce(pin, value); }
 
     ArduinoRuntime& runtime() { return runtime_; }
 

@@ -8,6 +8,7 @@
 #include <deque>
 #include <map>
 #include <array>
+#include <random>
 
 struct RuntimeState {
     int  pin_modes[80]    = {};
@@ -33,6 +34,9 @@ struct RuntimeState {
     int  serial2_baud_      = 0;
     std::deque<char> serial2_buffer_;
     std::map<int, std::deque<char>> soft_serial_buffers_; // rxPin → RX buffer
+    bool pin_driven[80] = {};  // true once a UI component has injected this pin
+    int  pin_bounce_target[80] = {};
+    std::map<int, std::chrono::steady_clock::time_point> pin_bounce_until_;
 };
 
 class ArduinoRuntime {
@@ -52,6 +56,8 @@ public:
     std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
 
     void inject_pin(int pin, int value);
+    void inject_button_bounce(int pin, int finalValue);
+    void set_analog_noise(bool enabled) { analog_noise_enabled_ = enabled; }
 
     void inject_analog(int pin, int value) {
         // Convert internal pin number to analog index
@@ -140,4 +146,6 @@ private:
     BoardProfile profile_;
     std::atomic<bool> stop_requested_ = false;
     float speed_multiplier_ = 1.0f;
+    std::mt19937 rng_{std::random_device{}()};
+    bool analog_noise_enabled_ = false;
 };

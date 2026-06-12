@@ -85,6 +85,15 @@ void SketchThread::injectPin(int pin, int value) {
     host_.inject_pin(pin, value);
 }
 
+void SketchThread::injectButtonBounce(int pin, int value) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_button_bounce(pin, value);
+}
+
+void SketchThread::setAnalogNoise(bool enabled) {
+    host_.runtime().set_analog_noise(enabled);
+}
+
 void SketchThread::injectAnalog(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_analog(pin, value);

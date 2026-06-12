@@ -273,13 +273,22 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         motorLabels_[rep] = motorLabel;
     }
 
-    // Button -- click/release injects LOW/HIGH
+    // Button -- click/release injects LOW/HIGH (with bounce simulation)
     if (comp.type == ComponentType::Button) {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
         rect->setAcceptHoverEvents(true);
         rect->setCursor(Qt::PointingHandCursor);
         rect->setToolTip("Click to press, release to let go");
+    }
+
+    // ButtonClean -- same interaction as Button but no bounce simulation
+    if (comp.type == ComponentType::ButtonClean) {
+        buttonStates_[comp.pin] = false;
+        rect->setFlag(QGraphicsItem::ItemIsSelectable);
+        rect->setAcceptHoverEvents(true);
+        rect->setCursor(Qt::PointingHandCursor);
+        rect->setToolTip("Click to press, release to let go (ideal — no bounce)");
     }
 
     // Switch -- click toggles state
@@ -480,7 +489,15 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
         buttonStates_[pin] = true;
         dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
             QBrush(componentColor(ComponentType::Button, true)));
-        emit buttonPressed(pin, 0); // LOW = pressed for INPUT_PULLUP
+        emit buttonBounced(pin, 0); // LOW = pressed; bounced path
+        return;
+    }
+
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::ButtonClean) {
+        buttonStates_[pin] = true;
+        dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
+            QBrush(componentColor(ComponentType::ButtonClean, true)));
+        emit buttonPressed(pin, 0); // LOW = pressed; no bounce
         return;
     }
 
@@ -516,9 +533,12 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
     for (auto pin : buttonStates_.keys()) {
         if (buttonStates_[pin]) {
             buttonStates_[pin] = false;
-            pinItems_[pin]->setBrush(
-                QBrush(componentColor(ComponentType::Button, false)));
-            emit buttonPressed(pin, 1);
+            ComponentType t = pinTypes_.value(pin);
+            pinItems_[pin]->setBrush(QBrush(componentColor(t, false)));
+            if (t == ComponentType::ButtonClean)
+                emit buttonPressed(pin, 1);
+            else
+                emit buttonBounced(pin, 1); // bounced release
         }
     }
     QGraphicsView::mouseReleaseEvent(event);
@@ -549,6 +569,7 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
     static const std::map<ComponentType, QColor> activeColors = {
         { ComponentType::LED,           COLOR_LED_ACTIVE     },
         { ComponentType::Button,        COLOR_BUTTON_ACTIVE  },
+        { ComponentType::ButtonClean,   COLOR_BUTTON_ACTIVE  },
         { ComponentType::Switch,        COLOR_SWITCH_ACTIVE  },
         { ComponentType::Buzzer,        COLOR_BUZZER_ACTIVE  },
         { ComponentType::Servo,         COLOR_SERVO_ACTIVE   },
@@ -565,6 +586,7 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
     static const std::map<ComponentType, QColor> inactiveColors = {
         { ComponentType::LED,           COLOR_LED_INACTIVE   },
         { ComponentType::Button,        COLOR_BUTTON_INACTIVE},
+        { ComponentType::ButtonClean,   COLOR_BUTTON_INACTIVE},
         { ComponentType::Switch,        COLOR_SWITCH_INACTIVE},
         { ComponentType::Buzzer,        COLOR_BUZZER_INACTIVE},
         { ComponentType::Servo,         COLOR_SERVO_INACTIVE },

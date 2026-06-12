@@ -152,9 +152,9 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
 
 **Simulation realism:**
-- Floating pin simulation — undriven INPUT pins return random HIGH/LOW
-- Button bounce simulation — rapid toggles on click before settling (~10ms)
-- Optional gaussian noise on analog readings (off by default)
+- ✓ Floating pin simulation — undriven INPUT pins return random HIGH/LOW
+- ✓ Button bounce simulation — rapid toggles on click before settling (~10ms); `TACT`/`CLEAN`/`IDEAL` prefix gives a `ButtonClean` component with no bounce
+- ✓ Optional gaussian noise on analog readings (off by default, toggle in Settings dialog)
 
 > **Milestone:** Simple sketches using timers, interrupts, EEPROM, and additional serial ports run correctly; the simulation behaves realistically on common hardware edge cases.
 

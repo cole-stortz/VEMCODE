@@ -125,6 +125,8 @@ MainWindow::MainWindow(QWidget* parent)
     // Wire simulation signals to UI slots
     sketchThread_ = new SketchThread(this);
     sketchThread_->setProfile(activeProfile_);
+    analogNoise_ = settings.value("simulation/analog_noise", false).toBool();
+    sketchThread_->setAnalogNoise(analogNoise_);
     connect(sketchThread_, &SketchThread::serialOutput,
             this, &MainWindow::onSerialOutput);
     connect(sketchThread_, &SketchThread::serial1Output,
@@ -343,6 +345,11 @@ QWidget* MainWindow::buildCanvasPanel() {
     connect(canvasWidget_, &CanvasWidget::buttonPressed,
             this, [this](int pin, int value) {
                 sketchThread_->injectPin(pin, value);
+            });
+
+    connect(canvasWidget_, &CanvasWidget::buttonBounced,
+            this, [this](int pin, int value) {
+                sketchThread_->injectButtonBounce(pin, value);
             });
 
     connect(canvasWidget_, &CanvasWidget::pulseInjected,
@@ -846,18 +853,22 @@ void MainWindow::onSettingsClicked() {
     dialog.setCompilerPath(compilerPath_);
     dialog.setProjectRoot(projectRoot_);
     dialog.setSelectedBoard(QString(activeProfile_.name));
+    dialog.setAnalogNoise(analogNoise_);
 
     if (dialog.exec() == QDialog::Accepted) {
         compilerPath_      = dialog.compilerPath();
         projectRoot_       = dialog.projectRoot();
         int oldSerialCount = activeProfile_.serial_count;
         activeProfile_     = dialog.selectedBoard();
+        analogNoise_       = dialog.analogNoise();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
         settings.setValue("board/name", QString(activeProfile_.name));
+        settings.setValue("simulation/analog_noise", analogNoise_);
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+        if (sketchThread_) sketchThread_->setAnalogNoise(analogNoise_);
         if (activeProfile_.serial_count != oldSerialCount)
             rebuildSerialMonitors();
         statusBar()->showMessage("Settings saved");

@@ -23,6 +23,7 @@ public:
     
 signals:
     void buttonPressed(int pin, int value);
+    void buttonBounced(int pin, int value);
     void potentiometerChanged(int pin, int value);
     void pulseInjected(int pin, unsigned long micros);
     void analogInjected(int pin, int value);

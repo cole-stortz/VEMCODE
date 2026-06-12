@@ -87,8 +87,21 @@ void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
 }
 
 int ArduinoRuntime::impl_digitalRead(int pin) {
-    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return 0; // return if digital pins are outside the arduino range
-    return g_runtime->state_.pin_values[pin]; // Return the pin value
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return 0;
+    // Button bounce: return random during the bounce window, then settle
+    auto bounce_it = g_runtime->state_.pin_bounce_until_.find(pin);
+    if (bounce_it != g_runtime->state_.pin_bounce_until_.end()) {
+        if (std::chrono::steady_clock::now() < bounce_it->second)
+            return g_runtime->rng_() & 1;
+        int settled = g_runtime->state_.pin_bounce_target[pin];
+        g_runtime->state_.pin_values[pin] = settled;
+        g_runtime->state_.pin_bounce_until_.erase(bounce_it);
+        return settled;
+    }
+    // Floating pin: INPUT mode (0) with nothing injected from UI returns random
+    if (g_runtime->state_.pin_modes[pin] == 0 && !g_runtime->state_.pin_driven[pin])
+        return g_runtime->rng_() & 1;
+    return g_runtime->state_.pin_values[pin];
 }
 
 void ArduinoRuntime::impl_analogWrite(int pin, int value) {
@@ -105,7 +118,13 @@ int ArduinoRuntime::impl_analogRead(int pin) {
     if (!g_runtime) return 0;
     int analog_index = (pin >= g_runtime->profile_.analog_offset) ? pin - g_runtime->profile_.analog_offset : pin;
     if (analog_index < 0 || analog_index >= g_runtime->profile_.analog_count) return 0;
-    return g_runtime->state_.analog_values[analog_index];
+    int value = g_runtime->state_.analog_values[analog_index];
+    if (g_runtime->analog_noise_enabled_) {
+        std::normal_distribution<float> noise(0.0f, 2.0f);
+        value += (int)std::round(noise(g_runtime->rng_));
+        value = std::max(0, std::min(1023, value));
+    }
+    return value;
 }
 
 void ArduinoRuntime::impl_delay(unsigned long ms) {
@@ -158,8 +177,18 @@ void ArduinoRuntime::impl_Serial_println(const char* s) {
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
-    if (pin >= 0 && pin < profile_.pin_count)
+    if (pin >= 0 && pin < profile_.pin_count) {
         state_.pin_values[pin] = value;
+        state_.pin_driven[pin] = true;
+    }
+}
+
+void ArduinoRuntime::inject_button_bounce(int pin, int finalValue) {
+    if (pin < 0 || pin >= profile_.pin_count) return;
+    state_.pin_driven[pin] = true;
+    state_.pin_bounce_target[pin] = finalValue;
+    state_.pin_bounce_until_[pin] = std::chrono::steady_clock::now()
+                                    + std::chrono::milliseconds(10);
 }
 
 void ArduinoRuntime::impl_watch_variable(const char* name, int value) {

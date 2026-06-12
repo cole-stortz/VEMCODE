@@ -8,6 +8,7 @@
 enum class ComponentType {
     LED,
     Button,
+    ButtonClean,    // ideal button — no bounce simulation (TACT/CLEAN/IDEAL prefix)
     Switch,
     Buzzer,
     Servo,
