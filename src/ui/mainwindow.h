@@ -25,6 +25,7 @@
 #include "src/ui/linenumberarea.h"
 #include "src/ui/variablewatch.h"
 #include "src/ui/settingsdialog.h"
+#include "src/core/runtime/boardprofile.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -38,6 +39,8 @@ public:
 
 private slots:
     void onSerialOutput(QString text);
+    void onSerial1Output(QString text);
+    void onSerial2Output(QString text);
     void onPinChanged(int pin, int value);
     void onSketchReloaded();
     void onLoadFailed(QString reason);
@@ -63,6 +66,8 @@ private:
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
     QWidget* buildDebugPanel();
+    QWidget* buildSerialPanel();
+    void     rebuildSerialMonitors();
 
     // Toolbar
     QPushButton*    runButton_      = nullptr;
@@ -78,8 +83,10 @@ private:
     CanvasWidget*   canvasWidget_   = nullptr;
 
     // Debug panel (bottom right)
-    QTabWidget*     debugTabs_      = nullptr;
-    QPlainTextEdit* serialMonitor_  = nullptr;
+    QTabWidget*     debugTabs_       = nullptr;
+    QPlainTextEdit* serialMonitor_   = nullptr;
+    QPlainTextEdit* serialMonitor1_  = nullptr;
+    QPlainTextEdit* serialMonitor2_  = nullptr;
 
     // Simulation
     SketchThread*      sketchThread_  = nullptr;

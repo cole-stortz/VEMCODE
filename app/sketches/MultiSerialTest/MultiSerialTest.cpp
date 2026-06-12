@@ -1,7 +1,6 @@
 // @board Teensy 4.1
-// Teensy 4.1 has Serial, Serial1, and Serial2.
-// Serial1/Serial2 output goes to the debug console (std::cout) -- the canvas
-// serial monitor only shows Serial output for now.
+// Tests multi-port serial output. Teensy 4.1 has serial_count=3 so the
+// Serial monitor panel splits into three panes: Serial | Serial1 | Serial2.
 
 void setup() {
     Serial.begin(9600);
@@ -9,10 +8,8 @@ void setup() {
     Serial2.begin(9600);
 
     Serial.println("=== MultiSerialTest ===");
-    Serial.println("Serial1 and Serial2 output appears in the app console");
-
-    Serial1.println("Hello from Serial1");
-    Serial2.println("Hello from Serial2");
+    Serial1.println("=== Serial1 ready ===");
+    Serial2.println("=== Serial2 ready ===");
 
     Serial.println("setup done");
 }

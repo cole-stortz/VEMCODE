@@ -1,7 +1,6 @@
 #include "src/ui/mainwindow.h"
+#include "boardprofile.h"
 #include "src/ui/canvaswidget.h"
-#include "src/core/circuit/circuitdetector.h"
-#include "src/core/build/preprocessor.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -128,6 +127,10 @@ MainWindow::MainWindow(QWidget* parent)
     sketchThread_->setProfile(activeProfile_);
     connect(sketchThread_, &SketchThread::serialOutput,
             this, &MainWindow::onSerialOutput);
+    connect(sketchThread_, &SketchThread::serial1Output,
+            this, &MainWindow::onSerial1Output);
+    connect(sketchThread_, &SketchThread::serial2Output,
+            this, &MainWindow::onSerial2Output);
     connect(sketchThread_, &SketchThread::pinChanged,
             this, &MainWindow::onPinChanged);
     connect(sketchThread_, &SketchThread::sketchReloaded,
@@ -359,31 +362,71 @@ QWidget* MainWindow::buildCanvasPanel() {
 }
 
 // -------------------------------------------------------
-// Debug panel (bottom right) -- tabbed: serial, timeline, watch
+// Serial panel -- extracted so it can be rebuilt on board profile change
 // -------------------------------------------------------
-QWidget* MainWindow::buildDebugPanel() {
-    QWidget*     panel  = new QWidget();
-    QVBoxLayout* layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
-
-    debugTabs_ = new QTabWidget();
-    debugTabs_->setMinimumHeight(100);
-    debugTabs_->setStyleSheet(STYLE_TABS);
-
-    QWidget* serialPanel = new QWidget();
+QWidget* MainWindow::buildSerialPanel() {
+    QWidget*     serialPanel  = new QWidget();
     QVBoxLayout* serialLayout = new QVBoxLayout(serialPanel);
     serialLayout->setContentsMargins(0, 0, 0, 0);
     serialLayout->setSpacing(0);
 
-    serialMonitor_ = new QPlainTextEdit();
+    serialMonitor_  = new QPlainTextEdit();
+    serialMonitor1_ = nullptr;
+    serialMonitor2_ = nullptr;
     serialMonitor_->setReadOnly(true);
     serialMonitor_->setMaximumBlockCount(2000);
     serialMonitor_->setStyleSheet(STYLE_SERIAL);
-    serialLayout->addWidget(serialMonitor_);
+
+    int serialCount = activeProfile_.serial_count;
+
+    if (serialCount >= 2) {
+        QSplitter* serialSplitter = new QSplitter(Qt::Horizontal, serialPanel);
+        serialSplitter->setHandleWidth(1);
+        serialSplitter->setStyleSheet(STYLE_SPLITTER);
+
+        static const QString STYLE_PORT_LABEL =
+            "background: #252526; color: #666; font-size: 10px;"
+            "padding-left: 4px; border-bottom: 1px solid #333;";
+        static const QString STYLE_PORT_LABEL_BORDERED =
+            "background: #252526; color: #666; font-size: 10px;"
+            "padding-left: 4px; border-left: 1px solid #333; border-bottom: 1px solid #333;";
+
+        auto makePane = [&](QPlainTextEdit* mon, const QString& label, bool bordered) {
+            QWidget*     pane   = new QWidget();
+            QVBoxLayout* layout = new QVBoxLayout(pane);
+            layout->setContentsMargins(0, 0, 0, 0);
+            layout->setSpacing(0);
+            QLabel* lbl = new QLabel(label, pane);
+            lbl->setFixedHeight(18);
+            lbl->setStyleSheet(bordered ? STYLE_PORT_LABEL_BORDERED : STYLE_PORT_LABEL);
+            layout->addWidget(lbl);
+            layout->addWidget(mon);
+            return pane;
+        };
+
+        serialSplitter->addWidget(makePane(serialMonitor_, "  Serial", false));
+
+        serialMonitor1_ = new QPlainTextEdit();
+        serialMonitor1_->setReadOnly(true);
+        serialMonitor1_->setMaximumBlockCount(2000);
+        serialMonitor1_->setStyleSheet(STYLE_SERIAL);
+        serialSplitter->addWidget(makePane(serialMonitor1_, "  Serial1", true));
+
+        if (serialCount >= 3) {
+            serialMonitor2_ = new QPlainTextEdit();
+            serialMonitor2_->setReadOnly(true);
+            serialMonitor2_->setMaximumBlockCount(2000);
+            serialMonitor2_->setStyleSheet(STYLE_SERIAL);
+            serialSplitter->addWidget(makePane(serialMonitor2_, "  Serial2", true));
+        }
+
+        serialLayout->addWidget(serialSplitter);
+    } else {
+        serialLayout->addWidget(serialMonitor_);
+    }
 
     // Serial input row
-    QWidget* inputRow = new QWidget();
+    QWidget*     inputRow    = new QWidget();
     QHBoxLayout* inputLayout = new QHBoxLayout(inputRow);
     inputLayout->setContentsMargins(4, 4, 4, 4);
     inputLayout->setSpacing(4);
@@ -405,9 +448,31 @@ QWidget* MainWindow::buildDebugPanel() {
     connect(serialInput_, &QLineEdit::returnPressed, this, &MainWindow::onSerialSend);
     inputLayout->addWidget(sendButton);
 
-    // Build panel
     serialLayout->addWidget(inputRow);
-    debugTabs_->addTab(serialPanel, "Serial monitor");
+    return serialPanel;
+}
+
+void MainWindow::rebuildSerialMonitors() {
+    int savedTab = debugTabs_->currentIndex();
+    debugTabs_->removeTab(0);
+    debugTabs_->insertTab(0, buildSerialPanel(), "Serial monitor");
+    debugTabs_->setCurrentIndex(savedTab);
+}
+
+// -------------------------------------------------------
+// Debug panel (bottom right) -- tabbed: serial, timeline, watch
+// -------------------------------------------------------
+QWidget* MainWindow::buildDebugPanel() {
+    QWidget*     panel  = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(panel);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    debugTabs_ = new QTabWidget();
+    debugTabs_->setMinimumHeight(100);
+    debugTabs_->setStyleSheet(STYLE_TABS);
+
+    debugTabs_->addTab(buildSerialPanel(), "Serial monitor");
     signalTimeline_ = new SignalTimeline();
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
     variableWatch_ = new VariableWatch();
@@ -424,6 +489,20 @@ void MainWindow::onSerialOutput(QString text) {
     serialMonitor_->moveCursor(QTextCursor::End);
     serialMonitor_->insertPlainText(text);
     serialMonitor_->moveCursor(QTextCursor::End);
+}
+
+void MainWindow::onSerial1Output(QString text) {
+    if (!serialMonitor1_) return;
+    serialMonitor1_->moveCursor(QTextCursor::End);
+    serialMonitor1_->insertPlainText(text);
+    serialMonitor1_->moveCursor(QTextCursor::End);
+}
+
+void MainWindow::onSerial2Output(QString text) {
+    if (!serialMonitor2_) return;
+    serialMonitor2_->moveCursor(QTextCursor::End);
+    serialMonitor2_->insertPlainText(text);
+    serialMonitor2_->moveCursor(QTextCursor::End);
 }
 
 void MainWindow::onPinChanged(int pin, int value) {
@@ -466,6 +545,8 @@ void MainWindow::onRunClicked() {
     }
 
     serialMonitor_->clear();
+    if (serialMonitor1_) serialMonitor1_->clear();
+    if (serialMonitor2_) serialMonitor2_->clear();
     statusBar()->showMessage("Compiling...");
     runButton_->setEnabled(false);
 
@@ -493,6 +574,7 @@ void MainWindow::onRunClicked() {
     // Apply board hint from // @board comment if present
     if (!result.board_hint.empty()) {
         QString boardName = QString::fromStdString(result.board_hint);
+        int oldSerialCount = activeProfile_.serial_count;
         if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
         else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
         else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
@@ -502,6 +584,9 @@ void MainWindow::onRunClicked() {
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+
+        if (activeProfile_.serial_count != oldSerialCount)
+            rebuildSerialMonitors();
 
         QSettings settings(
             QCoreApplication::applicationDirPath() + "/settings.ini",
@@ -744,15 +829,18 @@ void MainWindow::onSettingsClicked() {
     dialog.setSelectedBoard(QString(activeProfile_.name));
 
     if (dialog.exec() == QDialog::Accepted) {
-        compilerPath_  = dialog.compilerPath();
-        projectRoot_   = dialog.projectRoot();
-        activeProfile_ = dialog.selectedBoard();
+        compilerPath_      = dialog.compilerPath();
+        projectRoot_       = dialog.projectRoot();
+        int oldSerialCount = activeProfile_.serial_count;
+        activeProfile_     = dialog.selectedBoard();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
         settings.setValue("board/name", QString(activeProfile_.name));
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+        if (activeProfile_.serial_count != oldSerialCount)
+            rebuildSerialMonitors();
         statusBar()->showMessage("Settings saved");
     }
 }

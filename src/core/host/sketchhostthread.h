@@ -44,6 +44,8 @@ public:
 signals:
     // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);
+    void serial1Output(QString text);
+    void serial2Output(QString text);
 
     // Emitted when the sketch calls digitalWrite() and the value changes
     void pinChanged(int pin, int value);

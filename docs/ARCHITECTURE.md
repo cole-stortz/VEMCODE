@@ -162,15 +162,16 @@ struct BoardProfile {
     int         analog_offset;  // pin number where A0 starts
     int         analog_count;   // number of analog pins
     int         pwm_resolution; // max analogWrite value (255 or 4095)
+    int         serial_count;   // hardware UARTs (1 = Serial only; 3 = Serial + Serial1 + Serial2)
     // Language    language;    // planned — Arduino (default), MicroPython, CircuitPython
 };
 
 // Built-in profiles
-static const BoardProfile BOARD_UNO    = {"Arduino Uno",       "ATmega328P",   20, 14,  6,  255};
-static const BoardProfile BOARD_NANO   = {"Arduino Nano",      "ATmega328P",   22, 14,  8,  255};
-static const BoardProfile BOARD_MEGA   = {"Arduino Mega 2560", "ATmega2560",   70, 54, 16,  255};
-static const BoardProfile BOARD_DUE    = {"Arduino Due",       "AT91SAM3X8E",  66, 54, 12, 4095};
-static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    42, 14, 18, 4095};
+static const BoardProfile BOARD_UNO    = {"Arduino Uno",       "ATmega328P",   20, 14,  6,  255, 1};
+static const BoardProfile BOARD_NANO   = {"Arduino Nano",      "ATmega328P",   22, 14,  8,  255, 1};
+static const BoardProfile BOARD_MEGA   = {"Arduino Mega 2560", "ATmega2560",   70, 54, 16,  255, 3};
+static const BoardProfile BOARD_DUE    = {"Arduino Due",       "AT91SAM3X8E",  66, 54, 12, 4095, 3};
+static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    42, 14, 18, 4095, 3};
 ```
 
 **What consumes the profile:**
@@ -180,9 +181,10 @@ static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    4
 - `CircuitDetector` — valid pin range check uses `pin_count`
 - MainWindow toolbar — displays `profile.name`
 - Settings dialog — board selector, saved to `settings.ini`
+- `MainWindow::buildSerialPanel()` — `serial_count` controls whether the Serial monitor tab shows one pane or splits into Serial | Serial1 | Serial2
 
 **Board hint override (`// @board <name>`):**
-A sketch can declare its target board by placing a `// @board <name>` comment anywhere near the top of the file (before the first function definition in practice). When the user hits Run, `Preprocessor::extract_board_profile()` scans the raw source for this comment and returns the board name. `MainWindow` resolves it to a `BoardProfile`, then calls the same three-call update chain used by the Settings dialog: `canvasWidget_->setProfile()`, `boardLabel_->setText()`, and `sketchThread_->setProfile()`. The resolved board name is also written back to `settings.ini` so it persists.
+A sketch can declare its target board by placing a `// @board <name>` comment anywhere near the top of the file (before the first function definition in practice). When the user hits Run, `Preprocessor::extract_board_profile()` scans the raw source for this comment and returns the board name. `MainWindow` resolves it to a `BoardProfile`, then calls the same three-call update chain used by the Settings dialog: `canvasWidget_->setProfile()`, `boardLabel_->setText()`, and `sketchThread_->setProfile()`. If `serial_count` changed, `rebuildSerialMonitors()` also replaces the Serial tab to match the new port count. The resolved board name is also written back to `settings.ini` so it persists.
 
 ---
 

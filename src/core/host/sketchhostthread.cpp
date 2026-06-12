@@ -34,6 +34,14 @@ void SketchThread::run() {
         emit serialOutput(QString::fromStdString(text));
     };
 
+    runtime.on_serial1_output = [this](const std::string& text) {
+        emit serial1Output(QString::fromStdString(text));
+    };
+
+    runtime.on_serial2_output = [this](const std::string& text) {
+        emit serial2Output(QString::fromStdString(text));
+    };
+
     // Override pin change -- emit signal instead of printing to console
     runtime.on_pin_changed = [this](int pin, int value) {
         emit pinChanged(pin, value);

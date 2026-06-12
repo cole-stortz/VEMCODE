@@ -49,6 +49,7 @@ set(SOURCES
     src/core/build/compiler.cpp
     src/core/build/preprocessor.cpp
     src/core/circuit/circuitdetector.cpp
+    src/lsan_suppressions.cpp
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
 )
 

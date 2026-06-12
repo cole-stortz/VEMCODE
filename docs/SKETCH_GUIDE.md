@@ -97,6 +97,29 @@ Serial.print(3.14159f, 2);  // prints "3.14"
 Serial.println(voltage, 3); // prints "3.142\n"
 ```
 
+### Serial1 / Serial2
+
+Boards with multiple hardware UARTs (Mega 2560, Due, Teensy 4.1) support `Serial1` and `Serial2` with the same API as `Serial`:
+
+```cpp
+// @board Arduino Mega 2560
+
+void setup() {
+    Serial.begin(9600);
+    Serial1.begin(9600);
+    Serial2.begin(9600);
+}
+
+void loop() {
+    Serial.println("main port");
+    Serial1.println("uart 1");
+    Serial2.println("uart 2");
+    delay(1000);
+}
+```
+
+When a multi-serial board is active, the Serial monitor tab splits into labeled panes — **Serial**, **Serial1**, and **Serial2** — one per port. Selecting a single-serial board (Uno, Nano) collapses back to a single pane. The split updates automatically if the board changes mid-session via `// @board` or the Settings dialog.
+
 ### PulseIn
 
 ```cpp
