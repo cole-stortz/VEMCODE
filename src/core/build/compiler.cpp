@@ -4,6 +4,7 @@
 #include <sstream>
 #include <regex>
 #include <cstdio>
+#include <filesystem>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -59,7 +60,21 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     std::string temp_path = output_dir_ + "/_vb_temp.cpp";
     std::ofstream temp_file(temp_path);
     temp_file << transformed;
-    temp_file.close();
+    temp_file.close(); 
+
+    // Collect any extra .cpp files in the sketch folder (multi-file sketch support).
+    // The main sketch file is already preprocessed into _vb_temp.cpp, so skip both.
+    std::string extra_sources;
+    try {
+        namespace fs = std::filesystem;
+        for (const auto& entry : fs::directory_iterator(output_dir_)) {
+            if (entry.path().extension() != ".cpp") continue;
+            std::string fname = entry.path().filename().string();
+            if (fname == "_vb_temp.cpp") continue;
+            if (fname == sketch_name + ".cpp") continue;
+            extra_sources += " \"" + entry.path().string() + "\"";
+        }
+    } catch (...) {}
 
     // Build the g++ command
     // -shared  = build a shared library (.so/.dll)
@@ -75,6 +90,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 #endif
         << " -o \"" << result.dll_path << "\""
         << " \"" << temp_path << "\""
+        << extra_sources
         << " -I\"" << include_path_ << "\""
         << " -std=c++17"
 #ifndef _WIN32

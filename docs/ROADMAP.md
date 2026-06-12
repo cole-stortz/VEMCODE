@@ -142,7 +142,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - ✓ `SoftwareSerial` — injected class replacing `#include <SoftwareSerial.h>`; constructor stores `rxPin`/`txPin`; `begin`, `print`/`println` (4 overloads each), `write(byte)`, `write(buf, n)`, `available`, `read`, `peek`; `listen`/`isListening`/`overflow` return stubs; output routed to main serial monitor prefixed `[SW:N]` where N is the RX pin; RX buffer injectable per-pin via `ArduinoRuntime::inject_soft_serial(rxPin, data)`; `replace_token()` preprocessor helper prevents variable names ending in `Serial` (e.g. `mySerial`) from being mis-rewritten by the `Serial.*` replacement pass
 
 **Missing sketch structure:**
-- Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
+- ✓ Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
 
 **New components:**
 - RGB LED — three PWM pins (R/G/B), detected from `#define` pin names; canvas shows a colored circle that blends the three channel values in real time
@@ -227,7 +227,9 @@ Give the user realistic flash and RAM usage figures without requiring a real AVR
 Replace colored rectangles with proper component graphics and give the canvas a layout system. Both are polish passes on existing functionality with no new runtime work.
 
 **Component visual upgrades:**
-- Proper graphics for all component types (sensor housings, chip outlines, etc.)
+- Refactor `CanvasWidget` to use typed `ComponentItem` subclasses (inheriting `QGraphicsObject`) instead of raw `QGraphicsRectItem` — each component type owns its `paint()` and `setState()`, giving `CanvasWidget` a uniform interface regardless of how a component renders itself
+- All component visuals implemented as QPainter-drawn shapes in the initial pass — no SVG assets required; animations (LED glow, buzzer pulse, motor rotation) driven by a shared canvas `QTimer` incrementing a `phase_` value on each active item
+- Architecture is SVG-ready by design: swapping a component's visuals to `QSvgRenderer`-based rendering later only requires changing that component's `paint()` implementation; nothing in `CanvasWidget` or the signal wiring changes
 - LCD 16x2 — pixel-accurate character cell rendering, backlight color, cursor blink
 
 **Canvas improvements:**
@@ -236,7 +238,7 @@ Replace colored rectangles with proper component graphics and give the canvas a 
 - On load: use saved positions if file exists, otherwise auto-generate
 - Wire visualization improvements — color-coded by signal type (digital, analog, PWM)
 
-> **Milestone:** The canvas looks polished with recognizable component graphics; layout can be saved and restored.
+> **Milestone:** The canvas looks polished with recognizable component graphics; layout can be saved and restored. Adding SVG art for any component in the future is a single-file `paint()` swap.
 
 ---
 
@@ -324,3 +326,4 @@ Board = Raspberry Pi Pico (MicroPython)
 - macOS support
 - Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
 - Step-through debugger — pause execution at a line and step statement by statement; implemented by injecting `vb_breakpoint(line)` calls in the preprocessor and blocking on a condition variable when paused; UI adds clickable gutter breakpoints and a step/resume toolbar
+- Custom SVG component visuals — replace QPainter-drawn component art with `QSvgRenderer`-based rendering; each component type is a split SVG (static housing layer + animated overlay layer composited via QPainter transforms); static parts designed in Inkscape/Figma and embedded as Qt resources; animated parts (motor spinner, servo arm, LED glow) remain QPainter-driven on top of the SVG base; enabled by the `ComponentItem` subclass architecture from Phase 11 — each component's upgrade is a self-contained `paint()` change
