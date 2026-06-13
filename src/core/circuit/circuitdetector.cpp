@@ -147,7 +147,7 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
 
     // Also match: const int NAME = VALUE; (single value, not arrays)
     // This lets pin names like "const int trigPin1 = 9;" resolve just like #defines.
-    static const std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)");
+    static const std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\w+)\s*;)");
     begin = std::sregex_iterator(source.begin(), source.end(), const_int_re);
     end   = std::sregex_iterator();
     for (auto it = begin; it != end; ++it) {
@@ -328,11 +328,30 @@ std::set<int> CircuitDetector::detect_multipin(
         int pin = resolve_pin(d.second, defines);
         if (pin < 0) continue;
         if (contains_any(upper, {"RS"})) rs_pin = pin;
-        if (contains_any(upper, {"LCD_EN", "LCD_E", "_ENABLE", "_EN"})) e_pin = pin;
-        if (contains_any(upper, {"D4"})) d4_pin = pin;
-        if (contains_any(upper, {"D5"})) d5_pin = pin;
-        if (contains_any(upper, {"D6"})) d6_pin = pin;
-        if (contains_any(upper, {"D7"})) d7_pin = pin;
+        if (contains_any(upper, {"LCD_EN", "LCD_E", "_ENABLE", "_EN"}) ||
+            upper == "E" || upper == "EN") e_pin = pin;
+        if (contains_any(upper, {"D4", "DB4", "DATA4"})) d4_pin = pin;
+        if (contains_any(upper, {"D5", "DB5", "DATA5"})) d5_pin = pin;
+        if (contains_any(upper, {"D6", "DB6", "DATA6"})) d6_pin = pin;
+        if (contains_any(upper, {"D7", "DB7", "DATA7"})) d7_pin = pin;
+    }
+
+    // Fallback: scan for LiquidCrystal ctor with literal ints OR named constants
+    // e.g. LiquidCrystal lcd(12, 11, 5, 4, 3, 2) or LiquidCrystal lcd(RS, E, DB4, ...)
+    if (rs_pin < 0) {
+        std::smatch m;
+        std::regex lcd_ctor(R"(LiquidCrystal\s+\w+\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\))");
+        std::string src_copy = source;
+        if (std::regex_search(src_copy, m, lcd_ctor)) {
+            auto resolve_arg = [&](const std::string& arg) -> int {
+                // Try direct number first, then look up in defines
+                try { return std::stoi(arg); } catch (...) {}
+                return resolve_pin(arg, defines);
+            };
+            rs_pin = resolve_arg(m[1]); e_pin  = resolve_arg(m[2]);
+            d4_pin = resolve_arg(m[3]); d5_pin = resolve_arg(m[4]);
+            d6_pin = resolve_arg(m[5]); d7_pin = resolve_arg(m[6]);
+        }
     }
 
     // If all 6 pins are found, assume it's an LCD 16x2
@@ -390,7 +409,49 @@ std::set<int> CircuitDetector::detect_multipin(
         }
     }
 
-    // Add more multi-pin component detection logic here as needed...
+    // --- PING))) / single-pin ultrasonic sensors ---
+    // Find user-defined functions whose body calls pulseIn, then resolve their call-site pin args.
+    {
+        static const std::regex pulseIn_re(R"(\bpulseIn\s*\()");
+        static const std::regex func_def_re(R"(\b(?:int|long|void|float)\s+(\w+)\s*\([^)]*\)\s*\{)");
+
+        std::set<std::string> ping_funcs;
+        for (auto it = std::sregex_iterator(source.begin(), source.end(), pulseIn_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string before = source.substr(0, (*it).position());
+            std::string last_func;
+            for (auto fit = std::sregex_iterator(before.begin(), before.end(), func_def_re);
+                 fit != std::sregex_iterator(); ++fit)
+                last_func = (*fit)[1].str();
+            if (!last_func.empty())
+                ping_funcs.insert(last_func);
+        }
+
+        for (const auto& fn : ping_funcs) {
+            std::regex call_re("\\b" + fn + R"(\s*\(\s*(\w+)\s*\))");
+            for (auto it = std::sregex_iterator(source.begin(), source.end(), call_re);
+                 it != std::sregex_iterator(); ++it) {
+                std::string pin_token = (*it)[1].str();
+                int pin = resolve_pin(pin_token, defines);
+                if (pin < 0 || claimed.count(pin)) continue;
+
+                bool duplicate = false;
+                for (const auto& c : components_)
+                    if (c.pin == pin) { duplicate = true; break; }
+                if (duplicate) continue;
+
+                DetectedComponent comp;
+                comp.type      = ComponentType::DistanceSensor;
+                comp.pin       = pin;
+                comp.pins      = {pin};
+                comp.pin_name  = pin_token;
+                comp.label     = "Distance Sensor (pin " + std::to_string(pin) + ")";
+                comp.confirmed = false;
+                components_.push_back(comp);
+                claimed.insert(pin);
+            }
+        }
+    }
 
     return claimed;
 }

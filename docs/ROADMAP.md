@@ -247,6 +247,7 @@ Replace colored rectangles with proper component graphics and give the canvas a 
 Add new output components with full runtime and canvas support. Each requires a new injected library class, runtime state, and canvas widget.
 
 - 7-segment display — single and multi-digit, segment-accurate rendering
+- MAX7219 LED matrix — 8x8 LED matrix driven via SPI (`LedControl.h` injection); canvas renders an 8x8 grid of cells toggled by row/column data written via `setLed` / `setRow` / `setColumn`; `setIntensity` and `shutdown` stubbed; CS/CLK/DIN pins detected by `detect_multipin()` from define names
 - Basic OLED — text and simple graphics (SSD1306-compatible)
 - NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length
 

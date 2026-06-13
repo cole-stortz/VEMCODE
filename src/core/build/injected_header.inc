@@ -8,6 +8,9 @@
 #include <climits>
 using namespace vb;
 
+typedef uint8_t  byte;
+typedef uint16_t word;
+
 static ArduinoAPI* api = nullptr;
 
 extern "C" VB_EXPORT

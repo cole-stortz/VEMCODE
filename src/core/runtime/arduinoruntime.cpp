@@ -271,18 +271,19 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
     g_runtime->state_.tone_frequencies_[pin] = frequency;
     if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, frequency);
     if (duration_ms == 0) return;
-    std::thread([pin, duration_ms]() {
+    ArduinoRuntime* rt = g_runtime;
+    std::thread([pin, duration_ms, rt]() {
+        unsigned long scaled_duration = (unsigned long)(duration_ms * rt->speed_multiplier_);
         unsigned long elapsed = 0;
-        unsigned long scaled_duration = (unsigned long)(duration_ms * g_runtime->speed_multiplier_);
         while (elapsed < scaled_duration) {
-            if (!g_runtime || g_runtime->stop_requested_) return;
-            unsigned long chunk = qMin(10UL, scaled_duration - elapsed);
+            if (rt->stop_requested_) return;
+            unsigned long chunk = std::min(10UL, scaled_duration - elapsed);
             std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
             elapsed += chunk;
         }
-        if (g_runtime) {
-            g_runtime->state_.tone_frequencies_[pin] = 0;
-            if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, 0);
+        if (!rt->stop_requested_) {
+            rt->state_.tone_frequencies_[pin] = 0;
+            if (rt->on_pin_changed) rt->on_pin_changed(pin, 0);
         }
     }).detach();
 }
