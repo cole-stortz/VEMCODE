@@ -143,6 +143,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 **Missing sketch structure:**
 - ✓ Multi-file sketch support — if a sketch folder contains `.h` or additional `.cpp` files, include them in the compile pass; `strip_includes()` must pass through `#include "localfile.h"` rather than stripping it
+- Safety delay injection in `while` loops — preprocessor already injects `api->delay(10)` into `loop()` bodies with no delay; extend the same logic to `while(...)` bodies so a tight `while` loop (e.g. waiting for a sensor) doesn't freeze the simulation thread
 
 **New components:**
 - RGB LED — three PWM pins (R/G/B), detected from `#define` pin names; canvas shows a colored circle that blends the three channel values in real time
@@ -150,6 +151,36 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 **Serial Plotter:**
 - Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
+
+**Error UX:**
+- Humanized compiler errors — post-process raw g++ output before display; a regex rewrite table maps common cryptic patterns to plain-English messages:
+  - `'X' was not declared in this scope` → `"'X' not found — did you forget to declare it?"`
+  - `no matching function for call to 'X'` → `"Wrong arguments passed to X"`
+  - `expected ';' before '}'` → `"Missing semicolon, probably the line above"`
+  - `expected '}' at end of input` → `"Unclosed brace — one of your { was never closed"`
+  - `lvalue required as left operand of assignment` → `"Did you mean == instead of =?"`
+  - `undefined reference to 'X'` → `"Function 'X' is used but never defined"`
+  - `control reaches end of non-void function` → `"Function is missing a return statement"`
+  - `expected unqualified-id before '{'` → `"Code found outside a function — all code must be inside setup(), loop(), or another function"`
+  - `too many/few arguments to function 'X'` → `"Wrong number of arguments passed to 'X'"`
+  - `stray '\' in program` → `"Invalid character in code — this sometimes happens when copy-pasting from a website; try retyping the line"`
+  - `overflow in implicit constant conversion` → `"Number is too large for this variable type — try using long instead of int"`
+  - `comparison between pointer and integer` → `"Can't compare strings with == — use strcmp() or the String class"`
+- No-components-detected hint — after `CircuitDetector::detect()` runs, if `components_` is empty (or contains only a Serial entry), surface a non-blocking warning in the canvas area: *"No components detected. Name your pin numbers with `const int LED_PIN = 13;` or `#define LED_PIN 13` so the simulator can identify them."*
+- Unsupported `#include` warning — when `strip_includes()` strips a header it has no injection for (e.g. `Wire.h`, `Adafruit_GFX.h`), surface a named warning before compile: *"Wire.h is not yet supported by VEMCODE — calls to this library will not work"*; far more helpful than the cascade of `'X' not declared` errors that result from a silent strip
+- Missing `setup()` / `loop()` — detect before invoking g++ and show a plain message: *"Sketch is missing a setup() function"* / *"Sketch is missing a loop() function"* instead of a wall of linker errors
+- Pin out of range for selected board — if a `const int` or `#define` pin value exceeds the active board's pin count, warn: *"Pin 50 is not available on the Arduino Uno (max pin 13)"*
+- `analogWrite()` on a non-PWM pin — cross-reference `analogWrite` call sites against the board profile's PWM pin list and warn: *"Pin X does not support PWM on the selected board — analogWrite() will have no effect"*
+- Same pin claimed by two components — when `CircuitDetector` would silently drop a duplicate, instead surface: *"Pin X is used by both [Component A] and [Component B] — only one will be simulated"*
+- `// @board` hint unrecognised — if `extract_board_profile()` finds a `// @board` comment but the name doesn't match any known profile, warn: *"Unknown board 'X' in @board hint — using currently selected board instead"*
+- `map()` with equal min/max — static check for `map(val, x, x, ...)` or runtime divide-by-zero guard in `impl_map`; surface *"map() called with min == max — this causes a division by zero"* instead of a silent crash
+- Sketch thread crash wrapper — wrap the sketch execution loop in a try/catch and install a SIGFPE/SIGSEGV handler so any unhandled exception, division by zero, or out-of-bounds crash surfaces *"Sketch crashed — check for division by zero or out-of-bounds array access"* instead of a silently frozen canvas
+- `delay()` inside ISR callback — static check: if a `delay()` call appears inside a function registered via `attachInterrupt()`, warn *"delay() inside an interrupt handler will hang on real Arduino — interrupts are disabled during ISR execution"*
+
+**Simulation accuracy warnings** *(patterns that work in VEMCODE but fail on real hardware):*
+- Missing `volatile` on ISR-shared variables — if a variable is written inside an `attachInterrupt` callback and read in `loop()` or `setup()`, warn: *"'X' is shared with an ISR but not declared volatile — this may work in simulation but will likely fail on real hardware"*
+- `String +=` in a tight loop — if `String` concatenation is detected inside `loop()` with no apparent upper bound, warn: *"Repeated String concatenation in loop() causes heap fragmentation on real Arduino — consider using a char buffer instead"*
+- `pinMode()` never called for a `digitalWrite()` pin — if a pin appears in a `digitalWrite()` call but has no corresponding `pinMode(pin, OUTPUT)`, warn: *"Pin X is used with digitalWrite() but never set as OUTPUT via pinMode() — it will default to INPUT on real hardware"*
 
 **Simulation realism:**
 - ✓ Floating pin simulation — undriven INPUT pins return random HIGH/LOW
