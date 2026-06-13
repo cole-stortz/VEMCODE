@@ -46,17 +46,11 @@ void CircuitDetector::detect(const std::string& source) {
             ? type_str + " (pin " + std::to_string(comp.pin) + ")"
             : type_str;
 
-        bool duplicate = false;
-        for (const auto& existing : components_)
-            if (existing.pin == comp.pin && existing.pin >= 0)
-                { duplicate = true; break; }
-        if (!duplicate)
+        if (!pin_already_added(comp.pin))
             components_.push_back(comp);
-
-        
     }
 
-    // Phase 2b -- detect components from analogRead calls
+    // detect components from analogRead calls
     static const std::regex analog_re(R"((?:api->)?analogRead\s*\(\s*(\w+)\s*\))");
     auto ab = std::sregex_iterator(source.begin(), source.end(), analog_re);
     auto ae = std::sregex_iterator();
@@ -68,10 +62,7 @@ void CircuitDetector::detect(const std::string& source) {
         if (pin < 0) continue;
         if (claimed.count(pin)) continue;
 
-        bool duplicate = false;
-        for (const auto& existing : components_)
-            if (existing.pin == pin) { duplicate = true; break; }
-        if (duplicate) continue;
+        if (pin_already_added(pin)) continue;
 
         DetectedComponent comp;
         comp.pin       = pin;
@@ -435,10 +426,7 @@ std::set<int> CircuitDetector::detect_multipin(
                 int pin = resolve_pin(pin_token, defines);
                 if (pin < 0 || claimed.count(pin)) continue;
 
-                bool duplicate = false;
-                for (const auto& c : components_)
-                    if (c.pin == pin) { duplicate = true; break; }
-                if (duplicate) continue;
+                if (pin_already_added(pin)) continue;
 
                 DetectedComponent comp;
                 comp.type      = ComponentType::DistanceSensor;
@@ -575,4 +563,10 @@ std::string CircuitDetector::to_upper(const std::string& str) {
     std::string result = str;
     std::transform(result.begin(), result.end(), result.begin(), ::toupper);
     return result;
+}
+
+bool CircuitDetector::pin_already_added(int pin) const {
+    for (const auto& c : components_)
+        if (c.pin == pin) return true;
+    return false;
 }

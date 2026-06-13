@@ -3,7 +3,6 @@
 #include <string>
 #include <filesystem>
 
-// Holds the loaded sketch shared library and the three function pointers extracted from it.
 struct SketchDLL {
     void* handle               = nullptr;
     void (*vb_init)(ArduinoAPI*) = nullptr;
@@ -12,28 +11,13 @@ struct SketchDLL {
     std::filesystem::file_time_type last_write_time = {};
 };
 
-// SketchHost manages the full lifecycle of a sketch shared library:
-//   - Loading it from disk
-//   - Injecting the ArduinoAPI table
-//   - Running setup() and loop()
-//   - Hot-reloading when the library file changes on disk
-//
-// In the Qt app this is owned by SketchThread and run on a worker thread.
 class SketchHost {
 public:
     ~SketchHost();
 
-    // Load a sketch shared library from disk, inject the API, and call setup().
-    // Returns true on success. Safe to call again for hot-reload.
-    bool load(const std::string& dll_path);
-
-    // Call the sketch's loop() function once.
+    bool load(const std::string& dll_path);  // safe to call again for hot-reload
     void run_loop();
-
-    // Check if the library file on disk has changed since last load.
     bool needs_reload() const;
-
-    // Reload if the file changed. Returns true if a reload happened.
     bool reload_if_changed();
 
     void inject_pin(int pin, int value);

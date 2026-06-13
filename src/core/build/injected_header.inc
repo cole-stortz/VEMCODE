@@ -16,7 +16,6 @@ static ArduinoAPI* api = nullptr;
 extern "C" VB_EXPORT
 void vb_init(ArduinoAPI* a) { api = a; }
 
-// Serial overloads -- convert any type to string then call through
 template<typename T>
 inline void Serial_println(T v) { api->Serial_println(std::to_string(v).c_str()); }
 inline void Serial_println(const char* s) { api->Serial_println(s); }
@@ -26,7 +25,6 @@ inline void Serial_print(T v) { api->Serial_print(std::to_string(v).c_str()); }
 inline void Serial_print(const char* s) { api->Serial_print(s); }
 inline void Serial_print(char c) { char s[2] = {c, '\0'}; api->Serial_print(s); }
 
-// Serial overloads with base support -- convert to string in the specified base then call through
 const int HEX = 16;
 const int DEC = 10;
 const int OCT = 8;
@@ -58,7 +56,6 @@ inline void Serial_println(T v, int base) {
     api->Serial_println(ss.str().c_str());
 }
 
-// Serial overloads for floating point types with optional decimal places -- convert to string then call through
 inline void Serial_print(float v, int decimals) {
     std::stringstream ss;
     ss.precision(decimals);
@@ -169,7 +166,6 @@ private:
 inline void Serial_println(const String& s) { api->Serial_println(s.c_str()); }
 inline void Serial_print(const String& s)   { api->Serial_print(s.c_str()); }
 
-// Arduino math functions
 inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -197,7 +193,6 @@ inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000
 // randomSeed -- seeds the same rand() used by random()
 inline void randomSeed(unsigned long seed) { srand((unsigned int)seed); }
 
-// tone -- two overloads matching Arduino's API: with and without duration
 inline void tone(int pin, int frequency)                  { api->tone(pin, frequency, 0); }
 inline void tone(int pin, int frequency, int duration_ms) { api->tone(pin, frequency, duration_ms); }
 inline void noTone(int pin)                               { api->noTone(pin); }

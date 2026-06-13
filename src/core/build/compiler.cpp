@@ -29,8 +29,7 @@ Compiler::Compiler()
 CompileResult Compiler::compile(const std::string& sketch_path) {
     CompileResult result;
 
-    // Derive output library path from sketch filename
-    // e.g. sketches/blink/blink.cpp -> ./blink.so (or .dll on Windows)
+    // e.g. sketches/blink/blink.cpp → ./blink.so
     std::string sketch_name = sketch_path;
     size_t slash = sketch_name.find_last_of("/\\");
     if (slash != std::string::npos)
@@ -41,13 +40,11 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 
     result.dll_path = output_dir_ + "/" + sketch_name + LIB_EXT;
 
-    // Read the sketch source
     std::ifstream sketch_file(sketch_path);
     std::string source((std::istreambuf_iterator<char>(sketch_file)),
                         std::istreambuf_iterator<char>());
     sketch_file.close();
 
-    // Preprocess -- transform Arduino syntax to VirtualEmbeddedProgrammer format
     Preprocessor preprocessor;
 
     // Extract // @board <name> hint and surface it to the caller via result
@@ -56,7 +53,6 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     std::string transformed = preprocessor.process(source);
     result.header_lines = preprocessor.injectedLines();
 
-    // Write transformed source to a temp file for compilation
     std::string temp_path = output_dir_ + "/_vb_temp.cpp";
     std::ofstream temp_file(temp_path);
     temp_file << transformed;
@@ -76,10 +72,6 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         }
     } catch (...) {}
 
-    // Build the g++ command
-    // -shared  = build a shared library (.so/.dll)
-    // -fPIC    = position-independent code (required on Linux/Mac)
-    // -I       = find arduinoapi.h from project root
     std::ostringstream cmd;
     cmd << "\"" << compiler_path_ << "\""
         << " -shared"

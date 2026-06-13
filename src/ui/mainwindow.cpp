@@ -17,9 +17,7 @@
 #include <QAction>
 #include <QToolTip>
 
-// -------------------------------------------------------
-// UI color palette -- change these to retheme the app
-// -------------------------------------------------------
+// UI color palette
 
 // Toolbar
 static const QString STYLE_TOOLBAR =
@@ -77,8 +75,6 @@ static const QString STYLE_TABS =
 // Error highlight
 static const QColor COLOR_ERROR_BG("#3a0000");
 
-// -------------------------------------------------------
-
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
@@ -92,7 +88,6 @@ MainWindow::MainWindow(QWidget* parent)
     layout->setSpacing(0);
     setCentralWidget(central);
 
-    // Load saved settings or show first-run dialog
     QSettings settings(
         QCoreApplication::applicationDirPath() + "/settings.ini",
         QSettings::IniFormat);
@@ -122,7 +117,6 @@ MainWindow::MainWindow(QWidget* parent)
     setupMainArea(central, layout);  // variableWatch_ must exist before the connect below
     canvasWidget_->setProfile(activeProfile_);
 
-    // Wire simulation signals to UI slots
     sketchThread_ = new SketchThread(this);
     sketchThread_->setProfile(activeProfile_);
     analogNoise_ = settings.value("simulation/analog_noise", false).toBool();
@@ -157,9 +151,7 @@ MainWindow::~MainWindow() {
         sketchThread_->stopSketch();
 }
 
-// -------------------------------------------------------
 // Toolbar -- Run, Stop, Open, Save, board label
-// -------------------------------------------------------
 void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     QWidget*     toolbar      = new QWidget(parent);
     QHBoxLayout* toolbarLayout = new QHBoxLayout(toolbar);
@@ -173,14 +165,12 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     toolbarLayout->addWidget(title);
     toolbarLayout->addSpacing(8);
 
-    // Run button
     runButton_ = new QPushButton("Run", toolbar);
     runButton_->setFixedSize(64, 26);
     runButton_->setStyleSheet(STYLE_BTN_RUN);
     connect(runButton_, &QPushButton::clicked, this, &MainWindow::onRunClicked);
     toolbarLayout->addWidget(runButton_);
 
-    // Stop button
     stopButton_ = new QPushButton("Stop", toolbar);
     stopButton_->setFixedSize(64, 26);
     stopButton_->setEnabled(false);
@@ -188,7 +178,6 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
 
-    // Speed slider
     QLabel* speedLabel = new QLabel("Speed:", toolbar);
     speedLabel->setStyleSheet("color: #888; font-size: 11px; border: none; background: transparent;");
     toolbarLayout->addWidget(speedLabel);
@@ -207,35 +196,30 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
     toolbarLayout->addWidget(speedSlider_);
 
-    // New Sketch button
     QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
     newsketchButton->setFixedHeight(26);
     newsketchButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(newsketchButton, &QPushButton::clicked, this, &MainWindow::onNewSketch);
     toolbarLayout->addWidget(newsketchButton);
 
-    // Open Sketch button
     QPushButton* openButton = new QPushButton("Open Sketch", toolbar);
     openButton->setFixedHeight(26);
     openButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
 
-    // Recent Sketche button
     QPushButton* recentButton = new QPushButton("Recent", toolbar);
     recentButton->setFixedHeight(26);
     recentButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
     toolbarLayout->addWidget(recentButton);
 
-    // Save Sketch button
     QPushButton* saveButton = new QPushButton("Save Sketch", toolbar);
     saveButton->setFixedHeight(26);
     saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
 
-    // Settings button
     QPushButton* settingsButton = new QPushButton("Settings", toolbar);
     settingsButton->setFixedHeight(26);
     settingsButton->setStyleSheet(STYLE_BTN_OUTLINE);
@@ -251,9 +235,7 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     layout->addWidget(toolbar);
 }
 
-// -------------------------------------------------------
 // Main area -- horizontal splitter: editor | (canvas + debug)
-// -------------------------------------------------------
 void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, parent);
     mainSplitter->setHandleWidth(1);
@@ -273,9 +255,7 @@ void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     layout->addWidget(mainSplitter);
 }
 
-// -------------------------------------------------------
 // Editor panel (left)
-// -------------------------------------------------------
 QWidget* MainWindow::buildEditorPanel() {
     QWidget*     panel  = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(panel);
@@ -320,9 +300,7 @@ QWidget* MainWindow::buildEditorPanel() {
     return panel;
 }
 
-// -------------------------------------------------------
 // Canvas panel (top right)
-// -------------------------------------------------------
 QWidget* MainWindow::buildCanvasPanel() {
     QWidget*     panel  = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(panel);
@@ -370,9 +348,7 @@ QWidget* MainWindow::buildCanvasPanel() {
     return panel;
 }
 
-// -------------------------------------------------------
 // Serial panel -- extracted so it can be rebuilt on board profile change
-// -------------------------------------------------------
 QWidget* MainWindow::buildSerialPanel() {
     QWidget*     serialPanel  = new QWidget();
     QVBoxLayout* serialLayout = new QVBoxLayout(serialPanel);
@@ -434,7 +410,6 @@ QWidget* MainWindow::buildSerialPanel() {
         serialLayout->addWidget(serialMonitor_);
     }
 
-    // Serial input row
     QWidget*     inputRow    = new QWidget();
     QHBoxLayout* inputLayout = new QHBoxLayout(inputRow);
     inputLayout->setContentsMargins(4, 4, 4, 4);
@@ -468,9 +443,7 @@ void MainWindow::rebuildSerialMonitors() {
     debugTabs_->setCurrentIndex(savedTab);
 }
 
-// -------------------------------------------------------
 // Debug panel (bottom right) -- tabbed: serial, timeline, watch
-// -------------------------------------------------------
 QWidget* MainWindow::buildDebugPanel() {
     QWidget*     panel  = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(panel);
@@ -491,9 +464,7 @@ QWidget* MainWindow::buildDebugPanel() {
     return panel;
 }
 
-// -------------------------------------------------------
 // Slots
-// -------------------------------------------------------
 void MainWindow::onSerialOutput(QString text) {
     serialMonitor_->moveCursor(QTextCursor::End);
     serialMonitor_->insertPlainText(text);
@@ -554,9 +525,7 @@ void MainWindow::onLoadFailed(QString reason) {
     stopButton_->setEnabled(false);
 }
 
-// -------------------------------------------------------
 // Button handlers
-// -------------------------------------------------------
 void MainWindow::onRunClicked() {
     // If no file is open, save editor content to a temp file and run that
     if (currentSketchPath_.isEmpty()) {
@@ -576,7 +545,6 @@ void MainWindow::onRunClicked() {
     statusBar()->showMessage("Compiling...");
     runButton_->setEnabled(false);
 
-    // Save editor content to disk before compiling
     QFile file(currentSketchPath_);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         file.write(codeEditor_->toPlainText().toUtf8());
@@ -684,7 +652,6 @@ void MainWindow::onRunClicked() {
     stopButton_->setEnabled(true);
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));
 
-    // Parse the sketch source to auto-detect components and populate the canvas
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
 }
@@ -746,9 +713,7 @@ void MainWindow::onSaveClicked() {
     addToRecentSketches(file_path);
 }
 
-// -------------------------------------------------------
 // Editor helpers
-// -------------------------------------------------------
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
         QKeyEvent* key = static_cast<QKeyEvent*>(event);

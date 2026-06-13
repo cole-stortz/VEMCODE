@@ -5,28 +5,14 @@
 #include <atomic>
 #include <QMutex>
 
-// SketchThread runs SketchHost on a background thread so the simulation
-// never blocks the Qt UI thread.
-//
-// Usage:
-//   SketchThread* thread = new SketchThread(this);
-//   connect(thread, &SketchThread::serialOutput, monitor, &SerialMonitor::append);
-//   connect(thread, &SketchThread::pinChanged, canvas, &Canvas::updatePin);
-//   thread->startSketch("path/to/sketch.dll");
-//
-// The thread emits signals when the sketch produces output.
-// The UI connects to those signals to update itself.
+// Runs SketchHost on a background thread so the simulation never blocks the UI.
 class SketchThread : public QThread {
     Q_OBJECT
 
 public:
     explicit SketchThread(QObject* parent = nullptr);
 
-    // Load and start running a sketch DLL.
-    // Safe to call again to hot-reload a new DLL.
     void startSketch(const QString& dll_path);
-
-    // Stop the simulation loop and wait for the thread to finish.
     void stopSketch();
 
     void injectPin(int pin, int value);
@@ -45,29 +31,17 @@ public:
     void injectSoftSerial(int rxPin, const QString& data);
 
 signals:
-    // Emitted when the sketch calls Serial.print() or Serial.println()
     void serialOutput(QString text);
     void serial1Output(QString text);
     void serial2Output(QString text);
     void softSerialOutput(int rxPin, QString text);
-
-    // Emitted when the sketch calls digitalWrite() and the value changes
     void pinChanged(int pin, int value);
-
-    // Emitted when a hot-reload happens
     void sketchReloaded();
-
-    // Emitted if the DLL fails to load
     void loadFailed(QString reason);
-
-    // Check to see if a variable changed for watch vairable
     void variableChanged(QString name, int value);
-
-    // Emitted when the sketch calls lcd.print()
     void lcdPrint(int pin, int row, QString text);
 
 protected:
-    // QThread entry point -- runs on the background thread
     void run() override;
 
 private:

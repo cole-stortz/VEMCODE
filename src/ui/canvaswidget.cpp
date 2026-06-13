@@ -9,11 +9,7 @@
 #include <cmath>
 #include <map>
 
-// -------------------------------------------------------
-// Canvas color palette -- change these to retheme the canvas
-// -------------------------------------------------------
-
-// Board colors
+// Canvas color palette
 static const QColor COLOR_BOARD_BG       ("#1a1a2e");
 static const QColor COLOR_BOARD_BORDER   ("#3a3a5c");
 static const QColor COLOR_CHIP_BG        ("#0d1117");
@@ -27,7 +23,7 @@ static const QColor COLOR_PIN_LABEL      ("#333355");
 // Wire color
 static const QColor COLOR_WIRE           ("#444466");
 
-// Component active colors (when pin is HIGH or button is pressed)
+// Active colors (pin HIGH / button pressed)
 static const QColor COLOR_LED_ACTIVE     ("#ffdd44");
 static const QColor COLOR_BUTTON_ACTIVE  ("#44ff88");
 static const QColor COLOR_BUZZER_ACTIVE  ("#ff8844");
@@ -43,7 +39,7 @@ static const QColor COLOR_DISTANCE_ACTIVE     ("#44ffff");
 static const QColor COLOR_HBRIDGE_ACTIVE      ("#ff44aa");
 static const QColor COLOR_COLORSENSOR_ACTIVE ("#aa44ff");
 
-// Component inactive colors (default state)
+// Inactive colors (default state)
 static const QColor COLOR_LED_INACTIVE        ("#3a3000");
 static const QColor COLOR_BUTTON_INACTIVE     ("#003a15");
 static const QColor COLOR_BUZZER_INACTIVE     ("#3a1a00");
@@ -59,11 +55,8 @@ static const QColor COLOR_DISTANCE_INACTIVE  ("#003a3a");
 static const QColor COLOR_HBRIDGE_INACTIVE   ("#3a0020");
 static const QColor COLOR_COLORSENSOR_INACTIVE ("#1a0040");
 
-// Component text colors
 static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
 static const QColor COLOR_COMPONENT_SUBLABEL  ("#888888");
-
-// -------------------------------------------------------
 
 CanvasWidget::CanvasWidget(QWidget* parent)
     : QGraphicsView(parent)
@@ -75,7 +68,6 @@ CanvasWidget::CanvasWidget(QWidget* parent)
     setDragMode(QGraphicsView::NoDrag);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
-    // Draw empty board on startup
     drawBoard();
 }
 
@@ -246,12 +238,10 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     rect->setPos(comp_x, comp_y);
     scene_->addItem(rect);
 
-    // Store component type in item data for updatePin()
     rect->setData(0, static_cast<int>(comp.type));
     pinItems_[comp.pin] = rect;
     pinTypes_[comp.pin] = comp.type;
 
-    // H-bridge motor: register all 3 pins and create state/label tracking
     if (comp.type == ComponentType::HBridgeMotor && comp.pins.size() == 3) {
         int rep        = comp.pin;        // pins[0] = PWM = rep
         int cwise_pin  = comp.pins[1];
@@ -273,7 +263,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         motorLabels_[rep] = motorLabel;
     }
 
-    // Button -- click/release injects LOW/HIGH (with bounce simulation)
     if (comp.type == ComponentType::Button) {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
@@ -282,7 +271,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         rect->setToolTip("Click to press, release to let go");
     }
 
-    // ButtonClean -- same interaction as Button but no bounce simulation
     if (comp.type == ComponentType::ButtonClean) {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
@@ -291,7 +279,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         rect->setToolTip("Click to press, release to let go (ideal — no bounce)");
     }
 
-    // Switch -- click toggles state
     if (comp.type == ComponentType::Switch) {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
@@ -300,12 +287,10 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         rect->setToolTip("Click to toggle");
     }
 
-    // Potentiometer -- drag to set analog value
     if (comp.type == ComponentType::Potentiometer) {
         rect->setToolTip("Drag to set analog value (0-1023)");
     }
 
-    // Sensor types -- show current analog value
     if (comp.type == ComponentType::LightSensor  ||
         comp.type == ComponentType::TempSensor   ||
         comp.type == ComponentType::AnalogSensor) {
@@ -407,7 +392,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
         lcdRow1Labels_[comp.pin] = row1;
     }
     if (comp.type == ComponentType::Buzzer) {
-        // Display current PWM value for buzzer
         QGraphicsTextItem* pwmText = new QGraphicsTextItem("PWM: 0", rect);
         pwmText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         pwmText->setFont(QFont("Courier New", 8));
@@ -421,7 +405,6 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp)
     typeText->setFont(QFont("Courier New", 8));
     typeText->setPos(6, 2);
 
-    // Pin name sublabel, if available (e.g. "LED_PIN" or "Echo Pin")
     if (!comp.pin_name.empty()) {
         QGraphicsTextItem* nameText = new QGraphicsTextItem(rect);
         nameText->setPlainText(QString::fromStdString(comp.pin_name));
@@ -501,7 +484,6 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
-    // Switch -- toggle state on each click, stays until clicked again
     if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Switch) {
         bool new_state = !switchStates_.value(pin, false);
         switchStates_[pin] = new_state;
@@ -609,8 +591,6 @@ QColor CanvasWidget::componentColor(ComponentType type, bool active) {
 void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
     if (dragPin_ < 0) { QGraphicsView::mouseMoveEvent(event); return; }
 
-    // Map vertical drag to 0-1023
-    // Drag up = higher value, drag down = lower value
     int delta = dragStartY_ - event->pos().y();
     int new_value = qBound(0, dragStartValue_ + delta * 4, 1023);
 

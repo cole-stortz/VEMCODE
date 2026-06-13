@@ -2,12 +2,12 @@
 #include "src/ui/mainwindow.h"
 
 int main(int argc, char* argv[]) {
-    QApplication app(argc, argv);           // Create the application
-    app.setApplicationName("VEMCODE"); // with a title and version number
+    QApplication app(argc, argv);
+    app.setApplicationName("VEMCODE");
     app.setApplicationVersion("0.1");
 
     MainWindow window;
-    window.show();                          // Create and show the main window in the app
+    window.show();
 
-    return app.exec();                      // Execute
+    return app.exec();
 }

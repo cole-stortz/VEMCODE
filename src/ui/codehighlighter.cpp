@@ -5,14 +5,12 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
 {
     HighlightRule rule;
 
-    // Preprocessor directives -- #define #include #ifdef etc
     QTextCharFormat preprocessor_fmt;
     preprocessor_fmt.setForeground(QColor("#c586c0"));
     rule.pattern = QRegularExpression(R"(#\s*\w+)");
     rule.format  = preprocessor_fmt;
     rules_.append(rule);
 
-    // C++ keywords
     QTextCharFormat keyword_fmt;
     keyword_fmt.setForeground(QColor("#569cd6"));
     keyword_fmt.setFontWeight(QFont::Bold);
@@ -34,7 +32,6 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
         rules_.append(rule);
     }
 
-    // Arduino built-in functions
     QTextCharFormat arduino_fmt;
     arduino_fmt.setForeground(QColor("#dcdcaa"));
     const QStringList arduino_fns = {
@@ -56,7 +53,6 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
         rules_.append(rule);
     }
 
-    // Arduino constants
     QTextCharFormat constant_fmt;
     constant_fmt.setForeground(QColor("#4fc1ff"));
     const QStringList constants = {
@@ -73,7 +69,6 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
         rules_.append(rule);
     }
 
-    // Numbers -- integers, floats, hex
     QTextCharFormat number_fmt;
     number_fmt.setForeground(QColor("#b5cea8"));
     rule.pattern = QRegularExpression(
@@ -81,14 +76,12 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
     rule.format = number_fmt;
     rules_.append(rule);
 
-    // Strings -- "quoted"
     QTextCharFormat string_fmt;
     string_fmt.setForeground(QColor("#ce9178"));
     rule.pattern = QRegularExpression(R"("([^"\\]|\\.)*")");
     rule.format  = string_fmt;
     rules_.append(rule);
 
-    // Single-line comments -- // ...
     QTextCharFormat sl_comment_fmt;
     sl_comment_fmt.setForeground(QColor("#6a9955"));
     sl_comment_fmt.setFontItalic(true);
@@ -96,16 +89,13 @@ CodeHighlighter::CodeHighlighter(QTextDocument* parent)
     rule.format  = sl_comment_fmt;
     rules_.append(rule);
 
-    // Multi-line comments -- /* ... */
     comment_format_.setForeground(QColor("#6a9955"));
     comment_format_.setFontItalic(true);
     comment_start_ = QRegularExpression(R"(/\*)");
     comment_end_   = QRegularExpression(R"(\*/)");
 }
 
-// highlightBlock() -- called by Qt for each line
 void CodeHighlighter::highlightBlock(const QString& text) {
-    // Apply all single-line rules
     for (const HighlightRule& rule : rules_) {
         QRegularExpressionMatchIterator it = rule.pattern.globalMatch(text);
         while (it.hasNext()) {
@@ -115,7 +105,6 @@ void CodeHighlighter::highlightBlock(const QString& text) {
         }
     }
 
-    // Multi-line comment handling
     setCurrentBlockState(0);
 
     int start = 0;

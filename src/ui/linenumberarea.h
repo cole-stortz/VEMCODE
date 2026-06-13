@@ -4,15 +4,13 @@
 #include <QPainter>
 #include <QTextBlock>
 
-// EditorWithLines subclasses QPlainTextEdit to expose the protected
-// methods needed by LineNumberArea.
+// Exposes protected QPlainTextEdit methods needed by LineNumberArea.
 class EditorWithLines : public QPlainTextEdit {
     Q_OBJECT
 public:
     explicit EditorWithLines(QWidget* parent = nullptr)
         : QPlainTextEdit(parent) {}
 
-    // Expose protected methods for LineNumberArea
     QTextBlock  firstBlock()    { return firstVisibleBlock(); }
     QRectF      blockGeo(const QTextBlock& b) { return blockBoundingGeometry(b); }
     QRectF      blockRect(const QTextBlock& b){ return blockBoundingRect(b); }
@@ -20,7 +18,6 @@ public:
     void setLeftMargin(int margin) { setViewportMargins(margin, 0, 0, 0); }
 };
 
-// LineNumberArea paints line numbers to the left of an EditorWithLines.
 class LineNumberArea : public QWidget {
     Q_OBJECT
 

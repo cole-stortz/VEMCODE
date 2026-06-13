@@ -45,8 +45,7 @@ public:
     ArduinoAPI get_api();
     RuntimeState& get_state() { return state_; }
 
-    // Callbacks -- set by SketchThread to receive output instead of std::cout.
-    // If not set, impl_* functions fall back to std::cout (useful for testing).
+    // Callbacks set by SketchThread; if unset, impl_* functions fall back to std::cout.
     std::function<void(const std::string&)> on_serial_output;
     std::function<void(int pin, int value)> on_pin_changed;
     std::function<void(const std::string&, int)> on_variable_changed;
@@ -60,7 +59,6 @@ public:
     void set_analog_noise(bool enabled) { analog_noise_enabled_ = enabled; }
 
     void inject_analog(int pin, int value) {
-        // Convert internal pin number to analog index
         // A0=14, A1=15... → index 0,1...
         int analog_index = (pin >= profile_.analog_offset) ? pin - profile_.analog_offset : pin;
         if (analog_index >= 0 && analog_index < profile_.analog_count)

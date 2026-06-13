@@ -75,12 +75,12 @@ void ArduinoRuntime::impl_pinMode(int pin, int mode) {
 }
 
 void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
-    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return; // return if pins are outside the arduino range
-    bool changed = (g_runtime->state_.pin_values[pin] != value); // Check to see if the value has changed
-    g_runtime->state_.pin_values[pin] = value; // Set the value
-    if (!changed) return; // If didnt change return
-    if (g_runtime->on_pin_changed) 
-        g_runtime->on_pin_changed(pin, value); // Set the changed pin value
+    if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return;
+    bool changed = (g_runtime->state_.pin_values[pin] != value);
+    g_runtime->state_.pin_values[pin] = value;
+    if (!changed) return;
+    if (g_runtime->on_pin_changed)
+        g_runtime->on_pin_changed(pin, value);
     else
         std::cout << ts() << "  pin " << pin
                   << " -> " << (value ? "HIGH" : "LOW") << "\n";
@@ -156,24 +156,23 @@ unsigned long ArduinoRuntime::impl_micros() {
 }
 
 void ArduinoRuntime::impl_Serial_begin(int baud) {
-    if (!g_runtime) return; // if not running return
-    g_runtime->state_.serial_started = true; // simple set values
+    if (!g_runtime) return;
+    g_runtime->state_.serial_started = true;
     g_runtime->state_.serial_baud    = baud;
-    //std::cout << ts() << "  Serial.begin(" << baud << ")\n";
 }
 
 void ArduinoRuntime::impl_Serial_print(const char* s) {
-    if (g_runtime && g_runtime->on_serial_output) // send output to device
+    if (g_runtime && g_runtime->on_serial_output)
         g_runtime->on_serial_output(std::string(s));
     else
-        std::cout << ts() << "  Serial >> " << s; // output to console
+        std::cout << ts() << "  Serial >> " << s;
 }
 
 void ArduinoRuntime::impl_Serial_println(const char* s) {
-    if (g_runtime && g_runtime->on_serial_output) // send output to device
+    if (g_runtime && g_runtime->on_serial_output)
         g_runtime->on_serial_output(std::string(s) + "\n");
     else
-        std::cout << ts() << "  Serial >> " << s << "\n"; // send to console
+        std::cout << ts() << "  Serial >> " << s << "\n";
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
@@ -333,18 +332,17 @@ void ArduinoRuntime::impl_Serial1_begin(int baud) {
 }
 
 void ArduinoRuntime::impl_Serial1_print(const char* s) {
-    if (g_runtime && g_runtime->on_serial1_output) // send output to device
+    if (g_runtime && g_runtime->on_serial1_output)
         g_runtime->on_serial1_output(std::string(s));
     else
-        std::cout << ts() << "  Serial[1] >> " << s; // output to console
-    
+        std::cout << ts() << "  Serial[1] >> " << s;
 }
 
 void ArduinoRuntime::impl_Serial1_println(const char* s) {
-    if (g_runtime && g_runtime->on_serial1_output) // send output to device
+    if (g_runtime && g_runtime->on_serial1_output)
         g_runtime->on_serial1_output(std::string(s) + "\n");
     else
-        std::cout << ts() << "  Serial[1] >> " << s << "\n"; // send to console
+        std::cout << ts() << "  Serial[1] >> " << s << "\n";
 }
 
 void ArduinoRuntime::impl_Serial2_begin(int baud) {
@@ -354,17 +352,17 @@ void ArduinoRuntime::impl_Serial2_begin(int baud) {
 }
 
 void ArduinoRuntime::impl_Serial2_print(const char* s) {
-    if (g_runtime && g_runtime->on_serial2_output) // send output to device
+    if (g_runtime && g_runtime->on_serial2_output)
         g_runtime->on_serial2_output(std::string(s));
     else
-        std::cout << ts() << "  Serial[2] >> " << s; // output to console
+        std::cout << ts() << "  Serial[2] >> " << s;
 }
 
 void ArduinoRuntime::impl_Serial2_println(const char* s) {
-    if (g_runtime && g_runtime->on_serial2_output) // send output to device
+    if (g_runtime && g_runtime->on_serial2_output)
         g_runtime->on_serial2_output(std::string(s) + "\n");
     else
-        std::cout << ts() << "  Serial[2] >> " << s << "\n"; // send to console
+        std::cout << ts() << "  Serial[2] >> " << s << "\n";
 }
 
 void ArduinoRuntime::impl_soft_serial_begin(int rxPin, int baud) {

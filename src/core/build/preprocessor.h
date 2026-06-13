@@ -3,31 +3,15 @@
 
 extern const char* g_injected_header;
 
-// Preprocessor transforms standard Arduino sketch syntax into
-// VirtualEmbeddedProgrammer DLL format before compilation.
-//
-// Input (Arduino style):
-//   void setup() { pinMode(13, OUTPUT); }
-//   void loop()  { digitalWrite(13, HIGH); }
-//
-// Output (VirtualEmbeddedProgrammer DLL style):
-//   #include "src/core/runtime/arduinoapi.h"
-//   static ArduinoAPI* api = nullptr;
-//   extern "C" __declspec(dllexport) void vb_init(ArduinoAPI* a) { api = a; }
-//   extern "C" __declspec(dllexport) void vb_setup() { api->pinMode(13, OUTPUT); }
-//   extern "C" __declspec(dllexport) void vb_loop()  { api->digitalWrite(13, HIGH); }
-//
-// If the source already contains "vb_init" it is returned unchanged --
-// so existing VirtualEmbeddedProgrammer format sketches pass through unmodified.
+// Transforms standard Arduino sketch syntax into DLL format before compilation.
+// sketch:  void setup() { pinMode(13, OUTPUT); }
+// becomes: extern "C" void vb_setup() { api->pinMode(13, OUTPUT); }
+// Passes through unchanged if source already contains "vb_init".
 class Preprocessor {
 public:
-    // Transform Arduino sketch source into VirtualEmbeddedProgrammer DLL source.
-    // Returns the transformed source ready to write to a .cpp file.
     std::string process(const std::string& source);
-    // Actual lines injected (boilerplate + forward declarations) for the last process() call.
-    // Use this value to offset compiler error line numbers back to the original source.
+    // Lines injected by the last process() call — used to offset compiler error line numbers.
     int injectedLines() const { return injected_lines_; }
-    // Scan source for a board profile comment (e.g. // @board <name>) and extract the profile name if found.
     std::string extract_board_profile(const std::string& source);
 
 private:

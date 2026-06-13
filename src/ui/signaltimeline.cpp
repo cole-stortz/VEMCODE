@@ -35,12 +35,11 @@ void SignalTimeline::clear() {
 
 void SignalTimeline::paintEvent(QPaintEvent*) {
     QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, false);  // crisp digital lines
+    p.setRenderHint(QPainter::Antialiasing, false);
 
     int w = width();
     int h = height();
 
-    // Background
     p.fillRect(rect(), QColor("#1a1a1a"));
 
     if (pin_order_.isEmpty()) {
@@ -49,7 +48,6 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
         return;
     }
 
-    // Draw time grid lines
     p.setPen(QPen(QColor("#2a2a2a"), 1));
     int grid_steps = 10;
     for (int i = 0; i <= grid_steps; i++) {
@@ -57,7 +55,6 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
         p.drawLine(x, 0, x, h);
     }
 
-    // Draw each pin track
     int track_index = 0;
     for (int pin : pin_order_) {
         int track_y = track_index * (TRACK_HEIGHT + TRACK_PADDING);
@@ -65,16 +62,13 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
 
         QColor color = trackColor(pin);
 
-        // Track background
         p.fillRect(0, track_y, w, TRACK_HEIGHT, QColor("#1e1e1e"));
 
-        // Pin label
         p.setPen(color);
         p.setFont(QFont("Courier New", 8));
         p.drawText(4, track_y, LABEL_WIDTH - 4, TRACK_HEIGHT,
                    Qt::AlignVCenter, QString("pin %1").arg(pin));
 
-        // Draw waveform
         const auto& events = tracks_[pin];
         if (events.isEmpty()) { track_index++; continue; }
 
@@ -94,11 +88,9 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
                 break;
         }
 
-        // Start drawing from the left edge at the known state
         int prev_x = LABEL_WIDTH;
         int prev_y = current_value ? y_high : y_low;
 
-        // Draw all events inside the visible window
         for (const auto& ev : events) {
             if (ev.time_ms < scroll_offset_ms_) continue;
             if (ev.time_ms > scroll_offset_ms_ + time_window_ms_) break;
@@ -116,17 +108,14 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
             prev_y = new_y;
         }
 
-        // Final horizontal segment from last event to right edge
         p.drawLine(prev_x, prev_y, w, prev_y);
 
-        // Track separator
         p.setPen(QPen(QColor("#333"), 1));
         p.drawLine(0, track_y + TRACK_HEIGHT, w, track_y + TRACK_HEIGHT);
 
         track_index++;
     }
 
-    // Time labels at bottom
     p.setPen(QColor("#555"));
     p.setFont(QFont("Courier New", 7));
     for (int i = 0; i <= grid_steps; i++) {
@@ -139,11 +128,9 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
 
 void SignalTimeline::wheelEvent(QWheelEvent* event) {
     if (event->modifiers() & Qt::ControlModifier) {
-        // Ctrl+wheel = zoom
         int delta = event->angleDelta().y();
         time_window_ms_ = qBound(500LL, time_window_ms_ - delta * 10, 60000LL);
     } else {
-        // Wheel = scroll
         int delta = event->angleDelta().y();
         scroll_offset_ms_ = qMax(0LL, scroll_offset_ms_ - delta * 10);
     }

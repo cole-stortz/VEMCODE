@@ -102,11 +102,8 @@ private:
     BoardProfile activeProfile_ = BOARD_UNO;
     bool analogNoise_ = false;
 
-    // Speed Slider
-    QSlider* speedSlider_ = nullptr;
-
-    // Serial Input
-    QLineEdit* serialInput_ = nullptr;
+    QSlider*   speedSlider_  = nullptr;
+    QLineEdit* serialInput_  = nullptr;
 
     // Per-port line-start tracking for SoftwareSerial prefix insertion
     QMap<int, bool> softSerialLineStart_;
