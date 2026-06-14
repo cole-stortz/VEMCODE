@@ -213,18 +213,20 @@ void ArduinoRuntime::impl_Serial_println(const char* s) {
 }
 
 void ArduinoRuntime::inject_pin(int pin, int value) {
-    if (pin >= 0 && pin < profile_.pin_count) {
-        state_.pin_values[pin] = value;
-        state_.pin_driven[pin] = true;
-    }
+    if (pin < 0 || pin >= profile_.pin_count) return;
+    g_runtime = this;
+    state_.pin_driven[pin] = true;
+    impl_digitalWrite(pin, value);
 }
 
 void ArduinoRuntime::inject_button_bounce(int pin, int finalValue) {
     if (pin < 0 || pin >= profile_.pin_count) return;
+    g_runtime = this;
     state_.pin_driven[pin] = true;
     state_.pin_bounce_target[pin] = finalValue;
     state_.pin_bounce_until_[pin] = std::chrono::steady_clock::now()
                                     + std::chrono::milliseconds(10);
+    impl_digitalWrite(pin, finalValue); // dispatch ISRs on the settled edge
 }
 
 void ArduinoRuntime::impl_watch_variable(const char* name, int value) {

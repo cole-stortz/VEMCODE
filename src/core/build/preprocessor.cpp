@@ -339,8 +339,34 @@ std::string Preprocessor::transform_isr_blocks(const std::string& source) {
     size_t pos = 0;
 
     while (pos < s.size()) {
-        size_t isr_pos = s.find("ISR(", pos);
-        if (isr_pos == std::string::npos) break;
+        // Skip line comments
+        if (pos + 1 < s.size() && s[pos] == '/' && s[pos+1] == '/') {
+            size_t nl = s.find('\n', pos + 2);
+            pos = (nl == std::string::npos) ? s.size() : nl + 1;
+            continue;
+        }
+        // Skip block comments
+        if (pos + 1 < s.size() && s[pos] == '/' && s[pos+1] == '*') {
+            size_t end = s.find("*/", pos + 2);
+            pos = (end == std::string::npos) ? s.size() : end + 2;
+            continue;
+        }
+        // Skip string literals
+        if (s[pos] == '"') {
+            ++pos;
+            while (pos < s.size() && s[pos] != '"') {
+                if (s[pos] == '\\') ++pos;
+                if (pos < s.size()) ++pos;
+            }
+            if (pos < s.size()) ++pos;
+            continue;
+        }
+        // Check for ISR( at current position
+        if (s.size() - pos < 4 || s[pos] != 'I' || s[pos+1] != 'S' || s[pos+2] != 'R' || s[pos+3] != '(') {
+            ++pos;
+            continue;
+        }
+        size_t isr_pos = pos;
 
         // Must be a whole-word match (not e.g. inside TISR or another identifier)
         if (isr_pos > 0 && (std::isalnum((unsigned char)s[isr_pos - 1]) || s[isr_pos - 1] == '_')) {
@@ -430,8 +456,8 @@ std::string Preprocessor::transform_asm_blocks(const std::string& source) {
     // Single-instruction mapping: asm string → replacement (nullptr = strip silently)
     static const struct { const char* instr; const char* replacement; } kAsmMap[] = {
         { "nop",    nullptr               },
-        { "cli",    "api->noInterrupts()" },
-        { "sei",    "api->interrupts()"   },
+        { "cli",    "noInterrupts()" },
+        { "sei",    "interrupts()"  },
         { "sleep",  nullptr               },
         { "wdr",    nullptr               },
         { "rjmp 0", nullptr               },
@@ -441,7 +467,7 @@ std::string Preprocessor::transform_asm_blocks(const std::string& source) {
     // Match: (asm|__asm__) (volatile|__volatile__)? ( "single_instruction" anything );
     // Captures the instruction string in group 1
     std::regex asm_re(
-        R"((?:__asm__|asm)\s*(?:__volatile__|volatile)?\s*\(\s*"([^"\\]*)(?:\\[ntr])?"[^;]*\)\s*;)"
+        R"((?:__asm__|asm)\s*(?:__volatile__|volatile)?\s*\(\s*"([^"\\]*)(?:\\[ntr])?"[^;\n]*\)\s*;)"
     );
 
     std::string result;

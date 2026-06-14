@@ -21,10 +21,12 @@ void vb_init(ArduinoAPI* a) { api = a; }
 template<typename T>
 inline void Serial_println(T v) { api->Serial_println(std::to_string(v).c_str()); }
 inline void Serial_println(const char* s) { api->Serial_println(s); }
+inline void Serial_println(char* s)       { api->Serial_println(s); }
 inline void Serial_println(char c) { char s[2] = {c, '\0'}; api->Serial_println(s); }
 template<typename T>
 inline void Serial_print(T v) { api->Serial_print(std::to_string(v).c_str()); }
 inline void Serial_print(const char* s) { api->Serial_print(s); }
+inline void Serial_print(char* s)       { api->Serial_print(s); }
 inline void Serial_print(char c) { char s[2] = {c, '\0'}; api->Serial_print(s); }
 
 const int HEX = 16;
@@ -203,6 +205,11 @@ inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000
 #define F_CPU 16000000UL
 #define _delay_ms(ms) api->delay((unsigned long)(ms))
 #define _delay_us(us) api->delayMicroseconds((unsigned long)(us))
+
+// Arduino analog reference constants (Uno values; simulation ignores them)
+#define DEFAULT  0
+#define EXTERNAL 1
+#define INTERNAL 3
 
 // analogReference -- simulation ignores ADC reference voltage; stub so sketches compile
 inline void analogReference(int) {}

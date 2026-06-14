@@ -1109,13 +1109,17 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
     }
 
     // 3. attachInterrupt() with raw interrupt number (Uno/Nano: interrupt 0=pin 2, 1=pin 3)
+    // Deduplicate by interrupt number so a matching comment doesn't double the warning.
     {
         std::string board = activeProfile_.name;
         if (board == "Arduino Uno" || board == "Arduino Nano") {
             std::regex ai_re(R"(attachInterrupt\s*\(\s*([01])\s*,)");
+            std::set<std::string> warned_nums;
             for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
                  it != std::sregex_iterator(); ++it) {
                 std::string n = (*it)[1].str();
+                if (warned_nums.count(n)) continue;
+                warned_nums.insert(n);
                 int correct_pin = (n == "0") ? 2 : 3;
                 warnings << QString("WARNING: attachInterrupt(%1, ...) uses an interrupt number, not a pin number — use digitalPinToInterrupt(%2) to attach to pin %2 on the %3")
                     .arg(QString::fromStdString(n)).arg(correct_pin).arg(activeProfile_.name);
