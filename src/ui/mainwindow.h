@@ -63,6 +63,7 @@ private:
     
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
+    QStringList runStaticChecks(const QString& source);
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();

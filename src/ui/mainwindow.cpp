@@ -1,6 +1,8 @@
 #include "src/ui/mainwindow.h"
 #include "boardprofile.h"
 #include "src/ui/canvaswidget.h"
+#include <regex>
+#include <algorithm>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -16,6 +18,70 @@
 #include <QMenu>
 #include <QAction>
 #include <QToolTip>
+
+// Returns true if a define/const name looks like a pin definition
+static bool is_pin_name(const std::string& name) {
+    static const char* INCLUDE[] = {
+        "PIN", "LED", "BTN", "BUTTON", "SERVO", "TRIG", "ECHO",
+        "SENSOR", "MOTOR", "CLK", "DT", "CS", "RST", "RS",
+        "SWITCH", "BUZZER", "SPEAKER", "PIEZO", "POT", "DIAL"
+    };
+    static const char* EXCLUDE[] = {
+        "COUNT", "NUM", "SIZE", "LEN", "MAX", "SPEED", "BAUD", "RATE", "DELAY", "TIMEOUT"
+    };
+    std::string up = name;
+    std::transform(up.begin(), up.end(), up.begin(), ::toupper);
+    for (const char* kw : EXCLUDE)
+        if (up.find(kw) != std::string::npos) return false;
+    for (const char* kw : INCLUDE)
+        if (up.find(kw) != std::string::npos) return true;
+    return false;
+}
+
+// PWM-capable pins per board; empty = board supports PWM on all pins (skip check)
+static std::vector<int> get_pwm_pins_for(const BoardProfile& p) {
+    std::string name = p.name;
+    if (name == "Arduino Uno" || name == "Arduino Nano")
+        return {3, 5, 6, 9, 10, 11};
+    if (name == "Arduino Mega 2560")
+        return {2,3,4,5,6,7,8,9,10,11,12,13,44,45,46};
+    return {}; // Due / Teensy: all pins support PWM
+}
+
+// Rewrite cryptic GCC error messages to plain English
+static QString humanizeErrors(const QString& raw) {
+    struct Rule { QRegularExpression re; QString repl; };
+    static const Rule rules[] = {
+        { QRegularExpression(R"('([\w:<>*& ]+)' was not declared in this scope)"),
+          "'\\1' not found — did you forget to declare it?" },
+        { QRegularExpression(R"(no matching function for call to '([^']+)')"),
+          "Wrong arguments passed to '\\1'" },
+        { QRegularExpression(R"(expected ';' before '}' token)"),
+          "Missing semicolon, probably the line above" },
+        { QRegularExpression(R"(expected '}' at end of input)"),
+          "Unclosed brace — one of your { was never closed" },
+        { QRegularExpression(R"(lvalue required as left operand of assignment)"),
+          "Did you mean == instead of =?" },
+        { QRegularExpression(R"(undefined reference to [`']([^'`]+)[`'])"),
+          "Function '\\1' is used but never defined" },
+        { QRegularExpression(R"(control reaches end of non-void function)"),
+          "Function is missing a return statement" },
+        { QRegularExpression(R"(expected unqualified-id before '\{' token)"),
+          "Code found outside a function — all code must be inside setup(), loop(), or another function" },
+        { QRegularExpression(R"(too (many|few) arguments to function '([^']+)')"),
+          "Wrong number of arguments passed to '\\2'" },
+        { QRegularExpression(R"(stray '\\[^']*' in program)"),
+          "Invalid character in code — this sometimes happens when copy-pasting from a website; try retyping the line" },
+        { QRegularExpression(R"(overflow in implicit constant conversion)"),
+          "Number is too large for this variable type — try using long instead of int" },
+        { QRegularExpression(R"(comparison between pointer and integer)"),
+          "Can't compare strings with == — use strcmp() or the String class" },
+    };
+    QString result = raw;
+    for (const auto& r : rules)
+        result.replace(r.re, r.repl);
+    return result;
+}
 
 // UI color palette
 
@@ -563,6 +629,10 @@ void MainWindow::onRunClicked() {
         sketch_dir = sketch_dir.substr(0, slash);
     compiler.set_output_dir(sketch_dir);
 
+    // Static pre-compile checks (pin range, PWM, ISR issues, etc.)
+    for (const QString& w : runStaticChecks(codeEditor_->toPlainText()))
+        serialMonitor_->appendPlainText(w + "\n");
+
     CompileResult result = compiler.compile(sketch_path);
 
     // Show pre-compile warnings (unsupported libraries, etc.) regardless of outcome
@@ -645,6 +715,7 @@ void MainWindow::onRunClicked() {
         // Strip api-> -- user never wrote this
         raw.replace("api->", "");
 
+        raw = humanizeErrors(raw);
         serialMonitor_->appendPlainText("=== Compile errors ===\n");
         serialMonitor_->appendPlainText(raw);
         statusBar()->showMessage("Compile failed");
@@ -663,6 +734,42 @@ void MainWindow::onRunClicked() {
 
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
+
+    // Same-pin-claimed-by-two-components warnings
+    for (const auto& w : detector_.warnings())
+        serialMonitor_->appendPlainText(QString::fromStdString(w) + "\n");
+
+    // No-components-detected hints
+    const auto& comps = detector_.components();
+    bool has_non_serial = std::any_of(comps.begin(), comps.end(),
+        [](const DetectedComponent& c) { return c.type != ComponentType::Serial; });
+    if (!has_non_serial) {
+        std::string src = codeEditor_->toPlainText().toStdString();
+        bool has_pin_defines = false;
+        std::regex pin_def_re(R"(#\s*define\s+(\w+)\s+\d+)");
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), pin_def_re);
+             it != std::sregex_iterator(); ++it) {
+            if (is_pin_name((*it)[1].str())) { has_pin_defines = true; break; }
+        }
+        bool has_hardcoded = std::regex_search(src,
+            std::regex(R"((?:digitalWrite|analogWrite|pinMode)\s*\(\s*\d+)"));
+        bool has_local_header = std::regex_search(src,
+            std::regex(R"(#include\s+"[^"]+\.h")"));
+
+        if (has_pin_defines) {
+            serialMonitor_->appendPlainText(
+                "HINT: Pin definitions found but couldn't identify component types — "
+                "try descriptive names like LED_PIN, SERVO_PIN, BUTTON_PIN\n");
+        } else if (has_hardcoded) {
+            serialMonitor_->appendPlainText(
+                "HINT: Pin numbers are hardcoded — give them names like "
+                "'const int LED_PIN = 5;' so the simulator can identify them\n");
+        } else if (has_local_header) {
+            serialMonitor_->appendPlainText(
+                "HINT: No components detected — if your pin definitions are in a header file, "
+                "try moving them into the main sketch\n");
+        }
+    }
 }
 
 void MainWindow::onStopClicked() {
@@ -946,4 +1053,137 @@ void MainWindow::onSerialSend() {
     sketchThread_->injectSerial(text + "\n");
     serialMonitor_->appendPlainText("> " + text);
     serialInput_->clear();
+}
+
+QStringList MainWindow::runStaticChecks(const QString& source) {
+    QStringList warnings;
+    std::string src = source.toStdString();
+
+    // Build pin symbol table from #define NAME VALUE and const int NAME = VALUE
+    std::map<std::string, int> pin_defs;
+    {
+        auto scan = [&](const std::regex& re) {
+            for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
+                 it != std::sregex_iterator(); ++it) {
+                std::string name = (*it)[1].str();
+                try { pin_defs[name] = std::stoi((*it)[2].str()); } catch (...) {}
+            }
+        };
+        scan(std::regex(R"(#\s*define\s+(\w+)\s+\(?\s*(\d+)\s*\)?)"));
+        scan(std::regex(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)"));
+    }
+
+    // 1. Pin out of range for selected board
+    for (const auto& [name, pin] : pin_defs) {
+        if (!is_pin_name(name)) continue;
+        if (pin < 0 || pin >= 80) continue; // not a plausible pin number
+        if (pin >= activeProfile_.pin_count) {
+            warnings << QString("WARNING: Pin %1 ('%2') is not available on the %3 (max pin %4)")
+                .arg(pin)
+                .arg(QString::fromStdString(name))
+                .arg(activeProfile_.name)
+                .arg(activeProfile_.pin_count - 1);
+        }
+    }
+
+    // 2. analogWrite() on a non-PWM pin
+    auto pwm_pins = get_pwm_pins_for(activeProfile_);
+    if (!pwm_pins.empty()) {
+        std::regex aw_re(R"((?:api->)?analogWrite\s*\(\s*(\w+))");
+        std::set<int> warned_pins;
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), aw_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string token = (*it)[1].str();
+            int pin = -1;
+            try { pin = std::stoi(token); } catch (...) {
+                auto def_it = pin_defs.find(token);
+                if (def_it != pin_defs.end()) pin = def_it->second;
+            }
+            if (pin < 0 || warned_pins.count(pin)) continue;
+            if (std::find(pwm_pins.begin(), pwm_pins.end(), pin) == pwm_pins.end()) {
+                warned_pins.insert(pin);
+                warnings << QString("WARNING: Pin %1 does not support PWM on the %2 — analogWrite() will have no effect")
+                    .arg(pin).arg(activeProfile_.name);
+            }
+        }
+    }
+
+    // 3. attachInterrupt() with raw interrupt number (Uno/Nano: interrupt 0=pin 2, 1=pin 3)
+    {
+        std::string board = activeProfile_.name;
+        if (board == "Arduino Uno" || board == "Arduino Nano") {
+            std::regex ai_re(R"(attachInterrupt\s*\(\s*([01])\s*,)");
+            for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
+                 it != std::sregex_iterator(); ++it) {
+                std::string n = (*it)[1].str();
+                int correct_pin = (n == "0") ? 2 : 3;
+                warnings << QString("WARNING: attachInterrupt(%1, ...) uses an interrupt number, not a pin number — use digitalPinToInterrupt(%2) to attach to pin %2 on the %3")
+                    .arg(QString::fromStdString(n)).arg(correct_pin).arg(activeProfile_.name);
+            }
+        }
+    }
+
+    // 4. delay() inside an attachInterrupt callback function
+    {
+        // Extract function body by brace-counting from the opening {
+        auto func_body = [&](const std::string& func_name) -> std::string {
+            std::regex func_re("\\bvoid\\s+" + func_name + R"(\s*\(\s*\)\s*\{)");
+            std::smatch m;
+            std::string s = src;
+            if (!std::regex_search(s, m, func_re)) return "";
+            size_t pos = static_cast<size_t>(m.position()) + m.length() - 1;
+            int depth = 1;
+            size_t start = pos + 1;
+            while (pos < src.size() - 1 && depth > 0) {
+                ++pos;
+                if (src[pos] == '{') ++depth;
+                else if (src[pos] == '}') --depth;
+            }
+            return src.substr(start, pos - start);
+        };
+
+        std::regex ai_re(R"(attachInterrupt\s*\([^,]+,\s*(\w+)\s*,)");
+        std::set<std::string> warned_funcs;
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string fn = (*it)[1].str();
+            if (warned_funcs.count(fn)) continue;
+            std::string body = func_body(fn);
+            if (!body.empty() && body.find("delay(") != std::string::npos) {
+                warned_funcs.insert(fn);
+                warnings << QString("WARNING: delay() inside '%1' (used as an interrupt handler) will hang on real Arduino — interrupts are disabled during ISR execution")
+                    .arg(QString::fromStdString(fn));
+            }
+        }
+    }
+
+    // 5. Pin defined as an expression (CircuitDetector cannot evaluate it)
+    {
+        std::regex def_re(R"(#\s*define\s+(\w+)\s+(.+))");
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), def_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string name  = (*it)[1].str();
+            std::string value = (*it)[2].str();
+            // Strip trailing comment and whitespace
+            auto comment = value.find("//");
+            if (comment != std::string::npos) value = value.substr(0, comment);
+            while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r'))
+                value.pop_back();
+            // Only flag if the value contains arithmetic operators
+            bool has_op = value.find('+') != std::string::npos ||
+                          value.find('*') != std::string::npos ||
+                          value.find('/') != std::string::npos ||
+                          value.find("<<") != std::string::npos;
+            // '-' only counts as an operator if not at the start (negative literal)
+            if (!has_op && value.size() > 1 && value.find('-') != std::string::npos)
+                has_op = (value.find('-') != 0 &&
+                          !(value.find('-') == 1 && value[0] == '('));
+            if (!has_op) continue;
+            if (!is_pin_name(name)) continue;
+            warnings << QString("WARNING: Pin '%1' is defined as an expression — the simulator could not evaluate it and the component may not appear on the canvas; use a plain number instead")
+                .arg(QString::fromStdString(name));
+        }
+    }
+
+    return warnings;
 }

@@ -46,8 +46,19 @@ void CircuitDetector::detect(const std::string& source) {
             ? type_str + " (pin " + std::to_string(comp.pin) + ")"
             : type_str;
 
-        if (!pin_already_added(comp.pin))
+        if (!pin_already_added(comp.pin)) {
             components_.push_back(comp);
+        } else {
+            for (const auto& existing : components_) {
+                if (existing.pin == comp.pin) {
+                    warnings_.push_back(
+                        "WARNING: Pin " + std::to_string(comp.pin) +
+                        " is used by both '" + existing.label + "' and '" + comp.label +
+                        "' — only " + existing.label + " will be simulated");
+                    break;
+                }
+            }
+        }
     }
 
     // detect components from analogRead calls
@@ -62,7 +73,19 @@ void CircuitDetector::detect(const std::string& source) {
         if (pin < 0) continue;
         if (claimed.count(pin)) continue;
 
-        if (pin_already_added(pin)) continue;
+        if (pin_already_added(pin)) {
+            for (const auto& existing : components_) {
+                if (existing.pin == pin) {
+                    std::string label = "Analog Sensor (pin " + std::to_string(pin) + ")";
+                    warnings_.push_back(
+                        "WARNING: Pin " + std::to_string(pin) +
+                        " is used by both '" + existing.label + "' and '" + label +
+                        "' — only " + existing.label + " will be simulated");
+                    break;
+                }
+            }
+            continue;
+        }
 
         DetectedComponent comp;
         comp.pin       = pin;
@@ -118,6 +141,7 @@ void CircuitDetector::confirm_pin(int pin) {
 
 void CircuitDetector::reset() {
     components_.clear();
+    warnings_.clear();
 }
 
 // Phase 1 -- parse #defines and const int scalars into a symbol table

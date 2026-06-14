@@ -41,6 +41,7 @@ public:
     void detect(const std::string& source);
     void confirm_pin(int pin);
     const std::vector<DetectedComponent>& components() const { return components_; }
+    const std::vector<std::string>&       warnings()   const { return warnings_; }
     void reset();
 
 private:
@@ -51,6 +52,7 @@ private:
         const std::map<std::string, std::vector<int>>& arrays);
 
     std::vector<DetectedComponent> components_;
+    std::vector<std::string>       warnings_;
 
     std::map<std::string, std::string> parse_defines(const std::string& source);
 
