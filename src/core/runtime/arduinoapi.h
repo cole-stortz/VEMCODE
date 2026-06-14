@@ -74,6 +74,9 @@ struct ArduinoAPI {
     int  (*soft_serial_available)(int rxPin);
     int  (*soft_serial_read)     (int rxPin);
     int  (*soft_serial_peek)     (int rxPin);
+
+    // ISR vector registration -- called from vb_setup() for each ISR(X_vect) in the sketch
+    void (*register_isr)(const char* vector_name, void (*handler)());
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

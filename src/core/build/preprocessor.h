@@ -23,6 +23,7 @@ public:
 private:
     int injected_lines_ = 0;
     std::vector<std::string> warnings_;
+    std::vector<std::string> isr_vectors_; // vector names found by transform_isr_blocks
 
     // Returns true if source is already in VirtualEmbeddedProgrammer format
     bool is_already_transformed(const std::string& source);
@@ -56,6 +57,15 @@ private:
 
     // Replace embedded includes with either nothing or custom functions if needed
     std::string strip_includes(const std::string& source);
+
+    // Transform ISR(X_vect) { } blocks into plain functions + populate isr_vectors_
+    std::string transform_isr_blocks(const std::string& source);
+
+    // Inject api->register_isr() calls into vb_setup() for each found ISR vector
+    std::string inject_isr_registrations(const std::string& source);
+
+    // Strip / translate __asm__ / asm blocks
+    std::string transform_asm_blocks(const std::string& source);
 
     // Scan source for top-level function definitions and return forward declarations.
     // Mimics what the Arduino IDE does automatically.

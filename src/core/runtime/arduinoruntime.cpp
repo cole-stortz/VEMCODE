@@ -64,6 +64,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.soft_serial_available = impl_soft_serial_available;
     api.soft_serial_read      = impl_soft_serial_read;
     api.soft_serial_peek      = impl_soft_serial_peek;
+    api.register_isr          = impl_register_isr;
     return api;
 }
 
@@ -76,7 +77,8 @@ void ArduinoRuntime::impl_pinMode(int pin, int mode) {
 
 void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
     if (!g_runtime || pin < 0 || pin >= g_runtime->profile_.pin_count) return;
-    bool changed = (g_runtime->state_.pin_values[pin] != value);
+    int  old_value = g_runtime->state_.pin_values[pin];
+    bool changed   = (old_value != value);
     g_runtime->state_.pin_values[pin] = value;
     if (!changed) return;
     if (g_runtime->on_pin_changed)
@@ -84,6 +86,41 @@ void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
     else
         std::cout << ts() << "  pin " << pin
                   << " -> " << (value ? "HIGH" : "LOW") << "\n";
+
+    if (!g_runtime->state_.interrupts_enabled_) return;
+
+    // Dispatch attachInterrupt callbacks (registered via attachInterrupt())
+    {
+        auto cb_it = g_runtime->state_.interrupt_callbacks_.find(pin);
+        if (cb_it != g_runtime->state_.interrupt_callbacks_.end() && cb_it->second) {
+            int mode = g_runtime->state_.interrupt_modes_[pin];
+            bool fire = (mode == vb::CHANGE) ||
+                        (mode == vb::RISING  && old_value == 0 && value == 1) ||
+                        (mode == vb::FALLING && old_value == 1 && value == 0);
+            if (fire) {
+                g_runtime->state_.interrupts_enabled_ = false;
+                cb_it->second();
+                g_runtime->state_.interrupts_enabled_ = true;
+            }
+        }
+    }
+
+    // Dispatch ISR vector handlers (registered via ISR() macro transform)
+    auto dispatch_vec = [&](const char* vect_name) {
+        auto it = g_runtime->state_.isr_handlers_.find(vect_name);
+        if (it == g_runtime->state_.isr_handlers_.end() || !it->second) return;
+        g_runtime->state_.interrupts_enabled_ = false;
+        it->second();
+        g_runtime->state_.interrupts_enabled_ = true;
+    };
+
+    // External interrupts: INT0=pin2, INT1=pin3 (Uno/Nano/Mega mapping)
+    if (pin == 2) dispatch_vec("INT0_vect");
+    if (pin == 3) dispatch_vec("INT1_vect");
+    // Pin-change interrupt groups (Uno port mapping)
+    if (pin >= 0  && pin <= 7)  dispatch_vec("PCINT2_vect"); // port D
+    if (pin >= 8  && pin <= 13) dispatch_vec("PCINT0_vect"); // port B
+    if (pin >= 14 && pin <= 19) dispatch_vec("PCINT1_vect"); // port C (A0-A5)
 }
 
 int ArduinoRuntime::impl_digitalRead(int pin) {
@@ -297,6 +334,11 @@ void ArduinoRuntime::impl_attachInterrupt(int pin, void (*callback)(), int mode)
     if (!g_runtime) return;
     g_runtime->state_.interrupt_callbacks_[pin] = callback;
     g_runtime->state_.interrupt_modes_[pin] = mode;
+}
+
+void ArduinoRuntime::impl_register_isr(const char* vector_name, void (*handler)()) {
+    if (!g_runtime || !vector_name || !handler) return;
+    g_runtime->state_.isr_handlers_[vector_name] = handler;
 }
 
 void ArduinoRuntime::impl_noInterrupts() {

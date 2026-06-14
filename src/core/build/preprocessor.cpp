@@ -8,6 +8,9 @@ std::string Preprocessor::process(const std::string& source) {
         return source;
 
     std::string result = source;
+    // ISR and asm transforms run first so their output is picked up by replace_api_calls
+    result = transform_isr_blocks(result);
+    result = transform_asm_blocks(result);
     // replace_api_calls must run before strip_includes so that API calls injected
     // by the Servo/library replacements are not double-prefixed with api->
     result = replace_api_calls(result);
@@ -22,6 +25,7 @@ std::string Preprocessor::process(const std::string& source) {
     }
 
     result = wrap_functions(result);
+    result = inject_isr_registrations(result);
     result = inject_safety_delay(result);
     result = inject_header(result);
 
@@ -100,10 +104,12 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "Servo",          g_servo_lib         },
         { "LiquidCrystal",  g_liquidcrystal_lib },
         { "SoftwareSerial", g_softwareserial_lib },
-        { "EEPROM",         nullptr },
-        { "Arduino",        nullptr },
-        { "avr/pgmspace",   nullptr },
-        { "util/delay",     nullptr },
+        { "EEPROM",          nullptr },
+        { "Arduino",         nullptr },
+        { "avr/pgmspace",    nullptr },
+        { "avr/interrupt",   nullptr },
+        { "avr/io",          nullptr },
+        { "util/delay",      nullptr },
     };
 
     // Standard C/C++ headers that the host compiler can find — don't warn about these
@@ -316,6 +322,165 @@ std::string Preprocessor::generate_forward_declarations(const std::string& sourc
     }
 
     return decls;
+}
+
+std::string Preprocessor::transform_isr_blocks(const std::string& source) {
+    static const char* kKnownVectors[] = {
+        "INT0_vect", "INT1_vect",
+        "PCINT0_vect", "PCINT1_vect", "PCINT2_vect",
+        "TIMER1_OVF_vect", "TIMER2_OVF_vect",
+        "TIMER1_COMPA_vect", "TIMER1_COMPB_vect",
+        "USART_RX_vect", "WDT_vect",
+        nullptr
+    };
+
+    isr_vectors_.clear();
+    std::string s = source;
+    size_t pos = 0;
+
+    while (pos < s.size()) {
+        size_t isr_pos = s.find("ISR(", pos);
+        if (isr_pos == std::string::npos) break;
+
+        // Must be a whole-word match (not e.g. inside TISR or another identifier)
+        if (isr_pos > 0 && (std::isalnum((unsigned char)s[isr_pos - 1]) || s[isr_pos - 1] == '_')) {
+            pos = isr_pos + 4;
+            continue;
+        }
+
+        // Extract the vector name from ISR(...)
+        size_t name_start = isr_pos + 4;
+        size_t close_paren = s.find(')', name_start);
+        if (close_paren == std::string::npos) break;
+
+        std::string vect_name = s.substr(name_start, close_paren - name_start);
+        // Trim whitespace
+        size_t vs = vect_name.find_first_not_of(" \t\n\r");
+        size_t ve = vect_name.find_last_not_of(" \t\n\r");
+        if (vs == std::string::npos) { pos = close_paren + 1; continue; }
+        vect_name = vect_name.substr(vs, ve - vs + 1);
+
+        // Require _vect suffix — rejects false matches like ISR() from user code
+        if (vect_name.size() < 5 || vect_name.substr(vect_name.size() - 5) != "_vect") {
+            pos = close_paren + 1;
+            continue;
+        }
+
+        // Warn about vectors we can't simulate
+        bool known = false;
+        for (int i = 0; kKnownVectors[i]; ++i)
+            if (vect_name == kKnownVectors[i]) { known = true; break; }
+        if (!known)
+            warnings_.push_back(
+                "WARNING: ISR vector '" + vect_name + "' is not simulated — the handler will never fire");
+
+        // Find the opening { of the body
+        size_t brace_pos = close_paren + 1;
+        while (brace_pos < s.size() && std::isspace((unsigned char)s[brace_pos])) ++brace_pos;
+        if (brace_pos >= s.size() || s[brace_pos] != '{') { pos = brace_pos; continue; }
+
+        // Find matching }
+        int depth = 1;
+        size_t bp = brace_pos + 1;
+        while (bp < s.size() && depth > 0) {
+            if (s[bp] == '{') ++depth;
+            else if (s[bp] == '}') --depth;
+            ++bp;
+        }
+        size_t body_end = bp; // one past closing }
+
+        // Build replacement: void __vb_isr_X_vect() { body }
+        std::string func_name = "__vb_isr_" + vect_name;
+        std::string body = s.substr(brace_pos, body_end - brace_pos);
+        std::string replacement = "void " + func_name + "() " + body;
+
+        s.replace(isr_pos, body_end - isr_pos, replacement);
+        isr_vectors_.push_back(vect_name);
+
+        pos = isr_pos + replacement.size();
+    }
+
+    return s;
+}
+
+std::string Preprocessor::inject_isr_registrations(const std::string& source) {
+    if (isr_vectors_.empty()) return source;
+
+    // Build forward declarations + registration calls
+    std::string fwd_decls;
+    std::string reg_calls;
+    for (const auto& v : isr_vectors_) {
+        fwd_decls += "void __vb_isr_" + v + "();\n";
+        reg_calls += "    api->register_isr(\"" + v + "\", __vb_isr_" + v + ");\n";
+    }
+
+    // Insert registrations at the start of vb_setup() body
+    std::string target = "void vb_setup() {";
+    size_t setup_pos = source.find(target);
+    if (setup_pos == std::string::npos) return source;
+
+    std::string result = fwd_decls + source;
+    // Recalculate position after prepending fwd_decls
+    setup_pos = result.find(target);
+    result.insert(setup_pos + target.size(), "\n" + reg_calls);
+    return result;
+}
+
+std::string Preprocessor::transform_asm_blocks(const std::string& source) {
+    // Single-instruction mapping: asm string → replacement (nullptr = strip silently)
+    static const struct { const char* instr; const char* replacement; } kAsmMap[] = {
+        { "nop",    nullptr               },
+        { "cli",    "api->noInterrupts()" },
+        { "sei",    "api->interrupts()"   },
+        { "sleep",  nullptr               },
+        { "wdr",    nullptr               },
+        { "rjmp 0", nullptr               },
+        { nullptr,  nullptr               }
+    };
+
+    // Match: (asm|__asm__) (volatile|__volatile__)? ( "single_instruction" anything );
+    // Captures the instruction string in group 1
+    std::regex asm_re(
+        R"((?:__asm__|asm)\s*(?:__volatile__|volatile)?\s*\(\s*"([^"\\]*)(?:\\[ntr])?"[^;]*\)\s*;)"
+    );
+
+    std::string result;
+    result.reserve(source.size());
+    size_t last_pos = 0;
+
+    auto begin = std::sregex_iterator(source.begin(), source.end(), asm_re);
+    auto end_it = std::sregex_iterator();
+
+    for (auto it = begin; it != end_it; ++it) {
+        const std::smatch& m = *it;
+        result.append(source, last_pos, m.position() - last_pos);
+
+        std::string instr = m[1].str();
+        // Trim trailing \n \t etc from the instruction literal
+        size_t trim = instr.find_last_not_of(" \t\n\r");
+        if (trim != std::string::npos) instr = instr.substr(0, trim + 1);
+
+        bool found = false;
+        for (int i = 0; kAsmMap[i].instr; ++i) {
+            if (instr == kAsmMap[i].instr) {
+                found = true;
+                if (kAsmMap[i].replacement)
+                    result.append(kAsmMap[i].replacement).append(";");
+                else if (instr != "nop")
+                    warnings_.push_back(
+                        "NOTE: Assembly instruction '" + instr + "' removed — no simulation equivalent yet");
+                break;
+            }
+        }
+        if (!found)
+            warnings_.push_back(
+                "WARNING: Unrecognized assembly instruction '" + instr + "' removed — it has no simulation equivalent");
+
+        last_pos = m.position() + m.length();
+    }
+    result.append(source, last_pos, std::string::npos);
+
+    return result;
 }
 
 std::string Preprocessor::extract_board_profile(const std::string& source) {

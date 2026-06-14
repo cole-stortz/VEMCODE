@@ -34,6 +34,7 @@ struct RuntimeState {
     int  serial2_baud_      = 0;
     std::deque<char> serial2_buffer_;
     std::map<int, std::deque<char>> soft_serial_buffers_; // rxPin → RX buffer
+    std::map<std::string, void(*)()> isr_handlers_;       // vector name → handler
     bool pin_driven[80] = {};  // true once a UI component has injected this pin
     int  pin_bounce_target[80] = {};
     std::map<int, std::chrono::steady_clock::time_point> pin_bounce_until_;
@@ -72,6 +73,14 @@ public:
     void inject_serial(const std::string& data) {
         for (char c : data)
             serial_buffer_.push_back(c);
+        if (!data.empty() && state_.interrupts_enabled_) {
+            auto it = state_.isr_handlers_.find("USART_RX_vect");
+            if (it != state_.isr_handlers_.end() && it->second) {
+                state_.interrupts_enabled_ = false;
+                it->second();
+                state_.interrupts_enabled_ = true;
+            }
+        }
     }
 
     void inject_soft_serial(int rxPin, const std::string& data) {
@@ -139,6 +148,7 @@ private:
     static int           impl_soft_serial_available(int rxPin);
     static int           impl_soft_serial_read     (int rxPin);
     static int           impl_soft_serial_peek     (int rxPin);
+    static void          impl_register_isr         (const char* vector_name, void (*handler)());
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;
