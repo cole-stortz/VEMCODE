@@ -45,6 +45,20 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
                         std::istreambuf_iterator<char>());
     sketch_file.close();
 
+    // Pre-flight: require setup() and loop() before wasting time on a full compile
+    {
+        std::regex setup_re(R"(\bvoid\s+setup\s*\()");
+        std::regex loop_re(R"(\bvoid\s+loop\s*\()");
+        if (!std::regex_search(source, setup_re)) {
+            result.raw_output = "Sketch is missing a setup() function — every Arduino sketch must have void setup() { }";
+            return result;
+        }
+        if (!std::regex_search(source, loop_re)) {
+            result.raw_output = "Sketch is missing a loop() function — every Arduino sketch must have void loop() { }";
+            return result;
+        }
+    }
+
     Preprocessor preprocessor;
 
     // Extract // @board <name> hint and surface it to the caller via result
@@ -52,6 +66,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 
     std::string transformed = preprocessor.process(source);
     result.header_lines = preprocessor.injectedLines();
+    result.warnings = preprocessor.takeWarnings();
 
     std::string temp_path = output_dir_ + "/_vb_temp.cpp";
     std::ofstream temp_file(temp_path);

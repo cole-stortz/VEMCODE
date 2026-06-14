@@ -193,6 +193,20 @@ inline unsigned long pulseIn(int pin, int value, unsigned long timeout = 1000000
 #define PROGMEM
 #define F(x) (x)
 
+// AVR pgmspace.h compatibility -- data is already in RAM on x86, so these are plain pointer reads
+#define pgm_read_byte(addr)  (*(const uint8_t *)(addr))
+#define pgm_read_word(addr)  (*(const uint16_t*)(addr))
+#define pgm_read_dword(addr) (*(const uint32_t*)(addr))
+#define pgm_read_float(addr) (*(const float   *)(addr))
+
+// util/delay.h compatibility -- map to the runtime delay functions
+#define F_CPU 16000000UL
+#define _delay_ms(ms) api->delay((unsigned long)(ms))
+#define _delay_us(us) api->delayMicroseconds((unsigned long)(us))
+
+// analogReference -- simulation ignores ADC reference voltage; stub so sketches compile
+inline void analogReference(int) {}
+
 // randomSeed -- seeds the same rand() used by random()
 inline void randomSeed(unsigned long seed) { srand((unsigned int)seed); }
 

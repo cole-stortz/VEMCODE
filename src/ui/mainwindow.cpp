@@ -565,6 +565,10 @@ void MainWindow::onRunClicked() {
 
     CompileResult result = compiler.compile(sketch_path);
 
+    // Show pre-compile warnings (unsupported libraries, etc.) regardless of outcome
+    for (const auto& w : result.warnings)
+        serialMonitor_->appendPlainText(QString::fromStdString(w) + "\n");
+
     // Apply board hint from // @board comment if present
     if (!result.board_hint.empty()) {
         QString boardName = QString::fromStdString(result.board_hint);

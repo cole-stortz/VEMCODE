@@ -33,6 +33,33 @@ configure_file(
     @ONLY
 )
 
+# Embed injectable library .inc files as C strings at configure time.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc")
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc" SERVO_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/servo_lib.cpp"
+    @ONLY
+)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc" LIQUIDCRYSTAL_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp"
+    @ONLY
+)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc" SOFTWARESERIAL_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp"
+    @ONLY
+)
+
 # All source files for the main application
 set(SOURCES
     src/main.cpp
@@ -51,6 +78,9 @@ set(SOURCES
     src/core/circuit/circuitdetector.cpp
     src/lsan_suppressions.cpp
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
+    ${CMAKE_BINARY_DIR}/generated/servo_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp
 )
 
 set(HEADERS

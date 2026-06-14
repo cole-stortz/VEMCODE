@@ -1,7 +1,11 @@
 #pragma once
 #include <string>
+#include <vector>
 
 extern const char* g_injected_header;
+extern const char* g_servo_lib;
+extern const char* g_liquidcrystal_lib;
+extern const char* g_softwareserial_lib;
 
 // Transforms standard Arduino sketch syntax into DLL format before compilation.
 // sketch:  void setup() { pinMode(13, OUTPUT); }
@@ -13,9 +17,12 @@ public:
     // Lines injected by the last process() call — used to offset compiler error line numbers.
     int injectedLines() const { return injected_lines_; }
     std::string extract_board_profile(const std::string& source);
+    // Warnings collected during process() — unsupported #includes, etc.
+    std::vector<std::string> takeWarnings() { return std::move(warnings_); }
 
 private:
     int injected_lines_ = 0;
+    std::vector<std::string> warnings_;
 
     // Returns true if source is already in VirtualEmbeddedProgrammer format
     bool is_already_transformed(const std::string& source);
@@ -43,6 +50,9 @@ private:
 
     // Quick check to see if loop delay exists, add delay(10) if missing
     std::string inject_safety_delay(const std::string& source);
+
+    // Inject api->delay(1) into while loop bodies that have no delay
+    std::string inject_while_delays(const std::string& source);
 
     // Replace embedded includes with either nothing or custom functions if needed
     std::string strip_includes(const std::string& source);

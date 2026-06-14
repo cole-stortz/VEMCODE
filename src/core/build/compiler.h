@@ -15,6 +15,7 @@ struct CompileResult {
     std::string              dll_path;       // path to output DLL if success
     std::string              raw_output;     // full stderr from g++
     std::vector<CompileError> errors;        // parsed errors and warnings
+    std::vector<std::string> warnings;       // pre-compile warnings (unsupported includes, etc.)
     int                      header_lines = 131; // injected lines before user code (for error line offsetting)
     std::string              board_hint;     // board name from // @board comment, empty if not found
 };

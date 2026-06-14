@@ -92,92 +92,53 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
 }
 
 std::string Preprocessor::strip_includes(const std::string& source) {
+    struct LibEntry {
+        const char* header;
+        const char* content; // nullptr = just strip silently
+    };
+    static const LibEntry kLibs[] = {
+        { "Servo",          g_servo_lib         },
+        { "LiquidCrystal",  g_liquidcrystal_lib },
+        { "SoftwareSerial", g_softwareserial_lib },
+        { "EEPROM",         nullptr },
+        { "Arduino",        nullptr },
+        { "avr/pgmspace",   nullptr },
+        { "util/delay",     nullptr },
+    };
+
+    // Standard C/C++ headers that the host compiler can find — don't warn about these
+    static const char* kStdHeaders[] = {
+        "stdio.h", "stdlib.h", "string.h", "math.h", "time.h", "stdbool.h",
+        "stdint.h", "stddef.h", "assert.h", "limits.h", "float.h", "ctype.h",
+        "errno.h", "inttypes.h", "stdarg.h", "stdint.h", "memory.h",
+    };
+
     std::string s = source;
 
-    s = replace_all(s, "#include <LiquidCrystal.h>",
-    "#ifndef VB_LIQUIDCRYSTAL_H\n"
-    "#define VB_LIQUIDCRYSTAL_H\n"
-    "#include <string>\n"
-    "#include <cstring>\n"
-    "class LiquidCrystal {\n"
-    "public:\n"
-    "    LiquidCrystal(int rs, int, int, int, int, int) : rs_(rs), row_(0), col_(0) {\n"
-    "        memset(buf_, ' ', sizeof(buf_)); buf_[0][16]=buf_[1][16]='\\0'; }\n"
-    "    void begin(int, int) { if (api) { api->digitalWrite(rs_, 1); flush_(0); flush_(1); } }\n"
-    "    void clear() {\n"
-    "        memset(buf_, ' ', sizeof(buf_)); buf_[0][16]=buf_[1][16]='\\0';\n"
-    "        row_=0; col_=0;\n"
-    "        if (api) { flush_(0); flush_(1); } }\n"
-    "    void setCursor(int col, int row) { col_=col<16?col:15; row_=row<2?row:1; }\n"
-    "    void write(uint8_t c) {\n"
-    "        if (col_ >= 16) return;\n"
-    "        buf_[row_][col_++] = (c < 32) ? '*' : (char)c;\n"
-    "        if (api) flush_(row_); }\n"
-    "    void write(char c) { write((uint8_t)c); }\n"
-    "    void print(const char* s) { if (!s) return; while (*s) write((uint8_t)*s++); }\n"
-    "    void print(const String& s) { print(s.c_str()); }\n"
-    "    void print(int v)           { auto s=std::to_string(v); print(s.c_str()); }\n"
-    "    void print(long v)          { auto s=std::to_string(v); print(s.c_str()); }\n"
-    "    void print(unsigned long v) { auto s=std::to_string(v); print(s.c_str()); }\n"
-    "    void print(float v)         { auto s=std::to_string(v); print(s.c_str()); }\n"
-    "    void createChar(uint8_t, uint8_t*) {}\n"
-    "private:\n"
-    "    int rs_, row_, col_;\n"
-    "    char buf_[2][17];\n"
-    "    void flush_(int row) { if (api) api->lcd_print(rs_, row, buf_[row]); }\n"
-    "};\n"
-    "#endif\n");
+    for (const auto& lib : kLibs) {
+        std::string include_str = std::string("#include <") + lib.header + ".h>";
+        s = replace_all(s, include_str, lib.content ? lib.content : "");
+    }
 
-    s = replace_all(s, "#include <EEPROM.h>", "");
-
-    s = replace_all(s, "#include <Servo.h>",
-    "#ifndef VB_SERVO_H\n"
-    "#define VB_SERVO_H\n"
-    "class Servo {\n"
-    "public:\n"
-    "    void attach(int pin) { pin_ = pin; }\n"
-    "    void write(int angle) { if (pin_ >= 0) { angle_ = angle; api->analogWrite(pin_, angle * 255 / 180); } }\n"
-    "    int read() const { return angle_; }\n"
-    "    bool attached() const { return pin_ >= 0; }\n"
-    "    void detach() { pin_ = -1; }\n"
-    "private:\n"
-    "    int pin_ = -1;\n"
-    "    int angle_ = 0;\n"
-    "};\n"
-    "#endif\n");
-
-    s = replace_all(s, "#include <SoftwareSerial.h>",
-    "#ifndef VB_SOFTWARESERIAL_H\n"
-    "#define VB_SOFTWARESERIAL_H\n"
-    "class SoftwareSerial {\n"
-    "public:\n"
-    "    SoftwareSerial(int rxPin, int txPin) : rxPin_(rxPin), txPin_(txPin) {}\n"
-    "    void begin(int baud) { if (api) api->soft_serial_begin(rxPin_, baud); }\n"
-    "    void print(const char* s)   { if (api) api->soft_serial_print(rxPin_, s ? s : \"\"); }\n"
-    "    void print(const String& s) { if (api) api->soft_serial_print(rxPin_, s.c_str()); }\n"
-    "    void print(int v)           { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
-    "    void print(long v)          { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
-    "    void print(unsigned long v) { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
-    "    void print(float v)         { if (api) { auto s = std::to_string(v); api->soft_serial_print(rxPin_, s.c_str()); } }\n"
-    "    void println(const char* s)   { if (api) api->soft_serial_println(rxPin_, s ? s : \"\"); }\n"
-    "    void println(const String& s) { if (api) api->soft_serial_println(rxPin_, s.c_str()); }\n"
-    "    void println(int v)           { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
-    "    void println(long v)          { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
-    "    void println(unsigned long v) { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
-    "    void println(float v)         { if (api) { auto s = std::to_string(v); api->soft_serial_println(rxPin_, s.c_str()); } }\n"
-    "    int available() { return api ? api->soft_serial_available(rxPin_) : 0; }\n"
-    "    int read() { return api ? api->soft_serial_read(rxPin_) : -1; }\n"
-    "    int peek() { return api ? api->soft_serial_peek(rxPin_) : -1; }\n"
-    "    void write(uint8_t b) { if (api) { char s[2] = {(char)b, '\\0'}; api->soft_serial_print(rxPin_, s); } }\n"
-    "    void write(const uint8_t* buf, size_t n) { for (size_t i = 0; i < n; ++i) write(buf[i]); }\n"
-    "    void println() { if (api) api->soft_serial_println(rxPin_, \"\"); }\n"
-    "    bool listen() { return true; }\n"
-    "    bool isListening() { return true; }\n"
-    "    bool overflow() { return false; }\n"
-    "private:\n"
-    "    int rxPin_, txPin_;\n"
-    "};\n"
-    "#endif\n");
+    // Warn about any remaining #include <X.h> that VEMCODE doesn't know about
+    std::regex unknown_include_re(R"(#include\s*<([^>]+)>)");
+    auto begin = std::sregex_iterator(s.begin(), s.end(), unknown_include_re);
+    auto end_it = std::sregex_iterator();
+    for (auto it = begin; it != end_it; ++it) {
+        std::string header = (*it)[1].str();
+        // Only warn about .h includes (Arduino-style libraries); C++ std headers have no .h
+        if (header.size() < 2 || header.substr(header.size() - 2) != ".h")
+            continue;
+        // Skip known-good C standard headers
+        bool is_std = false;
+        for (const char* std_h : kStdHeaders) {
+            if (header == std_h) { is_std = true; break; }
+        }
+        if (is_std) continue;
+        warnings_.push_back(
+            "WARNING: <" + header + "> is not supported by VEMCODE — "
+            "calls to this library will not work");
+    }
 
     return s;
 }
@@ -251,18 +212,86 @@ std::string Preprocessor::replace_all(const std::string& source,
 }
 
 std::string Preprocessor::inject_safety_delay(const std::string& source) {
-    // If loop already has a delay, no need to inject
-    bool has_delay = source.find("api->delay(") != std::string::npos;
-    if (has_delay) return source;
-
-    // Find the last closing brace -- that's the end of vb_loop()
-    size_t last_brace = source.rfind('}');
-    if (last_brace == std::string::npos) return source;
-
-    // Insert safety delay just before the last closing brace
     std::string result = source;
-    result.insert(last_brace, "    api->delay(10);\n");
+
+    bool has_delay = result.find("api->delay(") != std::string::npos;
+    if (!has_delay) {
+        // No delay anywhere — inject one at the end of vb_loop()
+        size_t last_brace = result.rfind('}');
+        if (last_brace != std::string::npos)
+            result.insert(last_brace, "    api->delay(10);\n");
+    }
+
+    // Also scan every while loop body and inject a delay if missing
+    result = inject_while_delays(result);
     return result;
+}
+
+std::string Preprocessor::inject_while_delays(const std::string& source) {
+    std::string s = source;
+    size_t pos = 0;
+
+    while (pos < s.size()) {
+        size_t w = s.find("while", pos);
+        if (w == std::string::npos) break;
+
+        // Must be a whole-word match
+        if (w > 0 && (std::isalnum((unsigned char)s[w - 1]) || s[w - 1] == '_')) {
+            pos = w + 5;
+            continue;
+        }
+
+        // Skip if this is the 'while' at the end of a do...while
+        size_t prev = w;
+        while (prev > 0 && std::isspace((unsigned char)s[prev - 1])) --prev;
+        if (prev > 0 && s[prev - 1] == '}') {
+            pos = w + 5;
+            continue;
+        }
+
+        // Skip whitespace after 'while', then expect '('
+        size_t cp = w + 5;
+        while (cp < s.size() && std::isspace((unsigned char)s[cp])) ++cp;
+        if (cp >= s.size() || s[cp] != '(') { pos = cp; continue; }
+
+        // Find the matching ')' closing the condition
+        int depth = 1;
+        ++cp;
+        while (cp < s.size() && depth > 0) {
+            if (s[cp] == '(') ++depth;
+            else if (s[cp] == ')') --depth;
+            ++cp;
+        }
+
+        // Skip whitespace, then expect '{' opening the body
+        while (cp < s.size() && std::isspace((unsigned char)s[cp])) ++cp;
+        if (cp >= s.size() || s[cp] != '{') { pos = cp; continue; }
+
+        // Find the matching '}' closing the body
+        size_t body_open = cp;
+        int bdepth = 1;
+        size_t bp = body_open + 1;
+        while (bp < s.size() && bdepth > 0) {
+            if (s[bp] == '{') ++bdepth;
+            else if (s[bp] == '}') --bdepth;
+            ++bp;
+        }
+        size_t body_close = bp - 1; // index of '}'
+
+        // Check whether this body already has any delay call
+        std::string body = s.substr(body_open + 1, body_close - body_open - 1);
+        bool body_has_delay = body.find("api->delay(") != std::string::npos ||
+                              body.find("api->delayMicroseconds(") != std::string::npos;
+
+        if (!body_has_delay) {
+            s.insert(body_close, "    api->delay(1);\n");
+            pos = body_close + 19; // step past the injected text
+        } else {
+            pos = body_close + 1;
+        }
+    }
+
+    return s;
 }
 
 std::string Preprocessor::generate_forward_declarations(const std::string& source) {
