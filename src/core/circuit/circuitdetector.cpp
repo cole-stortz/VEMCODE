@@ -240,9 +240,20 @@ std::set<int> CircuitDetector::detect_multipin(
         comp.label     = "Distance Sensor (TRIG=" + std::to_string(trig_pin)
                        + ", ECHO=" + std::to_string(echo_pin) + ")";
         comp.confirmed = false;
-        components_.push_back(comp);
-        claimed.insert(trig_pin);
-        claimed.insert(echo_pin);
+        if (pin_already_added(echo_pin) || pin_already_added(trig_pin)) {
+            for (const auto& existing : components_) {
+                if (existing.pin == echo_pin || existing.pin == trig_pin) {
+                    warnings_.push_back("WARNING: Pin " + std::to_string(echo_pin) +
+                        " is used by both '" + existing.label + "' and '" + comp.label +
+                        "' — only " + existing.label + " will be simulated");
+                    break;
+                }
+            }
+        } else {
+            components_.push_back(comp);
+            claimed.insert(trig_pin);
+            claimed.insert(echo_pin);
+        }
     }
 
     // --- H-bridge motors ---
@@ -289,9 +300,20 @@ std::set<int> CircuitDetector::detect_multipin(
             comp.pin_name = g.first;
             comp.label    = "Motor (" + g.first + ")";
             comp.confirmed = false;
-            components_.push_back(comp);
-            for (const auto& p : pins)
-                claimed.insert(p.second);
+            if (pin_already_added(pwm_pin)) {
+                for (const auto& existing : components_) {
+                    if (existing.pin == pwm_pin) {
+                        warnings_.push_back("WARNING: Pin " + std::to_string(pwm_pin) +
+                            " is used by both '" + existing.label + "' and '" + comp.label +
+                            "' — only " + existing.label + " will be simulated");
+                        break;
+                    }
+                }
+            } else {
+                components_.push_back(comp);
+                for (const auto& p : pins)
+                    claimed.insert(p.second);
+            }
         }
     }
 
@@ -326,12 +348,23 @@ std::set<int> CircuitDetector::detect_multipin(
                              ", S3=" + std::to_string(s3_pins[i]) +
                              ", OUT=" + std::to_string(out_pins[i]) + ")";
             comp.confirmed = false;
-            components_.push_back(comp);
-            claimed.insert(s0_pins[i]);
-            claimed.insert(s1_pins[i]);
-            claimed.insert(s2_pins[i]);
-            claimed.insert(s3_pins[i]);
-            claimed.insert(out_pins[i]);
+            if (pin_already_added(out_pins[i])) {
+                for (const auto& existing : components_) {
+                    if (existing.pin == out_pins[i]) {
+                        warnings_.push_back("WARNING: Pin " + std::to_string(out_pins[i]) +
+                            " is used by both '" + existing.label + "' and '" + comp.label +
+                            "' — only " + existing.label + " will be simulated");
+                        break;
+                    }
+                }
+            } else {
+                components_.push_back(comp);
+                claimed.insert(s0_pins[i]);
+                claimed.insert(s1_pins[i]);
+                claimed.insert(s2_pins[i]);
+                claimed.insert(s3_pins[i]);
+                claimed.insert(out_pins[i]);
+            }
         }
     }
 
@@ -383,13 +416,24 @@ std::set<int> CircuitDetector::detect_multipin(
                          ", D6=" + std::to_string(d6_pin) +
                          ", D7=" + std::to_string(d7_pin) + ")";
         comp.confirmed = false;
-        components_.push_back(comp);
-        claimed.insert(rs_pin);
-        claimed.insert(e_pin);
-        claimed.insert(d4_pin);
-        claimed.insert(d5_pin);
-        claimed.insert(d6_pin);
-        claimed.insert(d7_pin);
+        if (pin_already_added(rs_pin)) {
+            for (const auto& existing : components_) {
+                if (existing.pin == rs_pin) {
+                    warnings_.push_back("WARNING: Pin " + std::to_string(rs_pin) +
+                        " is used by both '" + existing.label + "' and '" + comp.label +
+                        "' — only " + existing.label + " will be simulated");
+                    break;
+                }
+            }
+        } else {
+            components_.push_back(comp);
+            claimed.insert(rs_pin);
+            claimed.insert(e_pin);
+            claimed.insert(d4_pin);
+            claimed.insert(d5_pin);
+            claimed.insert(d6_pin);
+            claimed.insert(d7_pin);
+        }
     }
 
     // --- Servo ---

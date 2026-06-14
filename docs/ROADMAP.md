@@ -179,7 +179,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
 
 **Error UX:**
-- Humanized compiler errors — post-process raw g++ output before display; a regex rewrite table maps common cryptic patterns to plain-English messages:
+- ✓ Humanized compiler errors — post-process raw g++ output before display; a regex rewrite table maps common cryptic patterns to plain-English messages:
   - `'X' was not declared in this scope` → `"'X' not found — did you forget to declare it?"`
   - `no matching function for call to 'X'` → `"Wrong arguments passed to X"`
   - `expected ';' before '}'` → `"Missing semicolon, probably the line above"`
@@ -192,20 +192,20 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
   - `stray '\' in program` → `"Invalid character in code — this sometimes happens when copy-pasting from a website; try retyping the line"`
   - `overflow in implicit constant conversion` → `"Number is too large for this variable type — try using long instead of int"`
   - `comparison between pointer and integer` → `"Can't compare strings with == — use strcmp() or the String class"`
-- No-components-detected hint — after `CircuitDetector::detect()` runs, if `components_` is empty (or contains only a Serial entry), the reason matters and the message should reflect it; three distinct cases:
+- ✓ No-components-detected hint — after `CircuitDetector::detect()` runs, if `components_` is empty (or contains only a Serial entry), the reason matters and the message should reflect it; three distinct cases:
   - Pin definitions found but names not recognized as component keywords (e.g. `#define MY_OUTPUT 5`) → *"Pin definitions found but couldn't identify component types — try descriptive names like `LED_PIN`, `SERVO_PIN`, `BUTTON_PIN`"*
   - Hardcoded pin numbers used with no defines at all (e.g. `digitalWrite(5, HIGH)`) → *"Pin numbers are hardcoded — give them names like `const int LED_PIN = 5;` so the simulator can identify them"*
   - Pin definitions exist only in an included local header (e.g. `#include "config.h"` has the `#define`s) — `CircuitDetector` currently only scans the main `.cpp`; extend it to also scan local `.h` files pulled in by the sketch, or surface: *"No components detected — if your pin definitions are in a header file, try moving them into the main sketch"*
   - No pin usage detected at all → existing generic message
 - ✓ Unsupported `#include` warning — after known headers are replaced, any remaining `#include <X.h>` generates a named warning in the serial monitor before compile: *"WARNING: \<Wire.h\> is not supported by VEMCODE — calls to this library will not work"*
 - ✓ Missing `setup()` / `loop()` — regex-checked before invoking g++; surfaces *"Sketch is missing a setup() function"* / *"…loop() function"* instead of a wall of linker errors
-- Pin out of range for selected board — if a `const int` or `#define` pin value exceeds the active board's pin count, warn: *"Pin 50 is not available on the Arduino Uno (max pin 13)"*
-- `analogWrite()` on a non-PWM pin — cross-reference `analogWrite` call sites against the board profile's PWM pin list and warn: *"Pin X does not support PWM on the selected board — analogWrite() will have no effect"*
-- Same pin claimed by two components — when `CircuitDetector` would silently drop a duplicate, instead surface: *"Pin X is used by both [Component A] and [Component B] — only one will be simulated"*
+- ✓ Pin out of range for selected board — if a `const int` or `#define` pin value exceeds the active board's pin count, warn: *"Pin 50 is not available on the Arduino Uno (max pin 13)"*
+- ✓ `analogWrite()` on a non-PWM pin — cross-reference `analogWrite` call sites against the board profile's PWM pin list and warn: *"Pin X does not support PWM on the selected board — analogWrite() will have no effect"*
+- ✓ Same pin claimed by two components — when `CircuitDetector` would silently drop a duplicate, instead surface: *"Pin X is used by both [Component A] and [Component B] — only one will be simulated"*
 - ✓ `// @board` hint unrecognised — if `extract_board_profile()` finds a `// @board` comment but the name doesn't match any known profile, warn: *"Unknown board 'X' in @board hint — using currently selected board instead"*
 - ✓ `map()` with equal min/max — static check for `map(val, x, x, ...)` or runtime divide-by-zero guard in `impl_map`; surface *"map() called with min == max — this causes a division by zero"* instead of a silent crash
-- Sketch thread crash wrapper — wrap the sketch execution loop in a try/catch and install a SIGFPE/SIGSEGV handler so any unhandled exception, division by zero, or out-of-bounds crash surfaces *"Sketch crashed — check for division by zero or out-of-bounds array access"* instead of a silently frozen canvas
-- `delay()` inside ISR callback — static check: if a `delay()` call appears inside a function registered via `attachInterrupt()`, warn *"delay() inside an interrupt handler will hang on real Arduino — interrupts are disabled during ISR execution"*
+- ✓ Sketch thread crash wrapper — wrap the sketch execution loop in a try/catch and install a SIGFPE/SIGSEGV handler so any unhandled exception, division by zero, or out-of-bounds crash surfaces *"Sketch crashed — check for division by zero or out-of-bounds array access"* instead of a silently frozen canvas
+- ✓ `delay()` inside ISR callback — static check: if a `delay()` call appears inside a function registered via `attachInterrupt()`, warn *"delay() inside an interrupt handler will hang on real Arduino — interrupts are disabled during ISR execution"*
 - `attachInterrupt()` with raw interrupt number — on Uno/Nano, `attachInterrupt(0, isr, RISING)` means pin 2 (interrupt 0 = pin 2), not pin 0; passing a raw `0` or `1` is common but VEMCODE will silently attach to the wrong pin; detect when the first argument is a small integer literal (0 or 1) on a board where interrupt numbers differ from pin numbers and warn: *"attachInterrupt(0, ...) uses an interrupt number, not a pin number — use digitalPinToInterrupt(2) to attach to pin 2 on the Uno"*; ✓ `digitalPinToInterrupt(pin)` defined in injected header as `inline int digitalPinToInterrupt(int pin) { return pin; }` so sketches using it correctly compile without error
 - Pin defined as an expression — `#define LED_PIN (2+1)` or `const int LED_PIN = BASE + 3;` compiles and runs fine but `CircuitDetector` cannot evaluate the expression and silently misses the component; detect when a pin define contains operators or references another variable and warn: *"Pin 'LED_PIN' is defined as an expression — the simulator could not evaluate it and the component may not appear on the canvas; use a plain number instead"*
 

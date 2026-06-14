@@ -201,6 +201,13 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSketchReloaded);
     connect(sketchThread_, &SketchThread::loadFailed,
             this, &MainWindow::onLoadFailed);
+    connect(sketchThread_, &SketchThread::sketchCrashed,
+            this, [this](const QString& reason) {
+                serialMonitor_->appendPlainText("ERROR: " + reason + "\n");
+                statusBar()->showMessage("Sketch crashed");
+                runButton_->setEnabled(true);
+                stopButton_->setEnabled(false);
+            });
     connect(sketchThread_, &SketchThread::variableChanged,
             variableWatch_, &VariableWatch::onVariableChanged);
     connect(sketchThread_, &SketchThread::lcdPrint,

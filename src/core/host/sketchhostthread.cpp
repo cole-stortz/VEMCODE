@@ -1,5 +1,17 @@
 #include "src/core/host/sketchhostthread.h"
 #include <chrono>
+#include <csignal>
+#include <setjmp.h>
+
+static thread_local sigjmp_buf  tl_crash_jmp;
+static thread_local bool        tl_in_sketch = false;
+static thread_local int         tl_crash_sig  = 0;
+
+static void sketch_signal_handler(int sig) {
+    if (!tl_in_sketch) { ::signal(sig, SIG_DFL); ::raise(sig); return; }
+    tl_crash_sig = sig;
+    ::siglongjmp(tl_crash_jmp, 1);
+}
 
 
 SketchThread::SketchThread(QObject* parent)
@@ -67,10 +79,37 @@ void SketchThread::run() {
         return;
     }
 
+    // Install signal handlers so SIGFPE/SIGSEGV from sketch code are recoverable
+    struct sigaction sa = {}, old_fpe, old_segv;
+    sa.sa_handler = sketch_signal_handler;
+    sa.sa_flags   = SA_RESETHAND; // one-shot: reverts to SIG_DFL after first delivery
+    sigaction(SIGFPE,  &sa, &old_fpe);
+    sigaction(SIGSEGV, &sa, &old_segv);
+    tl_in_sketch = true;
+
+    if (::sigsetjmp(tl_crash_jmp, 1) != 0) {
+        QString reason = (tl_crash_sig == SIGFPE)
+            ? "Sketch crashed — check for division by zero or invalid arithmetic"
+            : "Sketch crashed — check for null pointer or out-of-bounds array access";
+        emit sketchCrashed(reason);
+        tl_in_sketch = false;
+        sigaction(SIGFPE,  &old_fpe,  nullptr);
+        sigaction(SIGSEGV, &old_segv, nullptr);
+        return;
+    }
+
     auto last_reload_check = std::chrono::steady_clock::now();
 
     while (running_) {
-        host_.run_loop();
+        try {
+            host_.run_loop();
+        } catch (const std::exception& e) {
+            emit sketchCrashed(QString("Sketch crashed: %1").arg(e.what()));
+            break;
+        } catch (...) {
+            emit sketchCrashed("Sketch crashed — unknown error");
+            break;
+        }
 
         auto now = std::chrono::steady_clock::now();
         if (now - last_reload_check >= std::chrono::milliseconds(500)) {
@@ -79,6 +118,10 @@ void SketchThread::run() {
                 emit sketchReloaded();
         }
     }
+
+    tl_in_sketch = false;
+    sigaction(SIGFPE,  &old_fpe,  nullptr);
+    sigaction(SIGSEGV, &old_segv, nullptr);
 }
 void SketchThread::injectPin(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);

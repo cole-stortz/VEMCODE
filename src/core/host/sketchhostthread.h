@@ -38,6 +38,7 @@ signals:
     void pinChanged(int pin, int value);
     void sketchReloaded();
     void loadFailed(QString reason);
+    void sketchCrashed(QString reason);
     void variableChanged(QString name, int value);
     void lcdPrint(int pin, int row, QString text);
 
