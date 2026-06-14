@@ -11,6 +11,8 @@ using namespace vb;
 typedef uint8_t  byte;
 typedef uint16_t word;
 
+#define ARDUINO 100
+
 static ArduinoAPI* api = nullptr;
 
 extern "C" VB_EXPORT
@@ -167,6 +169,7 @@ inline void Serial_println(const String& s) { api->Serial_println(s.c_str()); }
 inline void Serial_print(const String& s)   { api->Serial_print(s.c_str()); }
 
 inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
+    if (in_max == in_min) return out_min;
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 inline long constrain(long x, long lo, long hi) {
@@ -196,3 +199,5 @@ inline void randomSeed(unsigned long seed) { srand((unsigned int)seed); }
 inline void tone(int pin, int frequency)                  { api->tone(pin, frequency, 0); }
 inline void tone(int pin, int frequency, int duration_ms) { api->tone(pin, frequency, duration_ms); }
 inline void noTone(int pin)                               { api->noTone(pin); }
+
+inline int digitalPinToInterrupt(int pin) { return pin; }

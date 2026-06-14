@@ -341,8 +341,8 @@ VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, 
 - Packaged installers and downloadable releases
 
 ### Known limitations
-- AVR assembly instructions and hardware interrupt vectors (`ISR()`) — require a full CPU emulator, incompatible with the compile-to-native approach
-- Real electrical behavior (voltage, current, short circuits) — not simulatable without SPICE-level modeling
+- Real electrical behavior (voltage, current, short circuits) — not in scope; VEMCODE simulates firmware logic, not analog electronics; use SimulIDE or LTspice for SPICE-level modeling
+- Sending signals from a simulated board to real physical hardware — a simulated board cannot drive actual hardware over a wire; the only remaining gap is the physical layer between simulation and the real world (see Phase 15 for a localhost bridge that partially addresses this for network-connected hardware). Potentally can fix my running over USB to daughter board for output pins.
 
 See [ROADMAP.md](docs/ROADMAP.md) for planned features and future direction.
 

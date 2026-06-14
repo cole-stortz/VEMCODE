@@ -574,6 +574,11 @@ void MainWindow::onRunClicked() {
         else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
         else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
         else if (boardName == "Arduino Uno")        activeProfile_ = BOARD_UNO;
+        else {
+            serialMonitor_->appendPlainText(
+                "WARNING: Unknown board '" + boardName + "' in @board hint — using currently selected board instead.\n");
+            return;
+        }
 
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
