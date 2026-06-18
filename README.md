@@ -1,6 +1,6 @@
 # VEMCODE — Virtual Embedded Code Development Environment
 
-Write a sketch, hit Run — VEMCODE automatically detects your components, builds the circuit, and simulates your firmware in real time. No hardware, no wiring, no setup.
+VEMCODE reads your sketch and automatically detects your components, builds the circuit, and simulates your firmware in real time. No hardware, no wiring, no setup needed.
 
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
@@ -10,21 +10,18 @@ Write a sketch, hit Run — VEMCODE automatically detects your components, build
 
 ## What is VEMCODE?
 
-VEMCODE is an open-source firmware development and testing environment for embedded C++, not a circuit simulator. Write a sketch exactly as you would for a real board, hit Run, and watch it execute against a virtual Arduino or Teensy in real time. No board, no USB cable, no flash cycle — and no manual circuit design. VEMCODE reads your sketch and builds the circuit automatically.
+VEMCODE is an open-source firmware development and testing environment for embedded C++, not a circuit simulator. Write a sketch exactly as you would for a real board, hit Run, and watch it execute against a virtual Arduino or Teensy in real time. No board, no USB cable, no flash cycle, and no manual circuit design. VEMCODE reads your sketch and builds the circuit automatically!
 
-The goal is to shorten the feedback loop between writing embedded code and observing its behavior. VEMCODE is built for developers who want to test firmware logic, validate algorithms, and debug serial output without waiting for hardware.
+The goal is to shorten the feedback loop between writing embedded code and observing its behavior. VEMCODE is built for developers who want to test firmware logic, validate algorithms, and debug serial output without waiting for hardware. It is also built for the developer who wants to test if hardware or software is causing the bugs, because VEMCODE can help see if the sketch is the problem or if its the circuit.
 
 ## Why VEMCODE?
 
-Most embedded simulators focus on circuit design: component datasheets, voltage levels, electrical characteristics. VEMCODE focuses on the firmware layer — the C++ code you actually write and ship.
+Most embedded simulators focus on circuit design: component datasheets, voltage levels, electrical characteristics. VEMCODE focuses on the firmware layer, the C++ code you actually write and ship.
 
 **VEMCODE is for you if:**
-- You write embedded C++ for Arduino or Teensy boards
 - You want to test firmware logic before (or without) physical hardware
-- You iterate frequently and need fast compile-run cycles
+- You need to test to see if firmware works if the hardware is having issues
 - You need a serial monitor, signal timeline, or variable watch during development
-
-**No circuit design step.** Most simulators require you to manually place and wire components before running any code. VEMCODE reads your `#define` names and `pinMode` calls and builds the circuit canvas automatically. Write a sketch, hit Run — that's it.
 
 **VEMCODE is not a circuit simulator.** It does not model voltage, current, or electrical behavior. If you need SPICE-level accuracy, tools like SimulIDE are better suited. VEMCODE's strength is rapid firmware testing and software validation without requiring physical boards.
 
@@ -45,83 +42,52 @@ Most embedded simulators focus on circuit design: component datasheets, voltage 
 
 ## What it does
 
-Write embedded sketches directly in the built-in editor and simulate them instantly — no board, no USB cable, no waiting. VEMCODE compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual runtime in real time.
+Write embedded sketches directly in the built-in editor and simulate them instantly. VEMCODE compiles your sketch to a native shared library (`.dll` on Windows, `.so` on Linux) and runs it against a virtual runtime in real time.
 
-- **Write** embedded code in a syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
-- **Simulate** instantly — hit Run and your sketch compiles and executes in milliseconds
-- **Visualize** — no circuit design step; VEMCODE reads your sketch and builds the canvas automatically — components, layout, and all
-- **Interact** — click buttons, toggle switches, drag potentiometers, and type serial input to interact with the running simulation
-- **Debug** — serial monitor, signal timeline (logic analyzer view), and variable watch panel
-- **Hot-reload** — edit your sketch, hit Run again, simulation restarts instantly
-- **Speed control** — slow down or speed up simulation from 0.1x to 2.5x
+- **Write Sketches** Syntax-highlighted editor with auto-indent, line numbers, and compile error highlighting
+- **Simulate** Run your sketch, it compiles/processes, and then executes in milliseconds
+- **Visualize** No circuit design step! it reads your sketch and builds the canvas automatically with components, layout, etc.
+- **Interact** Click buttons, toggle switches, drag potentiometers, and type serial input to interact with the running simulation
+- **Debug** serial monitor, signal timeline (logic analyzer view), and variable watch panel
+- **Hot-reload** edit your sketch, hit Run again, simulation restarts instantly
+- **Speed control** slow down or speed up simulation from 0.1x to 2.5x using included slider, changes live while sketch is running
 
 ## Demo
 
 ![VEMCODE Demo](docs/demo.gif)
 
-The demo runs the LamboWallFollow sketch, an obstacle avoidance algorithm for a three-wheeled omni-directional robot navigating a maze of horizontal walls with gaps at random positions. The robot continuously tracks its lateral position in the corridor. When the ultrasonic sensor detects a wall ahead, the algorithm checks which half of the corridor the robot is in and immediately moves the opposite direction toward the potential gap. Using this approach allows us to most likely approach the gap. If the robot reaches the edge of the corridor without finding a gap, it flips direction to cover the full width as a fallback. Once past the wall it drives forward again and repeats. A color sensor on the underside detects a green marker on the floor as the finish line, or the simulation ends when a maximum forward distance is reached.
+### Sketch demo:
+
+The demo runs the LamboWallFollow sketch, an obstacle avoidance algorithm for a three-wheeled omni-directional robot navigating a maze of horizontal walls with gaps at random positions. 
+```
+Maze Shape (Left to right = Forward)
+      _________________                _________________
+      | o |       |   |                |   | -->   |   |
+      | | |   |   |   |    ------->    |   | o |   |   |
+      | >     |       |                |   --^ |       |
+      |___|___|___|___exit             |___|___|___|____exit
+```
+
+### How it works:
+
+The robot continuously tracks its lateral position in the corridor. When the ultrasonic sensor detects a wall ahead, the algorithm checks which half of the corridor the robot is in and immediately moves the opposite direction toward the potential gap. Using this approach allows us to most likely approach the gap. If the robot reaches the edge of the corridor without finding a gap, it flips direction to cover the full width as a fallback. Once past the wall it drives forward again and repeats. A color sensor on the underside detects a green marker on the floor as the finish line, or the simulation ends when a maximum forward distance is reached.
 
 ---
 
 ## Features
 
 ### Editor
-- Syntax highlighting (keywords, functions, strings, comments)
-- Line numbers
-- Auto-indent — Enter after `{` indents automatically
-- Auto-dedent — typing `}` on an indented blank line dedents automatically
-- Tab = 4 spaces
-- Compile error highlighting — error lines turn red with tooltip showing the message
-- Ctrl+S to save
-- New sketch, Open, Save, Recent sketches (last 5)
+TODO:
 
 ### Simulation
-- Full API support:
-  - `pinMode`, `digitalWrite`, `digitalRead`
-  - `analogWrite`, `analogRead`
-  - `delay`, `delayMicroseconds`, `millis`, `micros`
-  - `pulseIn(pin, value, timeout)` — fast path for sensors, color channel routing for TCS3200, pin polling fallback
-  - `Serial.begin`, `Serial.print`, `Serial.println`, `Serial.available`, `Serial.read`
-  - `Serial.print(val, HEX/BIN/OCT/DEC)` — format specifier overloads
-  - `Serial.print(float, n)` — float with n decimal places
-  - `tone`, `noTone`
-  - `map`, `constrain`, `abs`, `min`, `max`, `random`
-- Library support: `#include <Servo.h>` and `#include <LiquidCrystal.h>` — replaced by built-in classes at compile time, no installation required
-- Full `String` class — construction, concatenation, search, manipulation, conversion
-- Speed slider — 0.1x to 2.5x simulation speed
-- Stop is instant — no waiting for long delays to finish
+TODO:
+
 
 ### Circuit Canvas
-Auto-detects components from `#define` names and `pinMode` / `analogRead` calls:
-
-| Component | Detection keywords | Interaction |
-|---|---|---|
-| LED | LED, LIGHT, LAMP, INDICATOR | Visual on/off |
-| Button | BTN, BUTTON, KEY | Click to press |
-| Switch | SWITCH, SW, TOGGLE | Click to toggle |
-| Buzzer | BUZZER, BUZZ, SPEAKER, TONE, PIEZO | Visual active state |
-| Servo | SERVO, SRV | Live angle display (0-180°) |
-| H-bridge motor | MOTOR, CW, CWISE, ANTI, IN1, IN2 | Visual active state |
-| Distance sensor | TRIG, ECHO (pair) | Type distance in cm — pulseIn returns matching µs |
-| Color sensor | S0, S1, S2, S3, COLOR_OUT (array) | Type R/G/B values (0-255) |
-| Potentiometer | POT, POTENTIOMETER, DIAL | Drag to set value 0-1023 |
-| Light sensor | PHOTO, LDR, PHOTORESISTOR | Type analog value (0-1023) |
-| Temperature sensor | TEMP, TEMPERATURE, THERMISTOR | Type analog value (0-1023) |
-| Analog sensor | SENSOR, ANALOG, ADC | Type analog value (0-1023) |
-| LCD (16×2) | LCD, DISPLAY, SCREEN, OLED | Live text — `lcd.print()` text appears on the canvas in real time |
-
-> Board profile (pin count, analog mapping, PWM resolution) is set in Settings. Supported boards: Arduino Uno, Nano, Mega 2560, Due, Teensy 4.1. The selected board drives pin count, analog offset, PWM resolution, and the canvas board graphic.
->
-> A sketch can override the saved board by adding a `// @board <name>` comment near the top of the file. When the sketch is run, VEMCODE reads the comment and switches to the specified board automatically — no need to change Settings manually. The override is also saved back to `settings.ini` so it persists for the next session.
->
-> ```cpp
-> // @board Teensy 4.1
-> ```
+TODO:
 
 ### Debug Panel
-- **Serial monitor** — live `Serial.print` output, plus a text input box to send data to `Serial.read`
-- **Signal timeline** — logic analyzer view of all pin state changes over time
-- **Variable watch** — live table of `watch_variable("name", value)` calls from your sketch
+TODO:
 
 ---
 
@@ -193,7 +159,7 @@ On first launch VEMCODE will ask for your compiler path and project root. Point 
 
 ## Writing sketches
 
-VEMCODE accepts standard embedded C++ syntax — write exactly what you would write for a real board:
+VEMCODE accepts standard embedded C++ syntax, write exactly what you would write for a real board:
 
 ```cpp
 #define LED_PIN    13
@@ -267,7 +233,7 @@ void loop() {
 
 ## Architecture
 
-VEMCODE compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table — so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
+VEMCODE compiles your sketch into a shared library (`.dll` on Windows, `.so` on Linux) using the system C++ compiler and loads it at runtime. The sketch calls back into the host through a function pointer table, so `digitalWrite(13, HIGH)` in your sketch calls `impl_digitalWrite` in the host, which updates the canvas and signal timeline in real time.
 
 ```
 Your sketch (.cpp)
@@ -281,7 +247,7 @@ Your sketch (.cpp)
 
 Hot-reload works by watching the sketch file for changes and reloading the shared library while the simulation is running.
 
-The board profile (selected in Settings) drives pin count, analog mapping, PWM resolution, and the canvas graphic. Adding a new board is a matter of adding a new `BoardProfile` entry — the rest of the simulation is board-agnostic.
+The board profile (selected in Settings or set through the sketch) drives pin count, analog mapping, PWM resolution, and the canvas graphic.
 
 ### Project structure
 
@@ -322,23 +288,6 @@ VEMCODE/
 ## Project Status
 
 VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, incomplete features, and breaking changes should be expected.
-
-### What works
-- Full Arduino API simulation (`digitalWrite`, `analogRead`, `Serial`, `millis`, `pulseIn`, and more)
-- Library support — `#include <Servo.h>` and `#include <LiquidCrystal.h>` work out of the box
-- Auto-detection and rendering of components from pin names (including 16×2 LCD with live text)
-- Serial monitor with send/receive
-- Signal timeline (logic analyzer view)
-- Variable watch panel
-- Speed control (0.1x – 2.5x)
-- Hot-reload on sketch save
-- Arduino Uno, Nano, Mega 2560, Due, and Teensy 4.1 board profiles
-- Per-sketch board override via `// @board` comment
-
-### In progress
-- MicroPython and CircuitPython board support
-- Expanded component library
-- Packaged installers and downloadable releases
 
 ### Known limitations
 - Real electrical behavior (voltage, current, short circuits) — not in scope; VEMCODE simulates firmware logic, not analog electronics; use SimulIDE or LTspice for SPICE-level modeling
