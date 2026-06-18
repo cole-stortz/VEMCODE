@@ -223,19 +223,44 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 ---
 
-### Phase 7b — Component Plugin System
+### Phase 7b — Component Plugin System + Dev Component Generator
 
-Pull the component plugin architecture forward from Phase 11 so that all new components added in Phase 8 and beyond use the new system from day one rather than being added the old way and migrated later. The visual polish from Phase 11 (QPainter art, animations, SVG-ready architecture) stays where it is — this phase is purely structural.
+Pull the component plugin architecture forward from Phase 11 so that all new components added in Phase 8 and beyond use the new system from day one rather than being added the old way and migrated later. The visual polish from Phase 11 (QPainter art, animations, SVG-ready architecture) stays where it is — this phase is purely structural. The dev component generator is built on top of the clean plugin architecture so that adding new components after this phase never requires manually touching `CircuitDetector`, `CanvasWidget`, or any of the seven files in the adding-components checklist.
 
-- `ComponentDefinition` struct in `src/core/circuit/componentregistry.h` — holds `type`, `detect_single` keyword list, `detect_multi` pin-role map, `min_pins`/`max_pins`, and `create_item` factory function
+**Plugin system refactor:**
+- `ComponentDefinition` struct in `src/core/circuit/componentregistry.h` — holds `type`, `detect_single` keyword list, `detect_multi` pin-role map, `detect_pattern` source pattern list, `min_pins`/`max_pins`, and `create_item` factory function
 - `ComponentRegistry` singleton in `src/core/circuit/componentregistry.cpp` — flat list of definitions; all component files self-register at static init time
 - `ComponentItem` base class inheriting `QGraphicsObject` — defines the `paint()` and `setState(QVariant)` interface; initial visuals are the same colored rectangles as today — no visual regression, just structural
-- `CircuitDetector` refactored to loop over the registry instead of hardcoded if-chains — becomes a generic detection engine with no component-specific knowledge
+- `CircuitDetector` refactored to loop over the registry instead of hardcoded if-chains — becomes a generic detection engine with no component-specific knowledge; detection runs in three confidence tiers in order: (1) `detect_pattern` source patterns first — library method calls and characteristic multi-call sequences that unambiguously identify a component (e.g. `myServo.attach(`, `lcd.begin(`, `pulseIn(` paired with a trig/echo timing sequence); (2) `detect_multi` pin-role matching for multi-pin components whose patterns didn't fire; (3) `detect_single` keyword matching against `#define` names as the final fallback — a match at a higher tier short-circuits the lower tiers so a sketch using `Servo.attach()` gets a Servo regardless of what the pin is named
 - `CanvasWidget` refactored to call `def.create_item(pin, parent)` from the registry — no per-type switch blocks
-- Each existing component migrated to its own file in `src/components/` (e.g. `led.cpp`, `servo.cpp`, `button.cpp`, `distancesensor.cpp`, `lcd.cpp`, etc.)
+- Each existing component migrated to its own file in `src/components/` (e.g. `led.cpp`, `servo.cpp`, `button.cpp`, `distancesensor.cpp`, `lcd.cpp`, etc.) — components that already benefit from pattern detection (Servo via `.attach(`, LCD via `LiquidCrystal` constructor, HC-SR04 via `pulseIn` + trig/echo sequence) get their `detect_pattern` entries written during migration
 - `CMakeLists.txt` updated to glob `src/components/*.cpp` — new component files picked up by the build automatically with no CMake edits
 
-> **Milestone:** All existing components are registered through the plugin system; adding a new component requires creating one file in `src/components/` with no changes to `CircuitDetector`, `CanvasWidget`, or `CMakeLists.txt`. Phase 8 components are built with this system from the start.
+**Dev component generator:**
+
+A dev-only panel accessible under Settings → Developer Tools (hidden in normal builds, visible when VEMCODE is built in dev mode via a CMake flag). Fills out a form and writes all necessary files and edits automatically — the same set of changes the adding-components checklist currently requires doing by hand.
+
+The generator UI has four sections:
+
+- **Identity** — component name, display label, and detection keywords (comma-separated); single-pin or multi-pin toggle; if multi-pin, a list of named pin roles (e.g. TRIG, ECHO) each with their own keyword list and an `infer_type` flag marking which role is the representative pin
+- **Detection patterns** — optional list of source code patterns that identify this component with high confidence regardless of pin naming; each entry is a string or sequence of strings that must all appear in the sketch source (e.g. `.attach(` for Servo, `lcd.begin(` for LCD); patterns are checked before keyword matching and a pattern match takes priority; leaving this section empty falls back to keyword-only detection
+- **Interaction** — what the user can do with the component on the canvas; options are None (output only), Click (button/switch style), Click and Drag (potentiometer style), and Text Input (sensor value field); selecting an interaction type shows the relevant config fields (e.g. drag axis and value range for potentiometer style)
+- **API functions** — a list of new `ArduinoAPI` entries this component needs, each with a function name, return type, and parameter list; optional preprocessor replacement string if the sketch-facing name differs from the `api->` name; optional injected header wrapper for overloads or default arguments
+- **Preview** — before committing, shows a diff-style view of every file that will be created or modified: the new `src/components/yourcomponent.cpp`, any new entries appended to `ArduinoAPI`, the new `impl_*` declarations and implementations, the `get_api()` assignment, the preprocessor replacement line, and the injected header addition if needed; a single Generate button commits all changes at once
+
+**What the generator writes:**
+- `src/components/yourcomponent.cpp` — `ComponentItem` subclass with detection keywords, detection patterns, pin roles, and `paint()` stub; self-registers with `ComponentRegistry` at static init time
+- Appends new function pointers to the end of `ArduinoAPI` struct in `arduinoapi.h`
+- Appends `impl_*` static declarations to `arduinoruntime.h`
+- Appends `impl_*` implementations to `arduinoruntime.cpp`
+- Appends `get_api()` assignments in `arduinoruntime.cpp`
+- Appends preprocessor replacement lines to `preprocessor.cpp`
+- Appends injected header declarations or wrappers to `injected_header.inc` and flags that a cmake re-run is needed
+- If an inject path is needed (sensor with a canvas input field), generates the full chain: `inject_xxx` in `ArduinoRuntime`, delegator in `SketchHost`, slot in `SketchThread`, signal declaration in `CanvasWidget`, and connection in `MainWindow`
+
+The generator never inserts into the middle of any file — all writes are appends to well-defined extension points, which is why the plugin system refactor is a prerequisite. Without the registry the generator would need to do brittle mid-file insertion into if-chains and switch blocks.
+
+> **Milestone:** All existing components are registered through the plugin system with three-tier detection (patterns → multi-pin roles → keywords); adding a new component requires filling out the generator form and clicking Generate with no manual file editing; Phase 8 components are built with this workflow from the start.
 
 ---
 
