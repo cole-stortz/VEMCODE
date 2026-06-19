@@ -77,77 +77,50 @@ The robot continuously tracks its lateral position in the corridor. When the ult
 ## Features
 
 ### Editor
-The editor is a simple included IDE on the left side in an adjustable pannel that includes an eventFilter for keyboard features, code highlighter, and line numbers. Compile errors and highlighting red are also handled but not by the code highlighter but by mainwindow.
+The editor is a built-in IDE on the left side of the window in an adjustable panel. It includes syntax highlighting, line numbers, compile error handling, and keyboard shortcuts for a familiar embedded development experience.
 
 #### Code Highlighter
-Highlights keywords, Arduino functions, constants, and others inside included editor. Initialized in `buildEditorPanel()` in `mainwindow.cpp`
-
-- Keyword Format
-  - Color #569cd6
-  - Examples: void, int, float, double, bool, etc.
-- Arduino Format
-  - Color #dcdcaa
-  - Examples: pinMode, digitalWrite, delay, etc.
-- Constant Format
-  - Color #4fc1ff
-  - Examples: HIGH, LOW, INPUT, AO, etc.
-- Number Format: Color #b5cea8
-- String Format: Color #ce9178
-- Comment Format: Color #6a9955
-- Errors Format: 
-  - Color #3a0000
-  - Inside `mainwindow.cpp` `showCompileErrors()` not `codehilighter.cpp`
+Highlights keywords, Arduino functions, constants, numbers, strings, and comments. Compile errors are highlighted with a red background on the affected line.
 
 #### Line Numbers
 Adds line numbers to the left of each line of code for error tracking and debugging.
-- `linenumberarea.h`
-  - Number Color: #555
-  - Initialized in in `buildEditorPanel()` in `mainwindow.cpp`
 
-#### Keyboard inputs (eventFilter)
-Adds keyboard shortcuts and commands while typing in the IDE, Called in `mainwindow.cpp` `eventFilter()`.
-- Key Tab:
-  - insert 4 spaces or "    "
-- Key Return/Enter:
-  - Move to next line in line with previous anchor point
-  - if the line ends with '{' when you hit return, insert +4 spaces from anchor point to indent the line
-- Auto Dedent:
-  - if '}' is typed, move the anchor point to the left of '{' and dedent -4 spaces
+#### Keyboard Shortcuts
+- Tab: inserts 4 spaces
+- Enter: continues indentation from previous line, adds an extra indent after {.
+- }: automatically dedents to match the opening {
 
 
 ### Circuit Canvas
 The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
 
 #### Supported Components
-- Outputs:
-  - LED
-  - Buzzer
-  - Servo
-  - HBridgeMotor
-  - LCD
-  - GenericOutput
-- Inputs:
-  - Button (clean and bouncy)
-  - Switch
-  - Poteniometer
-- Sensors:
-  - Color Sensor
-  - Distance Sensor
-  - LDR or Light Sensor
-  - Temprature Sensor
-  - General Analog Sensor
+- Outputs: LED, Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
+- Inputs: Button (clean and bouncy variants), Switch, Potentiometer
+- Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Generic Analog Sensor
+
+### Simulation
+VEMCODE compiles your sketch to a native shared library and runs it directly on your machine. The C++ executes as compiled x86 code. The runtime implements the Arduino API through a function pointer table injected into your sketch at compile time. Calls like `digitalWrite()` or `analogRead()` route through the host, which updates the canvas and debug panels in realtime.
+
+**Differences from real hardware:**
+- Timing is not cycle accurate: millis and delay track wall clock time not AVR clock cycles.
+- Floating INPUT pins return random values to simulate real world noise
+- Button components simulate contact bounce by default (~10ms)
+- EEPROM state does not persist between sessions
 
 ### Debug Panel
 The debug panel includes the tabs serial monitor(s), signal timeline, and variable watch panel. It is located on the bottom right side and each of the tabs can be navigated independently.
 
 #### Serial Monitor
-TODO:
+Displays all `Serial.print()` and `Serial.println()` output from your sketch. Boards with multiple hardware serial ports (Mega, Due, Teensy 4.1) show a separate monitor for each port displayed side by side.
 
 #### Signal Timeline
-TOD:
+Displays a logic analyzer style view of digital pin activity. When a pin changes state it is automatically added to the timeline and shown as a scrollable square wave.
 
 #### Variable Watch
-TODO:
+Displays all variables that are tracked in the sketch and their current values in real time. The variables are added by adding this line of code to track it:
+- `watch_variable("LABEL", value);`
+
 
 ---
 
@@ -351,7 +324,7 @@ VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, 
 
 ### Known limitations
 - Real electrical behavior (voltage, current, short circuits) — not in scope; VEMCODE simulates firmware logic, not analog electronics; use SimulIDE or LTspice for SPICE-level modeling
-- Sending signals from a simulated board to real physical hardware — a simulated board cannot drive actual hardware over a wire; the only remaining gap is the physical layer between simulation and the real world (see Phase 15 for a localhost bridge that partially addresses this for network-connected hardware). Potentally can fix my running over USB to daughter board for output pins.
+- Sending signals from a simulated board to real physical hardware — a simulated board cannot drive actual hardware over a wire; the only remaining gap is the physical layer between simulation and the real world.
 
 See [ROADMAP.md](docs/ROADMAP.md) for planned features and future direction.
 
