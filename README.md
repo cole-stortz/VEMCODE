@@ -70,23 +70,83 @@ Maze Shape (Left to right = Forward)
 
 ### How it works:
 
-The robot continuously tracks its lateral position in the corridor. When the ultrasonic sensor detects a wall ahead, the algorithm checks which half of the corridor the robot is in and immediately moves the opposite direction toward the potential gap. Using this approach allows us to most likely approach the gap. If the robot reaches the edge of the corridor without finding a gap, it flips direction to cover the full width as a fallback. Once past the wall it drives forward again and repeats. A color sensor on the underside detects a green marker on the floor as the finish line, or the simulation ends when a maximum forward distance is reached.
+The robot continuously tracks its lateral position in the corridor. When the ultrasonic sensor detects a wall ahead, the algorithm checks which half of the corridor the robot is in and immediately moves the opposite direction toward the potential gap. If the robot reaches the edge of the corridor without finding a gap, it flips direction to cover the full width as a fallback.
 
 ---
 
 ## Features
 
 ### Editor
-TODO:
+The editor is a simple included IDE on the left side in an adjustable pannel that includes an eventFilter for keyboard features, code highlighter, and line numbers. Compile errors and highlighting red are also handled but not by the code highlighter but by mainwindow.
 
-### Simulation
-TODO:
+#### Code Highlighter
+Highlights keywords, Arduino functions, constants, and others inside included editor. Initialized in `buildEditorPanel()` in `mainwindow.cpp`
+
+- Keyword Format
+  - Color #569cd6
+  - Examples: void, int, float, double, bool, etc.
+- Arduino Format
+  - Color #dcdcaa
+  - Examples: pinMode, digitalWrite, delay, etc.
+- Constant Format
+  - Color #4fc1ff
+  - Examples: HIGH, LOW, INPUT, AO, etc.
+- Number Format: Color #b5cea8
+- String Format: Color #ce9178
+- Comment Format: Color #6a9955
+- Errors Format: 
+  - Color #3a0000
+  - Inside `mainwindow.cpp` `showCompileErrors()` not `codehilighter.cpp`
+
+#### Line Numbers
+Adds line numbers to the left of each line of code for error tracking and debugging.
+- `linenumberarea.h`
+  - Number Color: #555
+  - Initialized in in `buildEditorPanel()` in `mainwindow.cpp`
+
+#### Keyboard inputs (eventFilter)
+Adds keyboard shortcuts and commands while typing in the IDE, Called in `mainwindow.cpp` `eventFilter()`.
+- Key Tab:
+  - insert 4 spaces or "    "
+- Key Return/Enter:
+  - Move to next line in line with previous anchor point
+  - if the line ends with '{' when you hit return, insert +4 spaces from anchor point to indent the line
+- Auto Dedent:
+  - if '}' is typed, move the anchor point to the left of '{' and dedent -4 spaces
 
 
 ### Circuit Canvas
-TODO:
+The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
+
+#### Supported Components
+- Outputs:
+  - LED
+  - Buzzer
+  - Servo
+  - HBridgeMotor
+  - LCD
+  - GenericOutput
+- Inputs:
+  - Button (clean and bouncy)
+  - Switch
+  - Poteniometer
+- Sensors:
+  - Color Sensor
+  - Distance Sensor
+  - LDR or Light Sensor
+  - Temprature Sensor
+  - General Analog Sensor
 
 ### Debug Panel
+The debug panel includes the tabs serial monitor(s), signal timeline, and variable watch panel. It is located on the bottom right side and each of the tabs can be navigated independently.
+
+#### Serial Monitor
+TODO:
+
+#### Signal Timeline
+TOD:
+
+#### Variable Watch
 TODO:
 
 ---
