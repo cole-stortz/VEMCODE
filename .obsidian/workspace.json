@@ -1,0 +1,221 @@
+{
+  "main": {
+    "id": "ed94bd886819e1a9",
+    "type": "split",
+    "children": [
+      {
+        "id": "b92ad8867d1b8780",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e30e1c758ea09d38",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/ARCHITECTURE.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ARCHITECTURE"
+            }
+          },
+          {
+            "id": "cf00717727b2938d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "8cba18c54776439e",
+    "type": "split",
+    "children": [
+      {
+        "id": "7a7eee641b15575f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "df4aaad3a4a65d5a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "da84a2fbfa1b8651",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "c4a35e5ee4c2b38e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200,
+    "collapsed": true
+  },
+  "right": {
+    "id": "b79ac75f31a9250a",
+    "type": "split",
+    "children": [
+      {
+        "id": "aa91521ff0377874",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8b06b8a3b5642a0d",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/ARCHITECTURE.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for ARCHITECTURE"
+            }
+          },
+          {
+            "id": "58406534c6782e8b",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/ARCHITECTURE.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from ARCHITECTURE"
+            }
+          },
+          {
+            "id": "a152fe310077976f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "437e1f4d0f02ff45",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "7a129fb7f78da17b",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/ARCHITECTURE.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of ARCHITECTURE"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "e30e1c758ea09d38",
+  "lastOpenFiles": [
+    "build/compile_commands.json.tmp75049",
+    "build/CMakeFiles/rules.ninja.tmpbd273",
+    "build/build.ninja.tmpa069e",
+    "build/compile_commands.json.tmp93c4e",
+    "build/CMakeFiles/rules.ninja.tmpce431",
+    "build/build.ninja.tmpf4ee5",
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "build/compile_commands.json.tmp73b7c",
+    "build/CMakeFiles/rules.ninja.tmp53293",
+    "build/build.ninja.tmp8940d",
+    "build/CMakeCache.txt.tmpd7a90",
+    "docs/ADDING_COMPONENTS.md",
+    "docs/SKETCH_GUIDE.md",
+    "docs/ROADMAP.md",
+    "docs/led_demo.gif",
+    "docs/demo.gif"
+  ]
+}
