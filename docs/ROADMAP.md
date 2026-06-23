@@ -524,10 +524,10 @@ The localhost server that handles simulated network requests can also act as a b
 
 ---
 
-### Later (post-stable)
+### Later
 
 - Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows, package for common Linux distros
 - macOS support
-- Additional board profiles (ESP32, STM32) — add one `BoardProfile` entry each
+- Additional board profiles (STM32, etc.) — add one `BoardProfile` entry each
 - Step-through debugger — pause execution at a line and step statement by statement; implemented by injecting `vb_breakpoint(line)` calls in the preprocessor and blocking on a condition variable when paused; UI adds clickable gutter breakpoints and a step/resume toolbar
-- Custom SVG component visuals — replace QPainter-drawn component art with `QSvgRenderer`-based rendering; each component type is a split SVG (static housing layer + animated overlay layer composited via QPainter transforms); static parts designed in Inkscape/Figma and embedded as Qt resources; animated parts (motor spinner, servo arm, LED glow) remain QPainter-driven on top of the SVG base; enabled by the `ComponentItem` subclass architecture from Phase 11 — each component's upgrade is a self-contained `paint()` change
+
