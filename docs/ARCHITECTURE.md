@@ -196,7 +196,7 @@ TODO: need to finish 7b
 ### Main Window
 `MainWindow` is the top level coordinator. It owns every major UI component; the editor panel, canvas panel, sketch thread, and debug panels. It wires them together through Qt signals and slots. It doesn't implement simulation logic itself, it connects the outputs of one system to the inputs of another.
 
-The three main areas are built in `setupMainArea()` and arranged in a horizontal splitter with the editor on the left and a vertical right splitter containing the canvas above the debug panel.
+The four main areas are built in `setupMainArea()` and arranged in a horizontal splitter with the editor on the left and a vertical right splitter containing the canvas above the debug panel. The last area is the top toolbar which contains all of the IDE buttons for running, saving, settings, etc.
 #### Editor panel
 The editor panel is a simple text editor with some added features to make it more like an IDE; line numbers, a code highlighter, and text events:
 - **Line numbers** (`linenumberarea.h`):
@@ -233,9 +233,9 @@ The editor panel is a simple text editor with some added features to make it mor
 #### Canvas Panel
 The canvas panel is the space where the generated circuit is drawn from detected components. When it calls `new CanvasWidget()`, it builds the circuit from `canvaswidget.cpp/h` which draws the board and components.
 
-We then run the connections from inputting values on the UI (`poteniomenterChanged`, `buttonPressed`, etc.) and connecting them to the `sketchthread` to inject the values. This is an early chain in the connection from the UI to the `sketchthread`.
+We then run the connections from inputting values on the UI (`potentiometerChanged`, `buttonPressed`, etc.) and connecting them to the `sketchthread` to inject the values. This is an early chain in the connection from the UI to the `sketchthread`.
 #### Debug Panel
-The debug panel is the location of the three debug tabs; Serial monitor(s), Signal timeline, and Variable watch. You can switch between the tree tabs like you would a web browser with the tabs located at the top to click on to select desired tab.
+The debug panel is the location of the three debug tabs; Serial monitor(s), Signal timeline, and Variable watch. You can switch between the three tabs like you would a web browser with the tabs located at the top to click on to select desired tab.
 - **Serial Monitor(s)** (`mainwindow.cpp`)
 	- The serial monitor is configurable based on selected board to configure how many serial monitors are supported. 
 	- EX: the Teensy 4.1 has 3 serial monitors, Arduino Uno has 1 serial monitor. 
@@ -244,23 +244,321 @@ The debug panel is the location of the three debug tabs; Serial monitor(s), Sign
 	- Adds a logic analyzer style graph for each digital pin
 	- Each pin is added automatically if it has a changing value
 - **Variable Watch**
+	- Add a variable to watch by adding this line of code to the sketch like a print:
+		- `watch_variable("LABEL", value);`
+	- Connected to `variableChanged()` in sketch thread to update the value on the UI
+	- Tab contains list of the value updating with the label in a two column table
+#### Toolbar
+This is the top slim panel spanning the whole width that contains the following buttons in this order; Run, Stop, Speed slider, New Sketch, Open Sketch, Recent Sketch, Save Sketch, Settings. This is where all the main interaction for using VEMCODE exists besides programming and interacting with the circuit.
 ### Canvas Widget
 #### Auto Layout
-How pinLocation() works, the two-column layout (outputs right, inputs left), 
-analog vs digital column separation, wire routing (3-segment for analog, 
-staggered intermediate x for digital)
+`pinLocation()` maps the pin number to the physical position on the canvas. Digital pins run down the right edge of the board, analog on the left. `drawBoard()` then renders the board graphics and places pin dots at each location using the board profile's `analog_offset` and `analog_count` to drive the loops.
+```c++
+QPointF CanvasWidget::pinLocation(int pin) {
+	// if the pin is a digital pin
+    if (pin >= 0 && pin < profile_.analog_offset) {
+        float spacing = (float)BOARD_H / (float)(profile_.analog_offset + 1);
+        float y = BOARD_Y + spacing * (pin + 1);
+        return QPointF(BOARD_X + BOARD_W, y);
+    }
+    // if the pin is a analog pin
+    if (pin >= profile_.analog_offset && pin < profile_.analog_offset + profile_.analog_count) {
+        float spacing = (float)BOARD_H / (float)(profile_.analog_count + 1);
+        float y = BOARD_Y + spacing * (pin - profile_.analog_offset + 1);
+        return QPointF(BOARD_X, y);
+    }
+    return QPointF(BOARD_X + BOARD_W / 2.0, BOARD_Y);
+}
+
+void CanvasWidget::drawBoard() {
+	// Setup the board (consistent width, variable height)
+	// - Board Color: #1a1a2e(dark gray blue), Border #3a3a5c(gray blue)
+	// - Labels:
+	//     - Board label: Courier new, 9, #555577(light gray blue)
+	//     - Chip Label: Courier new, 8, #333355(gray blue)
+
+    // Digital pins
+    for (int i = 0; i < profile_.analog_offset; i++) {
+        QPointF pos = pinLocation(i);
+        // Pin Color: #2a2a3a(dark gray blue), Border #444466(gray blue)
+        // Label: Courier new, 7
+    }
+
+    // Analog pins
+    for (int i = profile_.analog_offset; i < profile_.analog_offset + profile_.analog_count; i++) {
+        QPointF pos = pinLocation(i);
+        // Pin Color: #2a2a3a(dark gray blue), Border #444466(gray blue)
+        // Label: Courier new, 7, add a A to the number
+    }
+}
+```
 #### Component Rendering
-drawComponent() — how each component type gets its box, colors, child labels, 
-sensor input fields (QLineEdit proxies), the componentColor() active/inactive map
+`drawComponent()` has two base stages, drawing the detected component in the right spot and connecting the component with wires to the correct pins:
+- Drawing detected component:
+	1) Set output components to go on the right, inputs on the left
+	2) Set component Dimensions: width = 100, and height depending on component
+	3) Align the Y with pin position on the board
+	4) Draw component box
+	5) Set component input fields if needed
+		- i.e. if/else ladder to set component input events with text or mouse events
+- Drawing connecting wires:
+	- Offset: `15.0f + i * WIRE_SPACING` where `WIRE_SPACING = 5.0f`
+	1) Start at the pin and draw a horizontal line stopping at the midpoint with the offset
+	2) Draw vertical wire (up|down) to meet component y with the offset
+	3) Draw a horizontal line to the component edge to meet the component
+```c++
+void CanvasWidget::drawComponent(const DetectedComponent& comp) {
+    // Output components go on right side, input on left
+    bool is_output = (comp.type == ComponentType::LED || ...);
+
+	// Component dimensions
+    int comp_w = 100;
+    int comp_h = (comp.type == ComponentType::ColorSensor)  ? 64
+               : (comp.type == ComponentType::HBridgeMotor) ? 54
+               : (comp.type == ComponentType::LCD)          ? 54
+               : 44;
+	
+	// Column Placement
+    float comp_x;
+    if (is_output) { comp_x = BOARD_X + BOARD_W + 80; } 
+    else if (is_analog_input) {comp_x = BOARD_X - comp_w - 180; } 
+    else { comp_x = BOARD_X - comp_w - 80; }
+    
+    // Align Y with the actual pin position on the board
+    float comp_y = pin_pos.y() - comp_h / 2.0f;
+
+    // Component box -- store pinItems_ keyed by pin
+    QGraphicsRectItem* rect = new QGraphicsRectItem(0, 0, comp_w, comp_h);
+    rect->setBrush(QBrush(componentColor(comp.type, false)));
+    scene_->addItem(rect);
+    pinItems_[comp.pin] = rect;
+	
+	// Button Example (Full)
+	// Switch, ButtonClean follow same pattern
+    if (comp.type == ComponentType::Button) {
+        buttonStates_[comp.pin] = false;
+        rect->setFlag(QGraphicsItem::ItemIsSelectable);
+        rect->setAcceptHoverEvents(true);
+        rect->setCursor(Qt::PointingHandCursor);
+        rect->setToolTip("Click to press, release to let go");
+    }
+	
+	// Distance sensor (shortened)
+	// converts cm text input to microseconds to be interpreted by code
+    if (comp.type == ComponentType::DistanceSensor) {
+        QLineEdit* input = new QLineEdit();
+        QGraphicsProxyWidget* proxy = scene_->addWidget(input);
+        proxy->setParentItem(rect);
+        connect(input, &QLineEdit::textChanged, this, [this, echo_pin]
+	        (const QString& text) { 
+		    emit pulseInjected(echo_pin, cm * 2.0f / 0.034f);
+		});
+    }
+
+    // Same pattern for other Components...
+	
+	// Drawing connecting wires
+    for (int wpin : wire_pins) {
+        if (wpin < 0) { i++; continue; }
+
+        QPointF target = pinLocation(wpin);
+
+        // Each wire attaches at a different y so they don't stack
+        float attach_y = comp_y + 15.0f + i * WIRE_SPACING;
+
+        QPointF comp_edge = is_output
+            ? QPointF(comp_x, attach_y)
+            : QPointF(comp_x + comp_w, attach_y);
+
+        bool pin_is_analog = (wpin >= profile_.analog_offset);
+        if (pin_is_analog) {
+            // Analog: 3-segment route around board left edge, staggered per wire
+            float inter_x = BOARD_X - 80 - i * WIRE_SPACING;
+            QPointF mid1(inter_x, target.y());
+            QPointF mid2(inter_x, attach_y);
+            drawWire(target, mid1);
+            drawWire(mid1, mid2);
+            drawWire(mid2, comp_edge);
+        } else {
+            // Digital: horizontal from pin, vertical at staggered x, horizontal into component
+            float inter_x = is_output
+                ? comp_x - 10.0f - i * WIRE_SPACING
+                : comp_x + comp_w + 10.0f + i * WIRE_SPACING;
+            QPointF mid1(inter_x, target.y());
+            QPointF mid2(inter_x, attach_y);
+            drawWire(target, mid1);
+            drawWire(mid1, mid2);
+            drawWire(mid2, comp_edge);
+        }
+        i++;
+    }
+}
+```
 #### Input Handling
-mousePressEvent/mouseReleaseEvent/mouseMoveEvent — button press/release with 
-bounce vs clean, switch toggle, potentiometer drag with value interpolation
+This is handled by three main functions, `mouseMoveEvent()`, `mousePressEvent()`, `mouseReleaseEvent()`:
+- **`mousePressEvent()`**
+	- Walk up the chain of events to check stacked items like a text label on top of rect
+	- If stack check for types of components to update the state, 
+		- EX: if button is clicked...
+			- Set button state to true
+			- Change component color to the active state
+			- emit the buttonBounced() as 0 on the pin to register as pressed
+		- Same logic for rest of clickable components (ButtonClean, Switch, Pot)
+	- Update the event
+```c++
+void CanvasWidget::mousePressEvent(QMouseEvent* event) {
+    QGraphicsItem* item = itemAt(event->pos());
 
+    // Walk up parent chain -- click may land on text label on top of rect
+    while (item && !dynamic_cast<QGraphicsRectItem*>(item))
+        item = item->parentItem();
+
+    if (!item) { QGraphicsView::mousePressEvent(event); return; }
+
+    int pin = pinItems_.key(
+        dynamic_cast<QGraphicsRectItem*>(item), -1);
+	
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Button) {
+        buttonStates_[pin] = true;
+        dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
+            QBrush(componentColor(ComponentType::Button, true)));
+        emit buttonBounced(pin, 0); // LOW = pressed; bounced path
+        return;
+    }
+
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::ButtonClean) {
+        // Same as Button
+        emit buttonPressed(pin, 0); // LOW = pressed; clean path
+        return;
+    }
+
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Switch) {
+        bool new_state = !switchStates_.value(pin, false);
+        switchStates_[pin] = new_state;
+        // Rest is the same as Button
+    }
+
+    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Potentiometer) {
+        dragPin_        = pin;
+        dragStartY_     = event->pos().y();
+        dragStartValue_ = analogValues_.value(pin, 512);
+        dynamic_cast<QGraphicsRectItem*>(item)->setCursor(Qt::SizeVerCursor);
+        return;
+    }
+
+    QGraphicsView::mousePressEvent(event);
+}
+```
+- **`mouseReleaseEvent()`**
+	- If it is a drag pin, reset the dragPin_ state and update the release event
+	- If it is a button type (button, Clean button)
+		- Check if button is true, if it is:
+			- Set it false
+			- Reset the component color
+			- Emit function with value at 1 on the pin for release 
+		- Update the mouse release event to cover the rest of the cases
+```c++
+void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
+    if (dragPin_ >= 0) {
+        dragPin_ = -1;
+        QGraphicsView::mouseReleaseEvent(event);
+        return;
+    }
+
+    for (auto pin : buttonStates_.keys()) {
+        if (buttonStates_[pin]) {
+            buttonStates_[pin] = false;
+            ComponentType t = pinTypes_.value(pin);
+            pinItems_[pin]->setBrush(QBrush(componentColor(t, false)));
+            if (t == ComponentType::ButtonClean)
+                emit buttonPressed(pin, 1);
+            else
+                emit buttonBounced(pin, 1); // bounced release
+        }
+    }
+    QGraphicsView::mouseReleaseEvent(event);
+}
+```
+- **`mouseMoveEvent()`**
+	- if the drag pin was reset, return
+	- Check the delta of the starting y, and new event: `event->pos().y()`
+	- Calculate the new value using qBound to keep the value bounded between 0-1023
+	- Set the analog value to update the runtime
+	- Change the color of the component to a ratio of the set value (i.e. change brightness of pot based on value, higher value is brighter color)
+	- emit to connect to the mainwindow to be connected the runtime down the chain.
+```c++
+void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
+    if (dragPin_ < 0) { QGraphicsView::mouseMoveEvent(event); return; }
+
+    int delta = dragStartY_ - event->pos().y();
+    int new_value = qBound(0, dragStartValue_ + delta * 4, 1023);
+
+    analogValues_[dragPin_] = new_value;
+
+    auto it = pinItems_.find(dragPin_);
+    if (it != pinItems_.end()) {
+        float ratio = new_value / 1023.0f;
+        QColor active = componentColor(ComponentType::Potentiometer, true);
+        QColor inactive = componentColor(ComponentType::Potentiometer, false);
+        int r = inactive.red()   + ratio * (active.red()   - inactive.red());
+        int g = inactive.green() + ratio * (active.green() - inactive.green());
+        int b = inactive.blue()  + ratio * (active.blue()  - inactive.blue());
+        it.value()->setBrush(QBrush(QColor(r, g, b)));
+
+        it.value()->setToolTip(
+            QString("Value: %1 / 1023").arg(new_value));
+    }
+
+    emit potentiometerChanged(dragPin_, new_value);
+}
+```
 ## Data Flow
-Walk through a specific example end to end — like digitalWrite(13, HIGH) from sketch to canvas
-
+The following traces a single `digitalWrite(13, HIGH);` call from the user's sketch, to the canvas and signal timeline to show how every layer of the system connects.
+```
+User sketch calls digitalWrite(13, HIGH) during run...
+→ Preprocessor converted digitalWrite( to api->digitalWrite(
+→ api->digitalWrite( points to impl_digitalWrite( to fire in arduino runtime
+→ pin_values[13] gets updated to the new value (HIGH)
+→ on_pin_changed(13, 1) fires to start the connection to UI
+→ SketchThread emits pinChanged(13, 1) to connect to MainWindow::onPinChanged()
+→ onPinChanged(13,1) receives it to: 
+	→ update canvasWidget_ to call updatePin()
+	→ set pin item to the active color
+	→ update the signal timeline to addEvent(13, 1, elapsed)
+```
+Every API call in the sketch follows the same path; the function pointer table routes it into the runtime, it updates state and fires a callback, and propagates up through the sketch thread to the UI.
 ## Board Profiles
-How profiles drive pin count, analog mapping, canvas
+The board profiles are stored in boardprofile.h which just includes a structure for board profiles including all necessary variables that need set. Create board profiles for supported boards under the struct to save default boards to be set.
+```c++
+#pragma once
 
+struct BoardProfile {
+    const char* name;
+    const char* chip;
+    int pin_count;
+    int analog_offset;
+    int analog_count;
+    int pwm_resolution;
+    int serial_count;  // number of hardware serial ports (api supports max 3)
+};
+
+static const BoardProfile BOARD_UNO = 
+{"Arduino Uno", "ATmega328P", 20, 14,  6,  255, 1};
+
+static const BoardProfile BOARD_NANO = 
+{"Arduino Nano", "ATmega328P", 22, 14,  8,  255, 1};
+
+static const BoardProfile BOARD_MEGA = 
+{"Arduino Mega 2560", "ATmega2560", 70, 54, 16,  255, 3};
+
+static const BoardProfile BOARD_DUE = 
+{"Arduino Due", "AT91SAM3X8E", 66, 54, 12, 4095, 3};
+
+static const BoardProfile BOARD_TEENSY = 
+{"Teensy 4.1", "IMXRT1062", 42, 14, 18, 4095, 3};
+```
+You can select a different board from default by two ways:
+- Writing `// @board <name>` in the sketch
+- Using Settings to select from a list of supported boards.
 ## Adding Components
-Brief note pointing to the dev generator after Phase 7b
+See [ADDING_COMPONENTS.md](ADDING_COMPONENTS.md) for adding components/api functions.

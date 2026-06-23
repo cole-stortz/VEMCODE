@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "b92ad8867d1b8780",
+        "id": "701f451d01cf481b",
         "type": "tabs",
         "children": [
           {
-            "id": "e30e1c758ea09d38",
+            "id": "af21ca9e413b8ba9",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -19,20 +19,6 @@
               },
               "icon": "lucide-file",
               "title": "ARCHITECTURE"
-            }
-          },
-          {
-            "id": "cf00717727b2938d",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "README.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "README"
             }
           }
         ]
@@ -198,24 +184,26 @@
       "bases:Create new base": false
     }
   },
-  "active": "e30e1c758ea09d38",
+  "active": "af21ca9e413b8ba9",
   "lastOpenFiles": [
-    "build/compile_commands.json.tmp75049",
-    "build/CMakeFiles/rules.ninja.tmpbd273",
-    "build/build.ninja.tmpa069e",
-    "build/compile_commands.json.tmp93c4e",
-    "build/CMakeFiles/rules.ninja.tmpce431",
-    "build/build.ninja.tmpf4ee5",
-    "README.md",
-    "docs/ARCHITECTURE.md",
-    "build/compile_commands.json.tmp73b7c",
-    "build/CMakeFiles/rules.ninja.tmp53293",
-    "build/build.ninja.tmp8940d",
-    "build/CMakeCache.txt.tmpd7a90",
+    "build/CMakeFiles/rules.ninja.tmpec957",
+    "build/build.ninja.tmp17a96",
     "docs/ADDING_COMPONENTS.md",
-    "docs/SKETCH_GUIDE.md",
+    "docs/ARCHITECTURE.md",
+    "docs/demo.gif",
     "docs/ROADMAP.md",
-    "docs/led_demo.gif",
-    "docs/demo.gif"
+    "docs/SKETCH_GUIDE.md",
+    "home/cdstortz/VEMCODE/docs/ADDING_COMPONENTS.md",
+    "home/cdstortz/VEMCODE/docs",
+    "home/cdstortz/VEMCODE",
+    "home/cdstortz",
+    "home",
+    "build/compile_commands.json.tmp79278",
+    "build/CMakeFiles/rules.ninja.tmp7f998",
+    "build/build.ninja.tmpe8ff4",
+    "build/CMakeCache.txt.tmpa2a97",
+    "build/compile_commands.json.tmp8a263",
+    "README.md",
+    "docs/led_demo.gif"
   ]
 }

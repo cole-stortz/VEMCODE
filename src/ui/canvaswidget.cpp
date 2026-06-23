@@ -198,8 +198,7 @@ void CanvasWidget::drawBoard() {
     }
 }
 
-void CanvasWidget::drawComponent(const DetectedComponent& comp)
-{
+void CanvasWidget::drawComponent(const DetectedComponent& comp) {
     // Output components go on right side, input on left
     bool is_output = (comp.type == ComponentType::LED          ||
                       comp.type == ComponentType::Buzzer       ||

@@ -1,5 +1,4 @@
 #include "src/ui/mainwindow.h"
-#include "boardprofile.h"
 #include "src/ui/canvaswidget.h"
 #include <regex>
 #include <algorithm>
