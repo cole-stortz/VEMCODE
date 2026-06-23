@@ -3,6 +3,40 @@
 **Overview:**
 This document covers a more in depth viewpoint about how VEMCODE actually works in the back-end. If you want to learn about how the current runtime executes the functions at a base level using the pointer table, understand how the configuration of the UI is developed and connected to the runtime, and more intricate details that is explained here.
 
+## Table of Contents
+- [VEMCODE : Architecture](#vemcode--architecture)
+  - [Table of Contents](#table-of-contents)
+  - [System Architecture](#system-architecture)
+  - [Core Components](#core-components)
+    - [Preprocessor](#preprocessor)
+    - [Compiler](#compiler)
+    - [Sketch Host](#sketch-host)
+    - [Sketch Thread](#sketch-thread)
+    - [Arduino Runtime](#arduino-runtime)
+      - [RuntimeState](#runtimestate)
+      - [Function Pointer Table](#function-pointer-table)
+      - [Digital I/O](#digital-io)
+      - [Analog I/O](#analog-io)
+      - [Timing](#timing)
+      - [Serial](#serial)
+      - [Interrupts](#interrupts)
+      - [EEPROM](#eeprom)
+      - [Misc](#misc)
+    - [Circuit Detector](#circuit-detector)
+  - [UI Components](#ui-components)
+    - [Main Window](#main-window)
+      - [Editor panel](#editor-panel)
+      - [Canvas Panel](#canvas-panel)
+      - [Debug Panel](#debug-panel)
+      - [Toolbar](#toolbar)
+    - [Canvas Widget](#canvas-widget)
+      - [Auto Layout](#auto-layout)
+      - [Component Rendering](#component-rendering)
+      - [Input Handling](#input-handling)
+  - [Data Flow](#data-flow)
+  - [Board Profiles](#board-profiles)
+  - [Adding Components](#adding-components)
+
 ## System Architecture
 ```
 Your sketch (.cpp)
