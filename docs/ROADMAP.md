@@ -298,7 +298,7 @@ Polish the editor into a first-class coding environment and consolidate all sett
 - **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
 - **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
 - **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
-- **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, Servo Sweep, Analog Read, PID loop); selected template copied into the new sketch folder
+- **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, etc.); selected template copied into the new sketch folder
 - **Example sketch library** — a browsable panel of complete working sketches beyond the basic templates; organized by component type (LED, Servo, LCD, Distance Sensor, etc.); selecting one opens it as a new sketch ready to run; aimed at students who need something to learn from and developers who want a quick starting point
 - **In-app Arduino API reference** — a collapsible panel or right-click lookup showing the signature, parameter descriptions, and return value for any Arduino function; covers all functions VEMCODE supports; eliminates the need to tab out to arduino.cc for common lookups; especially valuable for the student audience
 
@@ -307,7 +307,7 @@ Polish the editor into a first-class coding environment and consolidate all sett
 - **Component configuration** — right-click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
 - **Syntax highlight colors** — let the user customize the editor color scheme (keyword color, function color, comment color, string color, background); a small set of built-in themes (default dark, light, high contrast) plus manual overrides; saved to `settings.ini`
 - **Canvas theme** — dark/light canvas background toggle; component colors adapt automatically
-- **Auto-compile on save** — toggle in settings; when enabled, saving the sketch immediately triggers a compile without requiring a manual Run click
+- **Auto-compile on save** — toggle in settings; when enabled, saving the sketch immediately triggers a compile without requiring a manual Run click, also add seperate keybind for run.
 - **Default sketch location** — configurable root folder for new sketches; currently hardcoded to project root
 
 > **Milestone:** The editor feels complete for day-to-day sketch writing with no obvious missing shortcuts; all configurable behavior lives in one well-organised settings dialog.
@@ -390,6 +390,51 @@ Run two boards simultaneously in the same session.
 
 > **Milestone:** Two sketches communicate over virtual Serial and both canvases update correctly.
 
+---
+
+### Phase 13b — Hybrid Hardware Bridge
+Allow a sketch running inside VEMCODE to communicate with physical hardware while continuing to use virtual componrnts on the canvas.
+
+The goal is not to simulate voltage levels or electrical characteristics. The bridge operates at the data layer, allowing virtual and physical components to coexist in a single running sketch.
+
+**Hardware bridge runtime:**
+
+- USB serial communication layer for Arduino, Teensy, and compatible boards
+- Physical device auto-detection and connection management
+- Pin mapping system (Virtual Pin ↔ Physical Pin)
+- Physical analog input passthrough
+- Physical digital input passthrough
+- Physical digital output passthrough
+- Physical PWM output passthrough
+- Runtime component source selection (Virtual or Physical)
+- Real sensor values injected into the running simulation
+- Real actuator control from simulated sketches
+
+**Bridge firmware:**
+
+- Lightweight bridge firmware generated automatically by VEMCODE
+- One-click upload to supported boards
+- Board acts as a remote I/O endpoint rather than running the user's sketch
+- Serial protocol for analog, digital, PWM, and component state exchange
+
+**Hybrid operation:**
+
+- Virtual inputs driving physical hardware
+- Physical sensors driving virtual components
+- Mixed virtual/physical circuits in the same sketch
+- Real unsupported sensors usable alongside fully simulated components
+- Real displays controllable from simulated firmware
+- Compatible with future multi-board and network simulation features
+
+Example use cases:
+
+Virtual LCD + real IMU
+Virtual buttons + real GPS
+Virtual controller + real sensor node
+Simulated firmware driving a real display
+Testing unsupported hardware without building the complete physical circuit
+
+> **Milestone**: A sketch can run entirely inside VEMCODE while simultaneously reading from physical sensors and driving physical hardware with no code changes between virtual and hybrid operation.
 ---
 
 ### Phase 14 — MicroPython / CircuitPython Support
