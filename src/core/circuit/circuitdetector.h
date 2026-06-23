@@ -33,6 +33,9 @@ struct DetectedComponent {
     std::string   pin_name;     // original #define name e.g. "LED_PIN"
     std::string   label;        // human readable e.g. "LED (pin 13)"
     bool          confirmed;    // true once runtime pin_changed fires for this pin
+
+    // String return
+    std::string to_string() const;
 };
 
 // Parses Arduino sketch source to infer what components are connected to which pins.

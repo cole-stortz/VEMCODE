@@ -1,9 +1,11 @@
 #include "src/core/circuit/circuitdetector.h"
+#include <cstddef>
 #include <regex>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
 #include <map>
+#include <string>
 
 void CircuitDetector::detect(const std::string& source) {
     reset();
@@ -637,4 +639,30 @@ bool CircuitDetector::pin_already_added(int pin) const {
     for (const auto& c : components_)
         if (c.pin == pin) return true;
     return false;
+}
+
+std::string DetectedComponent::to_string() const {
+    // pull the pin or pins, pin_name, and label
+    std::string result;
+
+    if (!pin_name.empty()){
+        result += "- Pin Name: " + pin_name + "\n";
+    }
+
+    if (!pins.empty()){
+        result += "- Pins: ";
+        for (const auto& p:pins) {
+            result += std::to_string(p) + ", ";
+        }
+        result += "\n";
+    } else {
+        result += "- Pin: ";
+        result += std::to_string(pin) + "\n";
+    }
+
+    if (!label.empty()) {
+        result += "- Label: " + label + "\n";
+    }
+
+    return result;
 }

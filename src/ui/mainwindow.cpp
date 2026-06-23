@@ -741,6 +741,12 @@ void MainWindow::onRunClicked() {
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
 
+    // Show detected components on the serial monitor
+    serialMonitor_->appendPlainText(QString::fromStdString("=== Components detected ===\n"));
+    for (const auto& comp : detector_.components())
+        serialMonitor_->appendPlainText(QString::fromStdString(comp.to_string()));
+    serialMonitor_->appendPlainText(QString::fromStdString("===========================\n"));
+
     // Same-pin-claimed-by-two-components warnings
     for (const auto& w : detector_.warnings())
         serialMonitor_->appendPlainText(QString::fromStdString(w) + "\n");
