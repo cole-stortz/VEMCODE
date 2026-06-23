@@ -324,7 +324,7 @@ VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, 
 
 ### Known limitations
 - Real electrical behavior (voltage, current, short circuits) — not in scope; VEMCODE simulates firmware logic, not analog electronics; use SimulIDE or LTspice for SPICE-level modeling
-- Sending signals from a simulated board to real physical hardware — a simulated board cannot drive actual hardware over a wire; the only remaining gap is the physical layer between simulation and the real world.
+- Hardware bridge features operate at a data layer only (planned). Physical devices can exchage data with the simulator, but electrical characteristics and wiring behavior are outside scope.
 
 See [ROADMAP.md](docs/ROADMAP.md) for planned features and future direction.
 
