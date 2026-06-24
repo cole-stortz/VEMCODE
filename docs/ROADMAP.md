@@ -1,4 +1,4 @@
-# VEMCODE — Roadmap
+# VEMCODE : Roadmap
 
 Completed phases are marked ✓. Active and future phases are in order of planned work.
 

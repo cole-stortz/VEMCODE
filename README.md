@@ -218,49 +218,7 @@ void loop() {
 
 The preprocessor automatically transforms your sketch into the VEMCODE runtime format. You never write any boilerplate.
 
-### String support
-
-The full `String` class is available:
-
-```cpp
-String msg = String("Count: ") + String(counter);
-Serial.println(msg);
-```
-
-### Variable watch
-
-Use `watch_variable` to monitor values in real time in the Variable Watch panel:
-
-```cpp
-watch_variable("counter", counter);
-watch_variable("sensor", analogRead(A0));
-```
-
-### Serial input
-
-Type into the serial monitor input box and hit Send (or Enter) to inject data into `Serial.available()` / `Serial.read()`:
-
-```cpp
-if (Serial.available() > 0) {
-    int c = Serial.read();
-    Serial.println(c);
-}
-```
-
-### Non-blocking patterns
-
-`millis()` works correctly for non-blocking timing:
-
-```cpp
-unsigned long last = 0;
-
-void loop() {
-    if (millis() - last >= 500) {
-        last = millis();
-        digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-    }
-}
-```
+See [SKETCH_GUIDE.md](docs/SKETCH_GUIDE.md) for more information on writing sketches.
 
 ---
 
@@ -281,6 +239,8 @@ Your sketch (.cpp)
 Hot-reload works by watching the sketch file for changes and reloading the shared library while the simulation is running.
 
 The board profile (selected in Settings or set through the sketch) drives pin count, analog mapping, PWM resolution, and the canvas graphic.
+
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for more information about how VEMCODE actually works.
 
 ### Project structure
 
