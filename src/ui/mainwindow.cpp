@@ -1085,10 +1085,31 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
         scan(std::regex(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)"));
     }
 
-    // 1. Pin out of range for selected board
+    // Shared helper — extract any named void function's body by brace-counting
+    auto extract_func_body = [&](const std::string& func_name) -> std::string {
+        std::regex func_re("\\bvoid\\s+" + func_name + R"(\s*\(\s*\)\s*\{)");
+        std::smatch m;
+        std::string s = src;
+        if (!std::regex_search(s, m, func_re)) return "";
+        size_t pos = static_cast<size_t>(m.position()) + m.length() - 1;
+        int depth = 1;
+        size_t start = pos + 1;
+        while (pos < src.size() - 1 && depth > 0) {
+            ++pos;
+            if (src[pos] == '{') ++depth;
+            else if (src[pos] == '}') --depth;
+        }
+        return src.substr(start, pos - start);
+    };
+
+    // Pre-extract loop and setup bodies for reuse across checks
+    std::string loop_body  = extract_func_body("loop");
+    std::string setup_body = extract_func_body("setup");
+
+    // Pin out of range for selected board
     for (const auto& [name, pin] : pin_defs) {
         if (!is_pin_name(name)) continue;
-        if (pin < 0 || pin >= 80) continue; // not a plausible pin number
+        if (pin < 0 || pin >= 80) continue;
         if (pin >= activeProfile_.pin_count) {
             warnings << QString("WARNING: Pin %1 ('%2') is not available on the %3 (max pin %4)")
                 .arg(pin)
@@ -1098,7 +1119,7 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
         }
     }
 
-    // 2. analogWrite() on a non-PWM pin
+    // analogWrite() on a non-PWM pin
     auto pwm_pins = get_pwm_pins_for(activeProfile_);
     if (!pwm_pins.empty()) {
         std::regex aw_re(R"((?:api->)?analogWrite\s*\(\s*(\w+))");
@@ -1120,8 +1141,7 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
         }
     }
 
-    // 3. attachInterrupt() with raw interrupt number (Uno/Nano: interrupt 0=pin 2, 1=pin 3)
-    // Deduplicate by interrupt number so a matching comment doesn't double the warning.
+    // attachInterrupt() with raw interrupt number (Uno/Nano: interrupt 0=pin 2, 1=pin 3)
     {
         std::string board = activeProfile_.name;
         if (board == "Arduino Uno" || board == "Arduino Nano") {
@@ -1139,32 +1159,15 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
         }
     }
 
-    // 4. delay() inside an attachInterrupt callback function
+    // delay() inside an attachInterrupt callback function
     {
-        // Extract function body by brace-counting from the opening {
-        auto func_body = [&](const std::string& func_name) -> std::string {
-            std::regex func_re("\\bvoid\\s+" + func_name + R"(\s*\(\s*\)\s*\{)");
-            std::smatch m;
-            std::string s = src;
-            if (!std::regex_search(s, m, func_re)) return "";
-            size_t pos = static_cast<size_t>(m.position()) + m.length() - 1;
-            int depth = 1;
-            size_t start = pos + 1;
-            while (pos < src.size() - 1 && depth > 0) {
-                ++pos;
-                if (src[pos] == '{') ++depth;
-                else if (src[pos] == '}') --depth;
-            }
-            return src.substr(start, pos - start);
-        };
-
         std::regex ai_re(R"(attachInterrupt\s*\([^,]+,\s*(\w+)\s*,)");
         std::set<std::string> warned_funcs;
         for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
              it != std::sregex_iterator(); ++it) {
             std::string fn = (*it)[1].str();
             if (warned_funcs.count(fn)) continue;
-            std::string body = func_body(fn);
+            std::string body = extract_func_body(fn);
             if (!body.empty() && body.find("delay(") != std::string::npos) {
                 warned_funcs.insert(fn);
                 warnings << QString("WARNING: delay() inside '%1' (used as an interrupt handler) will hang on real Arduino — interrupts are disabled during ISR execution")
@@ -1173,24 +1176,21 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
         }
     }
 
-    // 5. Pin defined as an expression (CircuitDetector cannot evaluate it)
+    // Pin defined as an expression (CircuitDetector cannot evaluate it)
     {
         std::regex def_re(R"(#\s*define\s+(\w+)\s+(.+))");
         for (auto it = std::sregex_iterator(src.begin(), src.end(), def_re);
              it != std::sregex_iterator(); ++it) {
             std::string name  = (*it)[1].str();
             std::string value = (*it)[2].str();
-            // Strip trailing comment and whitespace
             auto comment = value.find("//");
             if (comment != std::string::npos) value = value.substr(0, comment);
             while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r'))
                 value.pop_back();
-            // Only flag if the value contains arithmetic operators
             bool has_op = value.find('+') != std::string::npos ||
                           value.find('*') != std::string::npos ||
                           value.find('/') != std::string::npos ||
                           value.find("<<") != std::string::npos;
-            // '-' only counts as an operator if not at the start (negative literal)
             if (!has_op && value.size() > 1 && value.find('-') != std::string::npos)
                 has_op = (value.find('-') != 0 &&
                           !(value.find('-') == 1 && value[0] == '('));
@@ -1198,6 +1198,78 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
             if (!is_pin_name(name)) continue;
             warnings << QString("WARNING: Pin '%1' is defined as an expression — the simulator could not evaluate it and the component may not appear on the canvas; use a plain number instead")
                 .arg(QString::fromStdString(name));
+        }
+    }
+
+    // pinMode() never called for a digitalWrite() pin
+    {
+        std::set<int> dw_pins;
+        std::set<int> pm_pins;
+        std::regex dw_re(R"(digitalWrite\s*\(\s*(\w+))");
+        std::regex pm_re(R"(pinMode\s*\(\s*(\w+))");
+        auto collect_pins = [&](const std::regex& re, std::set<int>& out) {
+            for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
+                 it != std::sregex_iterator(); ++it) {
+                std::string token = (*it)[1].str();
+                int pin = -1;
+                try { pin = std::stoi(token); } catch (...) {
+                    auto def_it = pin_defs.find(token);
+                    if (def_it != pin_defs.end()) pin = def_it->second;
+                }
+                if (pin >= 0) out.insert(pin);
+            }
+        };
+        collect_pins(dw_re, dw_pins);
+        collect_pins(pm_re, pm_pins);
+        for (int pin : dw_pins) {
+            if (!pm_pins.count(pin)) {
+                warnings << QString("WARNING: Pin %1 is used with digitalWrite() but pinMode() was never called — it will default to INPUT on real hardware")
+                    .arg(pin);
+            }
+        }
+    }
+
+    // Missing volatile on ISR-shared variables
+    {
+        // Find all variables written inside attachInterrupt callbacks
+        std::set<std::string> isr_written;
+        std::regex ai_re(R"(attachInterrupt\s*\([^,]+,\s*(\w+)\s*,)");
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string fn = (*it)[1].str();
+            std::string body = extract_func_body(fn);
+            if (body.empty()) continue;
+            // Find assignments in ISR body: varName = or varName++/varName--
+            std::regex assign_re(R"(\b(\w+)\s*(?:=|\+=|-=|\+\+|--))" );
+            for (auto jt = std::sregex_iterator(body.begin(), body.end(), assign_re);
+                 jt != std::sregex_iterator(); ++jt) {
+                isr_written.insert((*jt)[1].str());
+            }
+        }
+        // Check if any ISR-written variables appear in loop/setup without volatile
+        for (const auto& var : isr_written) {
+            if (var.empty()) continue;
+            if (var.size() < 3) continue; // skip short names like i, n, x
+            // Check loop and setup bodies for reads of this variable
+            bool read_in_main = (loop_body.find(var) != std::string::npos ||
+                                 setup_body.find(var) != std::string::npos);
+            if (!read_in_main) continue;
+            // Check if declared volatile anywhere in source
+            std::regex vol_re(R"(\bvolatile\b[^;]*\b)" + var + R"(\b)");
+            if (!std::regex_search(src, vol_re)) {
+                warnings << QString("WARNING: '%1' is shared with an ISR but not declared volatile — this may work in simulation but will likely fail on real hardware")
+                    .arg(QString::fromStdString(var));
+            }
+        }
+    }
+
+    // String += in a tight loop
+    {
+        if (!loop_body.empty()) {
+            std::regex str_concat_re(R"(\bString\b[^;]*\+=)");
+            if (std::regex_search(loop_body, str_concat_re)) {
+                warnings << QString("WARNING: Repeated String concatenation in loop() causes heap fragmentation on real Arduino — consider using a char buffer instead");
+            }
         }
     }
 
