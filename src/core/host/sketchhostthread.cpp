@@ -73,6 +73,11 @@ void SketchThread::run() {
         emit lcdPrint(pin, row, QString::fromStdString(text));
     };  
 
+    // Watchdog
+    runtime.on_watchdog_reset = [this](){
+        emit watchdogReset();
+    };
+
     // Load the sketch DLL
     if (!host_.load(dll_path_.toStdString())) {
         emit loadFailed("Failed to load: " + dll_path_);

@@ -65,6 +65,9 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.soft_serial_read      = impl_soft_serial_read;
     api.soft_serial_peek      = impl_soft_serial_peek;
     api.register_isr          = impl_register_isr;
+    api.wdt_reset             = impl_wdt_reset;
+    api.wdt_enable            = impl_wdt_enable;
+    api.wdt_disable           = impl_wdt_disable;
     return api;
 }
 
@@ -452,4 +455,36 @@ int ArduinoRuntime::impl_soft_serial_peek(int rxPin) {
     auto it = g_runtime->state_.soft_serial_buffers_.find(rxPin);
     if (it == g_runtime->state_.soft_serial_buffers_.end() || it->second.empty()) return -1;
     return (int)(unsigned char)it->second.front();
+}
+
+void ArduinoRuntime::impl_wdt_reset(){
+    if(!g_runtime) return;
+
+    g_runtime->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
+}
+
+void ArduinoRuntime::impl_wdt_disable(){
+    if (!g_runtime) return;
+
+    g_runtime->state_.wdt_enabled_ = false;
+}
+
+void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
+    if (!g_runtime) return;
+    g_runtime->state_.wdt_enabled_   = true;
+    g_runtime->state_.wdt_timeout_ms_ = timeout_ms;
+    g_runtime->state_.wdt_last_reset_ = std::chrono::steady_clock::now(); // start the clock
+
+    ArduinoRuntime* rt = g_runtime; // capture before thread — g_runtime is thread_local
+    std::thread([rt]() {
+        while (rt->state_.wdt_enabled_ && !rt->stop_requested_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - rt->state_.wdt_last_reset_).count();
+            if (age_ms >= rt->state_.wdt_timeout_ms_) {
+                if (rt->on_watchdog_reset) rt->on_watchdog_reset();
+                return;
+            }
+        }
+    }).detach();
 }

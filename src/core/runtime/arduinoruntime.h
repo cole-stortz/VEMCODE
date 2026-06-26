@@ -38,6 +38,10 @@ struct RuntimeState {
     bool pin_driven[80] = {};  // true once a UI component has injected this pin
     int  pin_bounce_target[80] = {};
     std::map<int, std::chrono::steady_clock::time_point> pin_bounce_until_;
+    bool wdt_enabled_ = false;
+    int wdt_timeout_ms_ = 0;
+    std::chrono::steady_clock::time_point wdt_last_reset_;
+
 };
 
 class ArduinoRuntime {
@@ -54,6 +58,7 @@ public:
     std::function<void(const std::string&)> on_serial1_output;
     std::function<void(const std::string&)> on_serial2_output;
     std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
+    std::function<void()> on_watchdog_reset;
 
     void inject_pin(int pin, int value);
     void inject_button_bounce(int pin, int finalValue);
@@ -149,6 +154,9 @@ private:
     static int           impl_soft_serial_read     (int rxPin);
     static int           impl_soft_serial_peek     (int rxPin);
     static void          impl_register_isr         (const char* vector_name, void (*handler)());
+    static void          impl_wdt_reset            ();
+    static void          impl_wdt_enable           (int timeout_ms);
+    static void          impl_wdt_disable          ();
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

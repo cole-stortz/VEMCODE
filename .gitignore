@@ -49,6 +49,7 @@ compile_commands.json
 *.sln
 *.suo
 *.user
+*.directory
 
 # OS
 .DS_Store

@@ -77,6 +77,11 @@ struct ArduinoAPI {
 
     // ISR vector registration -- called from vb_setup() for each ISR(X_vect) in the sketch
     void (*register_isr)(const char* vector_name, void (*handler)());
+
+    // Watchdog Timer
+    void (*wdt_enable)(int timeout_ms);
+    void (*wdt_disable)();
+    void (*wdt_reset)();
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

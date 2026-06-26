@@ -41,6 +41,7 @@ signals:
     void sketchCrashed(QString reason);
     void variableChanged(QString name, int value);
     void lcdPrint(int pin, int row, QString text);
+    void watchdogReset();
 
 protected:
     void run() override;

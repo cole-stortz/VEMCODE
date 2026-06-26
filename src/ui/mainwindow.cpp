@@ -207,6 +207,12 @@ MainWindow::MainWindow(QWidget* parent)
                 runButton_->setEnabled(true);
                 stopButton_->setEnabled(false);
             });
+    connect(sketchThread_, &SketchThread::watchdogReset,
+            this, [this]() {
+                serialMonitor_->appendPlainText("WARNING: Watchdog reset — wdt_reset() was not called in time\n");
+                onStopClicked();
+                onRunClicked();
+            });
     connect(sketchThread_, &SketchThread::variableChanged,
             variableWatch_, &VariableWatch::onVariableChanged);
     connect(sketchThread_, &SketchThread::lcdPrint,

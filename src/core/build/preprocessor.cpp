@@ -92,6 +92,12 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Serial2.print(",   "api->Serial2_print(");
     s = replace_token(s, "Serial2.println(", "api->Serial2_println(");
 
+    // Watchdog
+    s = replace_token(s, "wdt_enable(", "api->wdt_enable(");
+    s = replace_token(s, "wdt_disable(", "api->wdt_disable(");
+    s = replace_token(s, "wdt_reset(", "api->wdt_reset(");
+    
+
     return s;
 }
 
@@ -110,6 +116,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "avr/interrupt",   nullptr },
         { "avr/io",          nullptr },
         { "util/delay",      nullptr },
+        { "avr/wdt",         nullptr },
     };
 
     // Standard C/C++ headers that the host compiler can find — don't warn about these
