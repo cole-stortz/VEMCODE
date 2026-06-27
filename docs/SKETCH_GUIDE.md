@@ -129,15 +129,39 @@ The circuit detector does not have the ability to handle functions set in the pi
 ---
 ## Supported Libraries
 
-### Servo
+**Overview:**
+All supported libraries have to be custom libraries that follow the same functionality but manipulated to work within VEMCODE. The program DOES NOT support normal arduino or other embedded libraries becasue of how VEMCODE simulates the runtime.
 
-### LiquidCrystal (LCD)
+### Servo
+The Servo library is a relativly simple library that just contains the class for creating a servo with all included functions and variables:
+- `int pin_` : stores the set pin -1 by default, if -1 its detached
+- `int angle_` : stores the set angle, 0 by default
+- `void attach(pin)` : Sets the set pin num
+- `void write(angle)` : Set the angle and analog writes to the pin
+- `int read()` : Returns stored angle 
+- `bool attached()` : returns pin if it is greater or equal to 0
+- `void detach()` : sets pin to be -1 to detach it
 
 ### SoftwareSerial
+- `int rxPin, txPin;` : stores where the rx and tx pin are outputed
+- `void begin(baud)` : sets the baud and begins the software serial
+- `void print(x)` : prints x which can be any type
+- `void println(x)` : prints x to a new line, x can be any type
+- `int available()` : 
+- `int read()` :
+- `int peek()` :
+- `void write()` : 
+- `bool listen()` : 
+- `bool isListening()` : 
+- `bool overflow()` : 
 
 ### EEPROM
+baked into the runtime
 
 ### avr/wdt.h (Watchdog Timer)
+baked into the runtime
+
+### liquidcrystal
 
 ---
 ## Interrupts
