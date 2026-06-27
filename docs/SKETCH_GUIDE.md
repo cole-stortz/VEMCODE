@@ -15,9 +15,6 @@ void setup() {
 	funciton that you want to run at boot. 
 		- EX: pinMode(COMP_NAME, INPUT);
 	*/
-	
-	//EX:
-	
 }
 
 void loop() {
@@ -33,9 +30,6 @@ void loop() {
 	delay(1); 
 }
 ```
-
-### Global Variables and Constants
-idk if i need this tbh :)
 ### Selecting a Board
 This could be accomplished through one of two ways, either you go through the settings menu where you can choose a board to simulate in a drop down menu, or can override that step though a initial comment in the sketch:
 - EX: `// @board Arduino Uno`, `// @board Teensy 4.1`, etc.
@@ -151,21 +145,45 @@ The circuit detector does not have the ability to handle functions set in the pi
 ### attachInterrupt
 
 ### ISR() Vector Macros
+`ISR(VECTOR_NAME) { }` blocks are transformed by the preprocessor before compilation — the AVR macro wrapper is stripped, the body is renamed to `__vb_isr_VECTOR_NAME()`, and a `register_isr()` call is injected into `vb_setup()` automatically. `#include <avr/interrupt.h>` and `#include <avr/io.h>` are stripped silently.
 
+Supported vectors and what triggers them:
+
+| Vector | Trigger |
+|---|---|
+| `INT0_vect` | Pin 2 state change |
+| `INT1_vect` | Pin 3 state change |
+| `PCINT0_vect` | Any pin 8–13 state change |
+| `PCINT1_vect` | Any pin 14–19 state change |
+| `PCINT2_vect` | Any pin 0–7 state change |
+| `USART_RX_vect` | User sends input via the serial monitor |
+
+Unsupported vectors (`TIMER1_OVF_vect`, `TIMER2_OVF_vect`, `TIMER1_COMPA_vect`, `WDT_vect`, etc.) are accepted without a compile error but will never fire — VEMCODE surfaces a warning: `"ISR vector 'X_vect' is not simulated — the handler will never fire"`.
 ### noInterrupts and interrupts
 
 ---
 ## AVR Compatibility
 
 ### PROGMEM and F() Macro
-
+`PROGMEM` is an AVR-specific GCC attribute for storing data in flash. On x86 there is no flash distinction, so VEMCODE defines it as empty — sketches using `PROGMEM` compile without errors and data lands in normal RAM.
+`F("string")` is defined as `(x)` — a no-op passthrough. Sketches using `F()` for flash string literals compile and run correctly without any changes.
 ### pgm_read_* Functions
-
+`pgm_read_byte`, `pgm_read_word`, `pgm_read_dword`, and `pgm_read_float` are defined as plain pointer dereferences in the injected header. `#include <avr/pgmspace.h>` is stripped silently.
 ### AVR Assembly (asm / __asm__)
+Inline assembly is transformed before compilation. Known instructions are mapped to their VEMCODE equivalents, everything else is stripped with a warning:
+- `nop` — stripped silently
+- `cli` → `api->noInterrupts()`
+- `sei` → `api->interrupts()`
+- Any unrecognized instruction — stripped with warning: `"Unrecognized assembly instruction 'X' removed"`
 
+Both `asm` and `__asm__` are handled, with or without `__volatile__`/`volatile` and constraint strings.
 ### #ifdef ARDUINO
-
+VEMCODE injects `#define ARDUINO 100` into the header, matching the value the real Arduino IDE defines. Sketches using `#ifdef ARDUINO` / `#ifndef ARDUINO` for cross-platform compatibility will take the correct branch.
 ### util/delay.h
+`#include <util/delay.h>` is stripped silently. VEMCODE injects the following definitions in its place:
+- `#define F_CPU 16000000UL`
+- `_delay_ms(ms)` → `api->delay(...)`
+- `_delay_us(us)` → `api->delayMicroseconds(...)`
 
 ---
 ## Multi-File Sketches
