@@ -11,10 +11,14 @@
             "id": "822bc0aa27b628c9",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "docs/SKETCH_GUIDE.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "SKETCH_GUIDE"
             }
           }
         ]
@@ -74,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "b79ac75f31a9250a",
@@ -181,23 +186,23 @@
   },
   "active": "822bc0aa27b628c9",
   "lastOpenFiles": [
+    "docs/SKETCH_GUIDE.md.tmp.893245.5cc6ffc9fb03",
+    "docs/SKETCH_GUIDE.md.tmp.893245.0cfed426329f",
+    "docs/SKETCH_GUIDE.md.tmp.893245.75c172baabab",
+    "docs/SKETCH_GUIDE.md.tmp.893245.9970f173de26",
+    "build/compile_commands.json.tmp58e04",
+    "build/CMakeFiles/rules.ninja.tmpcc3c1",
+    "build/build.ninja.tmpd134d",
     "build/compile_commands.json.tmpf9798",
     "build/CMakeFiles/rules.ninja.tmp87c88",
     "build/build.ninja.tmp12653",
     "docs/ROADMAP.md",
     "docs/ARCHITECTURE.md",
     "build/CMakeFiles/rules.ninja.tmpec957",
-    "build/build.ninja.tmp17a96",
     "docs/ADDING_COMPONENTS.md",
     "docs/demo.gif",
     "docs/SKETCH_GUIDE.md",
     "home/cdstortz/VEMCODE/docs/ADDING_COMPONENTS.md",
-    "home/cdstortz/VEMCODE/docs",
-    "home/cdstortz/VEMCODE",
-    "home/cdstortz",
-    "home",
-    "build/compile_commands.json.tmp79278",
-    "build/CMakeFiles/rules.ninja.tmp7f998",
     "README.md",
     "docs/led_demo.gif"
   ]
