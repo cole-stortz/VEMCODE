@@ -143,6 +143,7 @@ The Servo library is a relativly simple library that just contains the class for
 - `void detach()` : sets pin to be -1 to detach it
 
 ### SoftwareSerial
+The Software Serial library is very similar to our current prints, but with new functions like read and peek to add serial communication functionality.
 - `int rxPin, txPin;` : stores where the rx and tx pin are outputed
 - `void begin(baud)` : sets the baud and begins the software serial
 - `void print(x)` : prints x which can be any type
@@ -156,12 +157,30 @@ The Servo library is a relativly simple library that just contains the class for
 - `bool overflow()` : 
 
 ### EEPROM
-baked into the runtime
+The preprocessor just strips this in the code because the EEPROM library is baked into the runtime instead of it being seperated into a custom header file.
+- `void EEPROM_write(int address, uint8_t value)` : 
+- `uint8_t EEPROM_read(int address)` : 
+- `void EEPROM_update(int address, int value)` : 
 
 ### avr/wdt.h (Watchdog Timer)
-baked into the runtime
+The preprocessor just strips this in the code because the watchdog library is baked into the runtime instead of it being seperated into a custom header file.
+- `void wdt_enable(int timeout_ms)` :
+- `void wdt_disable()` :
+- `void wdt_reset()` :
 
 ### liquidcrystal
+The Liquid Crystal library is a helper method for making working with LCD screen more intuitive, spesifically the supported 16x2 LCD screen component. 
+- `int rs_, row, col_` : 
+- `char buf_[2][17]` :
+- `void flush_(int row)` :
+- `LiquidCrystal(int rs, int, int, int, int, int): rs_(rs), row_(0), col_(0)`
+  - 
+- `void begin(int, int)` :
+- `void clear()` :
+- `void setCursot(int col, int row)` :
+- `void write(char c)` :
+- `void print()` :
+- `void createChar(uint8_t, uint8_t*)` :
 
 ---
 ## Interrupts
@@ -211,28 +230,40 @@ VEMCODE injects `#define ARDUINO 100` into the header, matching the value the re
 
 ---
 ## Multi-File Sketches
+Any included custom .h and c++ files will be included in the compiler pass as long as they are in the same directory as the loaded/main sketch file.
 
 ---
 ## Debugging Tools
 
 ### Serial Monitor
+The serial montor works as expected as a serial output for the sketch (`Serial.print()`, `Serial.println()`, etc). The serial monitor panel adapts to the selected board and checks how many supported serial monitors are available, Arudino Uno has 1, Teensy 4.1 has 3, etc.
 
 ### Variable Watch
+The variable watch pannel shows a table with two columns, Variable and Value. The Variables are added by adding this line of code to your sketch to track it:
+```c++
+watch_variable("LABEL", value);
+```
 
 ### Signal Timeline
+The signal timeline shows a simple logic analyzer style graph showing the changing values of HIGH and LOW over time. The pins are automatically added to the list if the pin's value is changed.
 
 ---
 ## Differences from Real Hardware
 
 ### Timing
+VEMCODE has trouble simulating code that runs at sub millisecond level timing and needs to be consistent. This is unnavoidable because we are simulating on an x86 system with inconsistent timing at that level.
 
 ### Speed Slider and Timing Functions
+The Speed slider is a way to adjust the simulation speed of your sketch by modifying every timing funciton that simulates a sleep on the processor like a `delay()`. Since it is just a multiplication on how fast the delay and other timing functions are processed, it could cause inconsistencies at faster speeds.
 
 ### Floating INPUT Pins
+If a pin is read that is not attached to a component, VEMCODE simulates the floating pin by returning a random value to approximate what a floating pin does.
 
 ### Button Bounce
+VEMCODE emulates button bounce when a default button is called. This can be disabled by changing the detected button to be a clean or ideal button. This can be done by changing the funciton call to add IDEAL or CLEAN to it.
 
 ### EEPROM Persistence
+
 
 ### ISR Timing
 
