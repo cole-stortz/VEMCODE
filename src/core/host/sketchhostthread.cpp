@@ -78,6 +78,11 @@ void SketchThread::run() {
         emit watchdogReset();
     };
 
+    // Sleep
+    runtime.on_sleep_changed = [this](bool sleeping) {
+        emit sleepChanged(sleeping);
+    };
+
     // Load the sketch DLL
     if (!host_.load(dll_path_.toStdString())) {
         emit loadFailed("Failed to load: " + dll_path_);

@@ -223,6 +223,21 @@ inline void noTone(int pin)                               { api->noTone(pin); }
 
 inline int digitalPinToInterrupt(int pin) { return pin; }
 
+// Sleep mode constants (matching AVR values)
+#define SLEEP_MODE_IDLE        0
+#define SLEEP_MODE_ADC         1
+#define SLEEP_MODE_PWR_DOWN    2
+#define SLEEP_MODE_PWR_SAVE    3
+#define SLEEP_MODE_STANDBY     6
+#define SLEEP_MODE_EXT_STANDBY 7
+
+// sleep_mode() convenience: enable → cpu → disable (mirrors avr/sleep.h macro)
+inline void sleep_mode() {
+    api->sleep_enable();
+    api->sleep_cpu();
+    api->sleep_disable();
+}
+
 // Watchdog definitions
 #define WDTO_15MS   15
 #define WDTO_30MS   30

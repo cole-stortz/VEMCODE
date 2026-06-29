@@ -42,6 +42,7 @@ signals:
     void variableChanged(QString name, int value);
     void lcdPrint(int pin, int row, QString text);
     void watchdogReset();
+    void sleepChanged(bool sleeping);
 
 protected:
     void run() override;

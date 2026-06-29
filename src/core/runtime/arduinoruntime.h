@@ -2,7 +2,9 @@
 #include "src/core/runtime/arduinoapi.h"
 #include "src/core/runtime/boardprofile.h"
 #include <chrono>
+#include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <atomic>
 #include <deque>
@@ -41,6 +43,11 @@ struct RuntimeState {
     bool wdt_enabled_ = false;
     int wdt_timeout_ms_ = 0;
     std::chrono::steady_clock::time_point wdt_last_reset_;
+    int sleep_mode_ = 0;
+    bool sleep_enabled_ = false;
+    bool sleep_woken_ = false;
+    std::condition_variable sleep_cv_;
+    std::mutex sleep_mtx_;
 
 };
 
@@ -59,6 +66,7 @@ public:
     std::function<void(const std::string&)> on_serial2_output;
     std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
     std::function<void()> on_watchdog_reset;
+    std::function<void(bool)> on_sleep_changed;
 
     void inject_pin(int pin, int value);
     void inject_button_bounce(int pin, int finalValue);
@@ -72,7 +80,10 @@ public:
     }
     void set_speed_multiplier(float speed);
 
-    void request_stop() { stop_requested_ = true;  }
+    void request_stop() {
+        stop_requested_ = true;
+        state_.sleep_cv_.notify_all();
+    }
     void clear_stop()   { stop_requested_ = false; }
 
     void inject_serial(const std::string& data) {
@@ -157,6 +168,11 @@ private:
     static void          impl_wdt_reset            ();
     static void          impl_wdt_enable           (int timeout_ms);
     static void          impl_wdt_disable          ();
+    static void          impl_set_sleep_mode       (int mode);
+    static void          impl_sleep_enable         ();
+    static void          impl_sleep_disable          ();
+    static void          impl_sleep_cpu            ();
+        
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

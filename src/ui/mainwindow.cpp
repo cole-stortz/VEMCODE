@@ -213,6 +213,10 @@ MainWindow::MainWindow(QWidget* parent)
                 onStopClicked();
                 onRunClicked();
             });
+    connect(sketchThread_, &SketchThread::sleepChanged,
+            this, [this](bool sleeping) {
+                statusBar()->showMessage(sleeping ? "Sleeping…" : "Running");
+            });
     connect(sketchThread_, &SketchThread::variableChanged,
             variableWatch_, &VariableWatch::onVariableChanged);
     connect(sketchThread_, &SketchThread::lcdPrint,

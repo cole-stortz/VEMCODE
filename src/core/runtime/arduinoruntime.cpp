@@ -68,6 +68,10 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.wdt_reset             = impl_wdt_reset;
     api.wdt_enable            = impl_wdt_enable;
     api.wdt_disable           = impl_wdt_disable;
+    api.set_sleep_mode        = impl_set_sleep_mode;
+    api.sleep_enable          = impl_sleep_enable;
+    api.sleep_disable         = impl_sleep_disable;
+    api.sleep_cpu             = impl_sleep_cpu;
     return api;
 }
 
@@ -124,6 +128,12 @@ void ArduinoRuntime::impl_digitalWrite(int pin, int value) {
     if (pin >= 0  && pin <= 7)  dispatch_vec("PCINT2_vect"); // port D
     if (pin >= 8  && pin <= 13) dispatch_vec("PCINT0_vect"); // port B
     if (pin >= 14 && pin <= 19) dispatch_vec("PCINT1_vect"); // port C (A0-A5)
+
+    if (g_runtime->state_.sleep_enabled_) {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.sleep_mtx_);
+        g_runtime->state_.sleep_woken_ = true;
+        g_runtime->state_.sleep_cv_.notify_all();
+    }
 }
 
 int ArduinoRuntime::impl_digitalRead(int pin) {
@@ -482,9 +492,45 @@ void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
             auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - rt->state_.wdt_last_reset_).count();
             if (age_ms >= rt->state_.wdt_timeout_ms_) {
+                if (rt->state_.sleep_enabled_) {
+                    std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+                    rt->state_.sleep_woken_ = true;
+                    rt->state_.sleep_cv_.notify_all();
+                }
                 if (rt->on_watchdog_reset) rt->on_watchdog_reset();
                 return;
             }
         }
     }).detach();
+}
+
+void ArduinoRuntime::impl_set_sleep_mode(int mode) {
+    if (!g_runtime) return;
+    g_runtime->state_.sleep_mode_ = mode;
+}
+
+void ArduinoRuntime::impl_sleep_enable() {
+    if (!g_runtime) return;
+    g_runtime->state_.sleep_enabled_ = true;
+}
+
+void ArduinoRuntime::impl_sleep_disable() {
+    if (!g_runtime) return;
+    g_runtime->state_.sleep_enabled_ = false;
+}
+
+void ArduinoRuntime::impl_sleep_cpu() {
+    if (!g_runtime || !g_runtime->state_.sleep_enabled_) return;
+
+    if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(true);
+
+    {
+        std::unique_lock<std::mutex> lock(g_runtime->state_.sleep_mtx_);
+        g_runtime->state_.sleep_woken_ = false;
+        g_runtime->state_.sleep_cv_.wait(lock, [] {
+            return g_runtime->state_.sleep_woken_ || g_runtime->stop_requested_.load();
+        });
+    }
+
+    if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(false);
 }
