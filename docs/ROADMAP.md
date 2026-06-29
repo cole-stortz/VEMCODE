@@ -217,56 +217,66 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 ### Phase 8 — Component Plugin System + Generator + New Components
 
-Pull the component plugin architecture forward so that all new components added in this phase and beyond use the new system from day one. The dev component generator is built on top of the clean plugin architecture so that adding new components never requires manually touching `CircuitDetector`, `CanvasWidget`, or any of the seven files in the adding-components checklist.
+Pull the component plugin architecture forward so that all new components added in this phase and beyond use the new system from day one. The dev component generator is built last, on top of the stable plugin foundation.
 
-**Plugin system refactor:**
-- [ ] `ComponentDefinition` struct in `src/core/circuit/componentregistry.h` — holds `type`, `detect_single` keyword list, `detect_multi` pin-role map, `detect_pattern` source pattern list, `min_pins`/`max_pins`, and `create_item` factory function
-- [ ] `ComponentRegistry` singleton in `src/core/circuit/componentregistry.cpp` — flat list of definitions; all component files self-register at static init time
-- [ ] `ComponentItem` base class inheriting `QGraphicsObject` — defines the `paint()` and `setState(QVariant)` interface; initial visuals are the same colored rectangles as today — no visual regression, just structural
-- [ ] `CircuitDetector` refactored to loop over the registry instead of hardcoded if-chains — becomes a generic detection engine with no component-specific knowledge; detection runs in three confidence tiers in order: (1) `detect_pattern` source patterns first — library method calls and characteristic multi-call sequences that unambiguously identify a component (e.g. `myServo.attach(`, `lcd.begin(`, `pulseIn(` paired with a trig/echo timing sequence); (2) `detect_multi` pin-role matching for multi-pin components whose patterns didn't fire; (3) `detect_single` keyword matching against `#define` names as the final fallback — a match at a higher tier short-circuits the lower tiers so a sketch using `Servo.attach()` gets a Servo regardless of what the pin is named
-- [ ] `CanvasWidget` refactored to call `def.create_item(pin, parent)` from the registry — no per-type switch blocks
-- [ ] Each existing component migrated to its own file in `src/components/` (e.g. `led.cpp`, `servo.cpp`, `button.cpp`, `distancesensor.cpp`, `lcd.cpp`, etc.) — components that already benefit from pattern detection (Servo via `.attach(`, LCD via `LiquidCrystal` constructor, HC-SR04 via `pulseIn` + trig/echo sequence) get their `detect_pattern` entries written during migration
-- [ ] `CMakeLists.txt` updated to glob `src/components/*.cpp` — new component files picked up by the build automatically with no CMake edits
+**Implementation order:** foundation → component migration → detector/canvas refactor → new components → generator.
 
-**Dev component generator:**
+**Step 1 — Foundation:**
+- [ ] `ComponentEventType` enum in `src/core/circuit/componentitem.h` — typed events that input components emit upward: `DigitalPress` (int 0/1), `BouncePress` (int 0/1), `AnalogValue` (int 0–1023), `PulseUs` (qulonglong microseconds), `ColorRGB` (QVariantList {r, g, b, s2_pin, s3_pin}); new Phase 8 components add entries to this enum as needed
+- [ ] `ComponentItem` base class in `src/core/circuit/componentitem.h/.cpp` — inherits `QGraphicsObject`; pure `boundingRect()` and `paint()`; virtual `onPinChanged(int value)` (no-op default, overridden by output components); virtual `updateText(int row, const QString& text)` (no-op default, overridden by LCD); `Q_SIGNAL void inputChanged(int pin, int eventType, QVariant value)` (emitted by input components from their own mouse event overrides); stores `pin_` set in constructor
+- [ ] `ComponentDefinition` struct in `src/core/circuit/componentregistry.h` — holds `type_name`, `detect_single` keyword list, `detect_multi` pin-role map, `detect_pattern` source pattern list, `is_output` flag, and `create_item` factory (`std::function<ComponentItem*(int pin, QGraphicsItem*)>`); `DetectedComponent` in `circuitdetector.h` switches from `ComponentType type` (enum) to `std::string type_name`; the `ComponentType` enum is deleted entirely — `CanvasWidget` and all callers look up by `type_name` string from this point forward
+- [ ] `ComponentRegistry` singleton in `src/core/circuit/componentregistry.cpp` — flat `std::vector<ComponentDefinition>`; `register_component()` called from each component file's static initializer; `find_by_type()` used by `CanvasWidget`
+- [ ] `CMakeLists.txt` updated to glob `src/components/*.cpp` — new component files added by dropping a file, no CMake edits needed
 
-A dev-only panel accessible under Settings → Developer Tools (hidden in normal builds, visible when VEMCODE is built in dev mode via a CMake flag). Fills out a form and writes all necessary files and edits automatically.
+**Step 2 — Component migration (one file per component in `src/components/`):**
+- [ ] `led.cpp` — output; `onPinChanged` sets active/inactive color; keywords: `LED`, `LAMP`, `DIODE`, `INDICATOR` (unambiguous output-only terms; `LIGHT` belongs to analogsensor only)
+- [ ] `button.cpp` — input; overrides `mousePressEvent`/`mouseReleaseEvent`, emits `BouncePress`; keywords: `BUTTON`, `BTN`, `TACT`, `PUSH`; `ButtonClean` variant (`CLEAN`, `IDEAL` prefix) emits `DigitalPress` instead
+- [ ] `switch.cpp` — input; click toggles latched state, emits `DigitalPress`; keywords: `SWITCH`, `TOGGLE`, `RELAY`
+- [ ] `buzzer.cpp` — output; `onPinChanged` shows active indicator; keywords: `BUZZER`, `PIEZO`, `SPEAKER`, `BEEPER`
+- [ ] `servo.cpp` — output; `onPinChanged` updates angle label; detect pattern: `.attach(`; keywords: `SERVO`
+- [ ] `potentiometer.cpp` — input; overrides `mouseMoveEvent` for drag, emits `AnalogValue`; keywords: `POT`, `POTENTIOMETER`, `KNOB`, `DIAL`
+- [ ] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
+- [ ] `distancesensor.cpp` — input; text field (cm → µs), emits `PulseUs`; detect pattern: `pulseIn(` paired with trig/echo timing; keywords: `TRIG`, `ECHO`, `DISTANCE`, `ULTRASONIC`, `SONAR`, `HCSR`
+- [ ] `hbridgemotor.cpp` — output; `onPinChanged` updates speed/direction label; multi-pin role map (PWM, CWISE, ANTI_CWISE); keywords: `MOTOR`, `HBRIDGE`, `ENA`, `IN1`
+- [ ] `colorsensor.cpp` — input; R/G/B text fields, emits `ColorRGB`; multi-pin role map (OUT, S2, S3); detect pattern: `pulseIn(` on a pin with `S2`/`S3` siblings; keywords: `COLOR`, `TCS`, `S2`, `S3`
+- [ ] `lcd.cpp` — output; `onPinChanged` not used; overrides `updateText(int row, const QString& text)` to update its own row labels; `CanvasWidget::updateLcdText(int pin, int row, const QString& text)` stays as a public method but routes through `pinItems_[pin]->updateText(row, text)` instead of separate QMaps; detect pattern: `LiquidCrystal`; multi-pin role map (RS, EN, D4–D7); RS pin is representative
 
-The generator UI has four sections:
+**Step 3 — Detector and canvas refactor:**
+- [ ] `CircuitDetector` refactored to loop over the registry — detection runs in three confidence tiers: (1) `detect_pattern` source patterns first (unambiguous library calls like `myServo.attach(`, `lcd.begin(`, `pulseIn(` + trig/echo pair); (2) `detect_multi` pin-role matching for multi-pin components; (3) `detect_single` keyword matching as final fallback; a match at a higher tier short-circuits the lower tiers; no component-specific knowledge remains in `CircuitDetector` itself
+- [ ] `CanvasWidget::refresh()` calls `registry.find_by_name(comp.type_name).create_item(pin, nullptr)` for each detected component — `scene_->addItem(item)` and `connect(item, &ComponentItem::inputChanged, this, &CanvasWidget::onComponentInput)` is the entire per-component setup; no per-type switch blocks
+- [ ] `CanvasWidget::updatePin()` calls `item->onPinChanged(value)` — items update their own visuals; `pinItems_` map changes type from `QGraphicsRectItem*` to `ComponentItem*`; all per-type QMaps (`servoLabels_`, `lcdRow0Labels_`, `motorStates_`, etc.) move into the component items themselves
+- [ ] All mouse handling removed from `CanvasWidget::mousePressEvent/Release/MoveEvent` — input components handle their own events via `QGraphicsObject` mouse overrides; `CanvasWidget` mouse overrides deleted or reduced to scene fallthrough only
+- [ ] `CanvasWidget` gains one forwarding slot `onComponentInput(int pin, int eventType, QVariant)` that re-emits `inputChanged` up to `MainWindow` — the only signal `CanvasWidget` exposes for component interaction
+- [ ] `MainWindow` refactored to one `onComponentInput(int pin, int eventType, QVariant)` slot with a switch on `ComponentEventType` — dispatches to the correct `sketchThread_->inject_*` call; all per-component signal/slot pairs removed
 
-- [ ] **Identity** — component name, display label, and detection keywords (comma-separated); single-pin or multi-pin toggle; if multi-pin, a list of named pin roles (e.g. TRIG, ECHO) each with their own keyword list and an `infer_type` flag marking which role is the representative pin
-- [ ] **Detection patterns** — optional list of source code patterns that identify this component with high confidence regardless of pin naming; each entry is a string or sequence of strings that must all appear in the sketch source (e.g. `.attach(` for Servo, `lcd.begin(` for LCD); patterns are checked before keyword matching and a pattern match takes priority; leaving this section empty falls back to keyword-only detection
-- [ ] **Interaction** — what the user can do with the component on the canvas; options are None (output only), Click (button/switch style), Click and Drag (potentiometer style), and Text Input (sensor value field); selecting an interaction type shows the relevant config fields (e.g. drag axis and value range for potentiometer style)
-- [ ] **API functions** — a list of new `ArduinoAPI` entries this component needs, each with a function name, return type, and parameter list; optional preprocessor replacement string if the sketch-facing name differs from the `api->` name; optional injected header wrapper for overloads or default arguments
-- [ ] **Preview** — before committing, shows a diff-style view of every file that will be created or modified; a single Generate button commits all changes at once
+**Step 4 — New simple components:**
+- [ ] RGB LED — three PWM pins (R, G, B); `onPinChanged` blends channel values into a colored circle; detected from `#define` pin names containing `RED`/`GREEN`/`BLUE` as a group
+- [ ] Rotary encoder — two digital pins (CLK/DT) plus optional button; canvas shows a turn counter; pairs naturally with `attachInterrupt`; keywords: `CLK`, `DT`, `ENCODER`, `ROTARY`
 
-**What the generator writes:**
-- [ ] `src/components/yourcomponent.cpp` — `ComponentItem` subclass with detection keywords, detection patterns, pin roles, and `paint()` stub; self-registers with `ComponentRegistry` at static init time
-- [ ] Appends new function pointers to the end of `ArduinoAPI` struct in `arduinoapi.h`
-- [ ] Appends `impl_*` static declarations to `arduinoruntime.h`
-- [ ] Appends `impl_*` implementations to `arduinoruntime.cpp`
-- [ ] Appends `get_api()` assignments in `arduinoruntime.cpp`
-- [ ] Appends preprocessor replacement lines to `preprocessor.cpp`
-- [ ] Appends injected header declarations or wrappers to `injected_header.inc` and flags that a cmake re-run is needed
-- [ ] If an inject path is needed (sensor with a canvas input field), generates the full chain: `inject_xxx` in `ArduinoRuntime`, delegator in `SketchHost`, slot in `SketchThread`, signal declaration in `CanvasWidget`, and connection in `MainWindow`
+**Step 5 — New complex components:**
+- [ ] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; canvas shows dual sliders and a clickable button; emits `AnalogValue` per axis and `DigitalPress` for the button; keywords: `JOYSTICK`, `JOY`, `VRX`, `VRY`
+- [ ] Stepper motor — step count and direction tracked from STEP/DIR or IN1–IN4 pin patterns; canvas displays a position counter and rotation indicator; keywords: `STEP`, `DIR`, `STEPPER`
+- [ ] Keypad matrix — 4×4 or 3×4; detected from row/col define groups; clickable grid on canvas; keywords: `ROW`, `COL`, `KEYPAD`
+- [ ] DHT11 / DHT22 — temperature and humidity; `#include <DHT.h>` stripped and replaced with injected class; `dht.read()` returns canvas-injected values; canvas shows temperature + humidity input fields; detect pattern: `DHT(`; keywords: `DHT`, `DHTPIN`, `DHT_PIN`
 
-**New simple components:**
-- [ ] RGB LED — three PWM pins (R/G/B), detected from `#define` pin names; canvas shows a colored circle that blends the three channel values in real time
-- [ ] Rotary encoder — two digital pins (CLK/DT) plus optional button pin; canvas shows a turn dial; pairs with `attachInterrupt` for accurate pulse counting
-
-**New complex components:**
-- [ ] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; detected from `#define` pin names; canvas shows dual sliders and a clickable button
-- [ ] Stepper motor — step count and direction tracked from STEP/DIR or IN1-IN4 pin patterns; canvas displays a position counter and rotation indicator
-- [ ] Keypad matrix — 4x4 or 3x4, detected from defines, clickable grid on canvas
-- [ ] DHT11 / DHT22 sensor — temperature and humidity; single-pin 1-wire timing protocol; `#include <DHT.h>` stripped and replaced with an injected class; constructor stores pin and sensor type; `dht.read()` returns the canvas-injected temperature/humidity values; canvas shows a temperature + humidity input widget; detected from `DHT_PIN` / `DHTPIN` keyword patterns or `DHT(` constructor call
-
-**New display components:**
+**Step 6 — New display components:**
 - [ ] 7-segment display — single and multi-digit, segment-accurate rendering
-- [ ] MAX7219 LED matrix — `LedControl.h` injection (`.inc` file); `ComponentItem` renders an 8x8 grid of cells toggled by row/column data from `setLed` / `setRow` / `setColumn`; `setIntensity` and `shutdown` stubbed; CS/CLK/DIN pins detected via the multi-pin role map in the component definition
+- [ ] MAX7219 LED matrix — `LedControl.h` injection (`.inc` file); renders an 8×8 grid toggled by `setLed`/`setRow`/`setColumn`; `setIntensity` and `shutdown` stubbed; CS/CLK/DIN multi-pin role map
 - [ ] Basic OLED — text and simple graphics (SSD1306-compatible); `Adafruit_SSD1306.h` or `U8g2` injection
 - [ ] NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length; `Adafruit_NeoPixel.h` injection
 
-> **Milestone:** All existing components registered through the plugin system with three-tier detection; adding a new component requires filling out the generator form and clicking Generate with no manual file editing; RGB LED, rotary encoder, joystick, keypad, 7-segment, OLED, and NeoPixel sketches all run on the canvas.
+**Step 7 — Dev component generator (last):**
+
+A dev-only panel under Settings → Developer Tools, hidden in release builds, visible when built with `-DVEMCODE_DEV=ON`. Built on top of the stable plugin interface established in Steps 1–6.
+
+- [ ] **Identity** — component name, display label, detection keywords (comma-separated); single-pin or multi-pin toggle; if multi-pin, named pin roles each with their own keyword list and an `is_representative` flag
+- [ ] **Detection patterns** — optional source patterns that fire before keyword matching; each entry is a string that must appear in the sketch source
+- [ ] **Interaction** — None (output only), Click, Click and Drag, or Text Input; shows relevant config fields per selection
+- [ ] **API functions** — new `ArduinoAPI` entries: function name, return type, parameter list; optional preprocessor replacement string; optional injected header wrapper
+- [ ] **Preview** — diff-style view of every file that will be created or modified before committing; single Generate button writes everything at once
+- [ ] **What the generator writes:** `src/components/yourcomponent.cpp` (self-registering `ComponentItem` subclass); appends to `arduinoapi.h`, `arduinoruntime.h`, `arduinoruntime.cpp` (impl + get_api), `preprocessor.cpp`, `injected_header.inc`; if a canvas input field is needed, adds an entry to `ComponentEventType` and one case to `MainWindow::onComponentInput`
+
+> **Milestone:** All existing components registered through the plugin system with three-tier detection; `CircuitDetector` and `CanvasWidget` contain no per-component knowledge; adding a new component is a single self-contained file; RGB LED, rotary encoder, joystick, keypad, DHT, 7-segment, OLED, and NeoPixel sketches all run on the canvas.
 
 ---
 
