@@ -140,7 +140,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
   - [ ] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow from Phase 9 timer register simulation
   - [ ] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B (`OCR1A` / `OCR1B`)
   - [x] `USART_RX_vect` → fires when the user sends input via the serial monitor (`inject_serial`)
-  - [ ] `WDT_vect` → watchdog timeout in interrupt mode (rather than triggering a reset); coexists with the `avr/wdt.h` simulation
+  - [x] `WDT_vect` → watchdog timeout in interrupt mode (rather than triggering a reset); coexists with the `avr/wdt.h` simulation
   - [x] Unknown vectors → surfaced as a warning: *"ISR vector 'X_vect' is not simulated — the handler will never fire"* rather than a silent compile failure
 - [x] `noInterrupts()` / `interrupts()` — track enabled state in `RuntimeState::interrupts_enabled_`; preprocessor replaces calls with `api->` prefixed versions
 - [x] `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte `std::array<uint8_t, 1024>` in `RuntimeState`; bounds-checked (out-of-range returns `0xFF`); `update()` skips write if value unchanged; `#include <EEPROM.h>` stripped by preprocessor; no disk persistence between sessions
@@ -162,9 +162,9 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
   - [x] `__asm__("nop")` → stripped silently
   - [x] `__asm__("cli")` → `api->noInterrupts()`
   - [x] `__asm__("sei")` → `api->interrupts()`
-  - [ ] `__asm__("sleep")` → stripped with note
-  - [ ] `__asm__("wdr")` → stripped with note
-  - [ ] `__asm__("rjmp 0")` → stripped with note
+  - [x] `__asm__("sleep")` → stripped with note
+  - [x] `__asm__("wdr")` → stripped with note
+  - [x] `__asm__("rjmp 0")` → stripped with note
   - [x] Unrecognized instruction → stripped with warning: *"Unrecognized assembly instruction 'X' removed"*
 - [x] `PROGMEM` keyword compatibility — `const char text[] PROGMEM = "..."` is common in real sketches for flash storage; `PROGMEM` is an AVR-specific GCC attribute that doesn't exist on x86; define it as empty (`#define PROGMEM`) in the injected header so sketches using it compile without errors
 - [x] `#ifdef ARDUINO` / `#ifndef ARDUINO` — common pattern in cross-platform sketches that lets code detect whether it's running on real hardware; VEMCODE doesn't define `ARDUINO` so the wrong branch compiles; fix is one line in the injected header: `#define ARDUINO 100` (matching the value the real Arduino IDE defines)

@@ -497,8 +497,17 @@ void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
                     rt->state_.sleep_woken_ = true;
                     rt->state_.sleep_cv_.notify_all();
                 }
-                if (rt->on_watchdog_reset) rt->on_watchdog_reset();
-                return;
+                auto isr_it = rt->state_.isr_handlers_.find("WDT_vect");
+                if (isr_it != rt->state_.isr_handlers_.end() && isr_it->second) {
+                    // Interrupt mode: fire ISR, reset timer, keep watching
+                    rt->state_.interrupts_enabled_ = false;
+                    isr_it->second();
+                    rt->state_.interrupts_enabled_ = true;
+                    rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
+                } else {
+                    if (rt->on_watchdog_reset) rt->on_watchdog_reset();
+                    return;
+                }
             }
         }
     }).detach();
