@@ -7,7 +7,7 @@
    viewBox="0 0 210 297"
    version="1.1"
    id="svg1"
-   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
    sodipodi:docname="logo_idea.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.9069924"
-     inkscape:cx="267.91845"
-     inkscape:cy="448.18457"
+     inkscape:zoom="1.1274147"
+     inkscape:cx="442.60554"
+     inkscape:cy="452.80586"
      inkscape:window-width="1737"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -1019,16 +1019,16 @@
     </g>
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:800;font-stretch:normal;font-size:22.007px;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono, Ultra-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;writing-mode:lr-tb;direction:ltr;fill:#404040;fill-opacity:1;stroke-width:0.388931;stroke-dasharray:none"
-       x="206.8264"
-       y="96.813515"
+       style="font-style:normal;font-variant:normal;font-weight:800;font-stretch:normal;font-size:33.4671px;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono, Ultra-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;writing-mode:lr-tb;direction:ltr;fill:#404040;fill-opacity:1;stroke-width:0.591466;stroke-dasharray:none"
+       x="210.62054"
+       y="103.71936"
        id="text168-5-6"
        transform="matrix(0.95876985,0.51555591,-1.1349594,0.43270549,0,0)"><tspan
          sodipodi:role="line"
          id="tspan169"
-         x="206.8264"
-         y="96.813515"
-         style="stroke-width:0.388931">VC</tspan></text>
+         x="210.62054"
+         y="103.71936"
+         style="stroke-width:0.591466">V</tspan></text>
     <g
        id="g9-1-3"
        transform="matrix(0.15661427,0,0,0.15661427,85.597341,83.396074)">
@@ -1085,13 +1085,5 @@
          y="171.54012"
          transform="matrix(-0.89415698,0.4477536,0,1,0,0)" />
     </g>
-    <rect
-       style="fill:#494949;fill-opacity:1;stroke-width:0.314893;stroke-dasharray:none"
-       id="rect169-5"
-       width="29.335905"
-       height="3.613126"
-       x="226.28882"
-       y="124.46872"
-       transform="matrix(0.89319163,0.44967623,-0.91839793,0.39565799,0,0)" />
   </g>
 </svg>

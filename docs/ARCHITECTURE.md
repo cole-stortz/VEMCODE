@@ -218,10 +218,60 @@ Both Interrupt systems are dispatched from `impl_digitalWrite` when the relevant
 A 1024 byte `std::array<uint8_t, 1024>` in `RuntimeState`.  During all access, the bounds are checked, out of range reads return `0xFF` matching real AVR behavior. `update()` skips the write if the value is unchanged. State does not persist between sessions.
 #### Watchdog Timer
 TODO:
+```c++
+void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
+    if (!g_runtime) return;
+    g_runtime->state_.wdt_enabled_   = true;
+    g_runtime->state_.wdt_timeout_ms_ = timeout_ms;
+    g_runtime->state_.wdt_last_reset_ = std::chrono::steady_clock::now(); // start the clock
 
+    ArduinoRuntime* rt = g_runtime; // capture before thread — g_runtime is thread_local
+    std::thread([rt]() {
+        while (rt->state_.wdt_enabled_ && !rt->stop_requested_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - rt->state_.wdt_last_reset_).count();
+            if (age_ms >= rt->state_.wdt_timeout_ms_) {
+                if (rt->state_.sleep_enabled_) {
+                    std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+                    rt->state_.sleep_woken_ = true;
+                    rt->state_.sleep_cv_.notify_all();
+                }
+                auto isr_it = rt->state_.isr_handlers_.find("WDT_vect");
+                if (isr_it != rt->state_.isr_handlers_.end() && isr_it->second) {
+                    // Interrupt mode: fire ISR, reset timer, keep watching
+                    rt->state_.interrupts_enabled_ = false;
+                    isr_it->second();
+                    rt->state_.interrupts_enabled_ = true;
+                    rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
+                } else {
+                    if (rt->on_watchdog_reset) rt->on_watchdog_reset();
+                    return;
+                }
+            }
+        }
+    }).detach();
+}
+```
 #### Sleep Modes
 TODO:
+```c++
+void ArduinoRuntime::impl_sleep_cpu() {
+    if (!g_runtime || !g_runtime->state_.sleep_enabled_) return;
 
+    if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(true);
+
+    {
+        std::unique_lock<std::mutex> lock(g_runtime->state_.sleep_mtx_);
+        g_runtime->state_.sleep_woken_ = false;
+        g_runtime->state_.sleep_cv_.wait(lock, [] {
+            return g_runtime->state_.sleep_woken_ || g_runtime->stop_requested_.load();
+        });
+    }
+
+    if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(false);
+}
+```
 #### Misc
 `tone()` stores the frequency in `tone_frequencies_` and fires `on_pin_changed` so the canvas can show the buzzer active. If a duration is specified it spins up a detached thread that sleeps for the scaled duration then clears the tone.
 
@@ -240,6 +290,46 @@ TODO:
 
 ### Library Injection Files
 TODO:
+```c++
+std::string Preprocessor::strip_includes(const std::string& source) {
+    struct LibEntry {
+        const char* header;
+        const char* content; // nullptr = just strip silently
+    };
+    static const LibEntry kLibs[] = {
+        { "Servo",          g_servo_lib         },
+        { "LiquidCrystal",  g_liquidcrystal_lib },
+        { "SoftwareSerial", g_softwareserial_lib },
+        { "EEPROM",          nullptr },
+        { "Arduino",         nullptr },
+        { "avr/pgmspace",    nullptr },
+        { "avr/interrupt",   nullptr },
+        { "avr/io",          nullptr },
+        { "util/delay",      nullptr },
+        { "avr/wdt",         nullptr },
+        { "avr/sleep",       nullptr },
+    };
+
+    // Standard C/C++ headers that the host compiler can find — don't warn about these
+    static const char* kStdHeaders[] = {
+        "stdio.h", "stdlib.h", "string.h", "math.h", "time.h", "stdbool.h",
+        "stdint.h", "stddef.h", "assert.h", "limits.h", "float.h", "ctype.h",
+        "errno.h", "inttypes.h", "stdarg.h", "stdint.h", "memory.h",
+    };
+
+    std::string s = source;
+
+    for (const auto& lib : kLibs) {
+        std::string include_str = std::string("#include <") + lib.header + ".h>";
+        s = replace_all(s, include_str, lib.content ? lib.content : "");
+    }
+
+    // Warn about any remaining #include <X.h> that VEMCODE doesn't know about
+	// ...
+
+    return s;
+}
+```
 
 ## UI Components
 
