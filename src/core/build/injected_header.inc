@@ -1,4 +1,6 @@
 #include "src/core/runtime/arduinoapi.h"
+#include <cstdarg>
+#include <cstdio>
 #include <string>
 #include <cstring>
 #include <sstream>
@@ -71,6 +73,15 @@ inline void Serial_println(float v, int decimals) {
     ss.precision(decimals);
     ss << std::fixed << v;
     api->Serial_println(ss.str().c_str());
+}
+
+inline void Serial_printf(const char* fmt, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    api->Serial_print(buf);
 }
 
 // Arduino String class -- wraps std::string for sketch compatibility

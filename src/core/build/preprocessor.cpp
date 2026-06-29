@@ -50,6 +50,7 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     // replace_token skips matches preceded by a word char so "mySerial.println"
     // is not incorrectly rewritten as "mySerial_println".
     s = replace_token(s, "Serial.println(", "Serial_println(");
+    s = replace_token(s, "Serial.printf(",  "Serial_printf(");
     s = replace_token(s, "Serial.print(",   "Serial_print(");
     s = replace_token(s, "Serial.begin(",    "api->Serial_begin(");
     s = replace_token(s, "Serial.available(","api->Serial_available(");

@@ -137,8 +137,6 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - [x] `ISR()` vector macro transform — preprocessor scans for `ISR(X_vect) { ... }` blocks before compilation; strips the AVR-specific macro wrapper, renames the function to `__vb_isr_X_vect()`, and injects `api->register_isr("X_vect", __vb_isr_X_vect)` calls into `vb_setup()`; `register_isr` stores handlers in `RuntimeState::isr_handlers_`; `avr/interrupt.h` and `avr/io.h` stripped silently; supported vectors and their simulation triggers:
   - [x] `INT0_vect` / `INT1_vect` → pin 2 / pin 3 transition; dispatched from `impl_digitalWrite`
   - [x] `PCINT0_vect` / `PCINT1_vect` / `PCINT2_vect` → pin-change group transitions; dispatched from `impl_digitalWrite`
-  - [ ] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow from Phase 9 timer register simulation
-  - [ ] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B (`OCR1A` / `OCR1B`)
   - [x] `USART_RX_vect` → fires when the user sends input via the serial monitor (`inject_serial`)
   - [x] `WDT_vect` → watchdog timeout in interrupt mode (rather than triggering a reset); coexists with the `avr/wdt.h` simulation
   - [x] Unknown vectors → surfaced as a warning: *"ISR vector 'X_vect' is not simulated — the handler will never fire"* rather than a silent compile failure
@@ -146,7 +144,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - [x] `EEPROM.read(addr)` / `EEPROM.write(addr, val)` / `EEPROM.update()` — 1024-byte `std::array<uint8_t, 1024>` in `RuntimeState`; bounds-checked (out-of-range returns `0xFF`); `update()` skips write if value unchanged; `#include <EEPROM.h>` stripped by preprocessor; no disk persistence between sessions
 - [x] `Serial1` / `Serial2` runtime — additional hardware UARTs on Mega 2560, Due, Teensy 4.1; same implementation as `Serial`, separate buffers and callbacks (`on_serial1_output`, `on_serial2_output`); preprocessor maps `Serial1.*` / `Serial2.*` calls to `api->Serial1_*` / `api->Serial2_*`
 - [x] `Serial1` / `Serial2` split monitor UI — when a board with `serial_count > 1` is active, the Serial monitor tab splits horizontally into labeled panes (Serial | Serial1 | Serial2); driven by `serial_count` on `BoardProfile`; `SketchThread` emits `serial1Output` / `serial2Output` signals wired to the new monitor panes; `rebuildSerialMonitors()` rebuilds the tab when the board profile changes at runtime
-- [ ] `Serial.printf(format, ...)` — common on ARM and ESP32 boards; injected via the preprocessor as an overload on the `Serial` object; maps to `snprintf` into a stack buffer then calls `api->serial_print`; `#include <stdio.h>` already available in the injected header
+- [x] `Serial.printf(format, ...)` — common on ARM and ESP32 boards; injected via the preprocessor as an overload on the `Serial` object; maps to `snprintf` into a stack buffer then calls `api->serial_print`; `#include <stdio.h>` already available in the injected header
 
 **Missing libraries (preprocessor injection, same approach as `Servo.h`):**
 - [x] `SoftwareSerial` — injected class replacing `#include <SoftwareSerial.h>`; constructor stores `rxPin`/`txPin`; `begin`, `print`/`println` (4 overloads each), `write(byte)`, `write(buf, n)`, `available`, `read`, `peek`; `listen`/`isListening`/`overflow` return stubs; output routed to main serial monitor prefixed `[SW:N]` where N is the RX pin; RX buffer injectable per-pin via `ArduinoRuntime::inject_soft_serial(rxPin, data)`; `replace_token()` preprocessor helper prevents variable names ending in `Serial` (e.g. `mySerial`) from being mis-rewritten by the `Serial.*` replacement pass
@@ -283,7 +281,9 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 
 **Low-level AVR simulation:**
 - [ ] AVR GPIO register simulation — `DDRB`, `PORTB`, `PINB`, `DDRC`, `PORTC`, `PINC`, `DDRD`, `PORTD`, `PIND` etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`; bit-mask operations (`PORTB |= (1 << PB5)`) work correctly by routing through `impl_digitalWrite` per affected pin
-- [ ] AVR hardware timer register simulation — `TCCR1A`, `TCCR1B`, `OCR1A`, `OCR1B`, `TIMSK1`, `TCNT1` etc. as overloaded-operator structs; writes to `OCR1A`/`OCR1B` update the corresponding pin's PWM duty cycle via the existing `analogWrite` path; `TIMSK1` overflow and compare-match interrupt enable bits register callbacks in `RuntimeState` that fire on the simulated timer tick; covers sketches that configure hardware PWM or use Timer1/Timer2 for precise timing without calling `analogWrite` directly; also completes `TIMER1_OVF_vect` / `TIMER2_OVF_vect` / `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` ISR dispatch from Phase 7
+- [ ] AVR hardware timer register simulation — `TCCR1A`, `TCCR1B`, `OCR1A`, `OCR1B`, `TIMSK1`, `TCNT1` etc. as overloaded-operator structs; writes to `OCR1A`/`OCR1B` update the corresponding pin's PWM duty cycle via the existing `analogWrite` path; `TIMSK1` overflow and compare-match interrupt enable bits register callbacks in `RuntimeState` that fire on the simulated timer tick; covers sketches that configure hardware PWM or use Timer1/Timer2 for precise timing without calling `analogWrite` directly
+  - [ ] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow; dispatched from the simulated timer tick when overflow interrupt enable bit is set in `TIMSK1`
+  - [ ] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B; dispatched when `TCNT1` reaches `OCR1A` / `OCR1B`
 
 > **Milestone:** Sketches using I2C/SPI sensor libraries compile and run; direct GPIO register writes and hardware timer configuration work correctly.
 
