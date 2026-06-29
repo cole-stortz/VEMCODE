@@ -125,6 +125,7 @@ The circuit detector does not have the ability to handle functions set in the pi
 - `Serial.available()` - returns the number of bytes waiting from the serial monitor input field
 - `Serial.read()` - reads one byte from the serial input buffer
 - `Serial1` / `Serial2` - same API as `Serial`; available on boards with multiple hardware UARTs (Mega 2560, Due, Teensy 4.1); each appears as a separate labeled pane in the serial monitor tab
+- `Serial.printf(format, ...)` - TODO
 
 ---
 ## Supported Libraries
@@ -148,44 +149,45 @@ The Software Serial library is very similar to our current prints, but with new 
 - `void begin(baud)` : sets the baud and begins the software serial
 - `void print(x)` : prints x which can be any type
 - `void println(x)` : prints x to a new line, x can be any type
-- `int available()` : 
-- `int read()` :
-- `int peek()` :
-- `void write()` : 
-- `bool listen()` : 
-- `bool isListening()` : 
-- `bool overflow()` : 
+- `int available()` : TODO
+- `int read()` : TODO
+- `int peek()` : TODO
+- `void write()` : TODO
+- `bool listen()` : TODO
+- `bool isListening()` : TODO
+- `bool overflow()` : TODO
 
 ### EEPROM
 The preprocessor just strips this in the code because the EEPROM library is baked into the runtime instead of it being seperated into a custom header file.
-- `void EEPROM_write(int address, uint8_t value)` : 
-- `uint8_t EEPROM_read(int address)` : 
-- `void EEPROM_update(int address, int value)` : 
+- `void EEPROM_write(int address, uint8_t value)` : TODO
+- `uint8_t EEPROM_read(int address)` : TODO
+- `void EEPROM_update(int address, int value)` : TODO
 
 ### avr/wdt.h (Watchdog Timer)
 The preprocessor just strips this in the code because the watchdog library is baked into the runtime instead of it being seperated into a custom header file.
-- `void wdt_enable(int timeout_ms)` :
-- `void wdt_disable()` :
-- `void wdt_reset()` :
+- `void wdt_enable(int timeout_ms)` : TODO
+- `void wdt_disable()` : TODO
+- `void wdt_reset()` : TODO
 
 ### liquidcrystal
 The Liquid Crystal library is a helper method for making working with LCD screen more intuitive, spesifically the supported 16x2 LCD screen component. 
-- `int rs_, row, col_` : 
-- `char buf_[2][17]` :
-- `void flush_(int row)` :
+- `int rs_, row, col_` : TODO
+- `char buf_[2][17]` : TODO
+- `void flush_(int row)` : TODO
 - `LiquidCrystal(int rs, int, int, int, int, int): rs_(rs), row_(0), col_(0)`
-  - 
-- `void begin(int, int)` :
-- `void clear()` :
-- `void setCursot(int col, int row)` :
-- `void write(char c)` :
-- `void print()` :
-- `void createChar(uint8_t, uint8_t*)` :
+  - TODO
+- `void begin(int, int)` : TODO
+- `void clear()` : TODO
+- `void setCursot(int col, int row)` : TODO
+- `void write(char c)` : TODO
+- `void print()` : TODO
+- `void createChar(uint8_t, uint8_t*)` : TODO
 
 ---
 ## Interrupts
 
 ### attachInterrupt
+TODO:
 
 ### ISR() Vector Macros
 `ISR(VECTOR_NAME) { }` blocks are transformed by the preprocessor before compilation — the AVR macro wrapper is stripped, the body is renamed to `__vb_isr_VECTOR_NAME()`, and a `register_isr()` call is injected into `vb_setup()` automatically. `#include <avr/interrupt.h>` and `#include <avr/io.h>` are stripped silently.
@@ -203,6 +205,7 @@ Supported vectors and what triggers them:
 
 Unsupported vectors (`TIMER1_OVF_vect`, `TIMER2_OVF_vect`, `TIMER1_COMPA_vect`, `WDT_vect`, etc.) are accepted without a compile error but will never fire — VEMCODE surfaces a warning: `"ISR vector 'X_vect' is not simulated — the handler will never fire"`.
 ### noInterrupts and interrupts
+TODO:
 
 ---
 ## AVR Compatibility
@@ -263,15 +266,19 @@ If a pin is read that is not attached to a component, VEMCODE simulates the floa
 VEMCODE emulates button bounce when a default button is called. This can be disabled by changing the detected button to be a clean or ideal button. This can be done by changing the funciton call to add IDEAL or CLEAN to it.
 
 ### EEPROM Persistence
-
+TODO:
 
 ### ISR Timing
+TODO:
 
 ---
 ## What VEMCODE Does Not Support
+TODO:
 
 ---
 ## Common Errors and What They Mean
+TODO:
 
 ---
 ## Tips and Best Practices
+TODO:

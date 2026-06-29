@@ -21,8 +21,12 @@ This document covers a more in depth viewpoint about how VEMCODE actually works 
       - [Serial](#serial)
       - [Interrupts](#interrupts)
       - [EEPROM](#eeprom)
+      - [Watchdog Timer](#watchdog-timer)
+      - [Sleep Modes](#sleep-modes)
       - [Misc](#misc)
     - [Circuit Detector](#circuit-detector)
+    - [Error UX](#error-ux)
+    - [Library Injection Files](#library-injection-files)
   - [UI Components](#ui-components)
     - [Main Window](#main-window)
       - [Editor panel](#editor-panel)
@@ -212,6 +216,12 @@ Two separate interrupt systems exist in the runtime:
 Both Interrupt systems are dispatched from `impl_digitalWrite` when the relevant pin changes state.
 #### EEPROM
 A 1024 byte `std::array<uint8_t, 1024>` in `RuntimeState`.  During all access, the bounds are checked, out of range reads return `0xFF` matching real AVR behavior. `update()` skips the write if the value is unchanged. State does not persist between sessions.
+#### Watchdog Timer
+TODO:
+
+#### Sleep Modes
+TODO:
+
 #### Misc
 `tone()` stores the frequency in `tone_frequencies_` and fires `on_pin_changed` so the canvas can show the buzzer active. If a duration is specified it spins up a detached thread that sleeps for the scaled duration then clears the tone.
 
@@ -225,6 +235,12 @@ A 1024 byte `std::array<uint8_t, 1024>` in `RuntimeState`.  During all access, t
 ### Circuit Detector
 How component detection works, the three detection tiers (after 7b)
 TODO: need to finish 7b
+### Error UX
+TODO:
+
+### Library Injection Files
+TODO:
+
 ## UI Components
 
 ### Main Window

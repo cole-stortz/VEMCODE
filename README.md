@@ -99,6 +99,16 @@ The circuit canvas is a custom panel placed on the top right which will automati
 - Inputs: Button (clean and bouncy variants), Switch, Potentiometer
 - Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Generic Analog Sensor
 
+### Supported Libraries
+VEMCODE does not support standard Arduino libraries directly. Instead, each supported library is a custom implementation injected at compile time by the preprocessor, replacing the original `#include`.
+
+- **Servo** — `attach()`, `write()`, `read()`, `attached()`, `detach()`; angle tracked and displayed live on the canvas
+- **LiquidCrystal** — `begin()`, `print()`, `println()`, `setCursor()`, `clear()`, `write()`, `createChar()`; text displayed on the canvas LCD component in real time
+- **SoftwareSerial** — `begin()`, `print()`, `println()`, `available()`, `read()`, `peek()`, `write()`; output routed to the serial monitor prefixed with `[SW:RX_PIN]`
+- **EEPROM** — `read()`, `write()`, `update()`; backed by a 1024-byte array in the runtime; does not persist between sessions
+- **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
+- **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
+
 ### Simulation
 VEMCODE compiles your sketch to a native shared library and runs it directly on your machine. The C++ executes as compiled x86 code. The runtime implements the Arduino API through a function pointer table injected into your sketch at compile time. Calls like `digitalWrite()` or `analogRead()` route through the host, which updates the canvas and debug panels in realtime.
 
