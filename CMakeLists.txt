@@ -60,6 +60,9 @@ configure_file(
     @ONLY
 )
 
+# Component plugin files — drop a .cpp into src/components/ and it's picked up automatically
+file(GLOB COMPONENT_SOURCES "${CMAKE_SOURCE_DIR}/src/components/*.cpp")
+
 # All source files for the main application
 set(SOURCES
     src/main.cpp
@@ -76,11 +79,14 @@ set(SOURCES
     src/core/build/compiler.cpp
     src/core/build/preprocessor.cpp
     src/core/circuit/circuitdetector.cpp
+    src/core/circuit/componentitem.cpp
+    src/core/circuit/componentregistry.cpp
     src/lsan_suppressions.cpp
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
     ${CMAKE_BINARY_DIR}/generated/servo_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp
+    ${COMPONENT_SOURCES}
 )
 
 set(HEADERS

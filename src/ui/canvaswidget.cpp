@@ -94,9 +94,9 @@ void CanvasWidget::updatePin(int pin, int value) {
     auto it = pinItems_.find(pin);
     if (it == pinItems_.end()) return;
 
-    ComponentType type = static_cast<ComponentType>(it.value()->data(0).toInt());
+    std::string type = it.value()->data(0).toString().toStdString();
 
-    if (type == ComponentType::HBridgeMotor) {
+    if (type == "HBridgeMotor") {
         auto rep_it = motorPinToRep_.find(pin);
         if (rep_it == motorPinToRep_.end()) return;
         int rep = rep_it.value();
@@ -126,13 +126,13 @@ void CanvasWidget::updatePin(int pin, int value) {
 
     it.value()->setBrush(QBrush(componentColor(type, value > 0)));
 
-    if (type == ComponentType::Servo) {
+    if (type == "Servo") {
         int angle = value * 180 / profile_.pwm_resolution;
         auto label_it = servoLabels_.find(pin);
         if (label_it != servoLabels_.end())
             label_it.value()->setPlainText(QString::number(angle) + "°");
     }
-    if (type == ComponentType::Buzzer) {
+    if (type == "Buzzer") {
         auto label_it = servoLabels_.find(pin);
         if (label_it != servoLabels_.end())
             label_it.value()->setPlainText("PWM: " + QString::number(value));
@@ -200,18 +200,18 @@ void CanvasWidget::drawBoard() {
 
 void CanvasWidget::drawComponent(const DetectedComponent& comp) {
     // Output components go on right side, input on left
-    bool is_output = (comp.type == ComponentType::LED          ||
-                      comp.type == ComponentType::Buzzer       ||
-                      comp.type == ComponentType::Servo        ||
-                      comp.type == ComponentType::HBridgeMotor ||
-                      comp.type == ComponentType::LCD          ||
-                      comp.type == ComponentType::GenericOutput);
+    bool is_output = (comp.type_name == "LED"          ||
+                      comp.type_name == "Buzzer"       ||
+                      comp.type_name == "Servo"        ||
+                      comp.type_name == "HBridgeMotor" ||
+                      comp.type_name == "LCD"          ||
+                      comp.type_name == "GenericOutput");
 
 
     int comp_w = 100;
-    int comp_h = (comp.type == ComponentType::ColorSensor)  ? 64
-               : (comp.type == ComponentType::HBridgeMotor) ? 54
-               : (comp.type == ComponentType::LCD)          ? 54
+    int comp_h = (comp.type_name == "ColorSensor")  ? 64
+               : (comp.type_name == "HBridgeMotor") ? 54
+               : (comp.type_name == "LCD")          ? 54
                : 44;
 
     QPointF pin_pos = pinLocation(comp.pin);
@@ -232,17 +232,17 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
 
     // Component box -- created at local origin so child text items position correctly
     QGraphicsRectItem* rect = new QGraphicsRectItem(0, 0, comp_w, comp_h);
-    rect->setPen(QPen(componentColor(comp.type, false).darker(150), 1));
-    rect->setBrush(QBrush(componentColor(comp.type, false)));
+    rect->setPen(QPen(componentColor(comp.type_name, false).darker(150), 1));
+    rect->setBrush(QBrush(componentColor(comp.type_name, false)));
     rect->setPos(comp_x, comp_y);
     scene_->addItem(rect);
 
-    rect->setData(0, static_cast<int>(comp.type));
+    rect->setData(0, QString::fromStdString(comp.type_name));
     pinItems_[comp.pin] = rect;
-    pinTypes_[comp.pin] = comp.type;
+    pinTypes_[comp.pin] = comp.type_name;
 
-    if (comp.type == ComponentType::HBridgeMotor && comp.pins.size() == 3) {
-        int rep        = comp.pin;        // pins[0] = PWM = rep
+    if (comp.type_name == "HBridgeMotor" && comp.pins.size() == 3) {
+        int rep        = comp.pin;
         int cwise_pin  = comp.pins[1];
         int anti_pin   = comp.pins[2];
         motorStates_[rep]       = MotorState{};
@@ -251,7 +251,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         for (int mp : comp.pins) {
             if (mp >= 0) {
                 pinItems_[mp]      = rect;
-                pinTypes_[mp]      = comp.type;
+                pinTypes_[mp]      = comp.type_name;
                 motorPinToRep_[mp] = rep;
             }
         }
@@ -262,7 +262,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         motorLabels_[rep] = motorLabel;
     }
 
-    if (comp.type == ComponentType::Button) {
+    if (comp.type_name == "Button") {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
         rect->setAcceptHoverEvents(true);
@@ -270,7 +270,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         rect->setToolTip("Click to press, release to let go");
     }
 
-    if (comp.type == ComponentType::ButtonClean) {
+    if (comp.type_name == "ButtonClean") {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
         rect->setAcceptHoverEvents(true);
@@ -278,7 +278,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         rect->setToolTip("Click to press, release to let go (ideal — no bounce)");
     }
 
-    if (comp.type == ComponentType::Switch) {
+    if (comp.type_name == "Switch") {
         buttonStates_[comp.pin] = false;
         rect->setFlag(QGraphicsItem::ItemIsSelectable);
         rect->setAcceptHoverEvents(true);
@@ -286,17 +286,17 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         rect->setToolTip("Click to toggle");
     }
 
-    if (comp.type == ComponentType::Potentiometer) {
+    if (comp.type_name == "Potentiometer") {
         rect->setToolTip("Drag to set analog value (0-1023)");
     }
 
-    if (comp.type == ComponentType::LightSensor  ||
-        comp.type == ComponentType::TempSensor   ||
-        comp.type == ComponentType::AnalogSensor) {
+    if (comp.type_name == "LightSensor"  ||
+        comp.type_name == "TempSensor"   ||
+        comp.type_name == "AnalogSensor") {
         rect->setToolTip("Analog input — value: 0");
     }
 
-    if (comp.type == ComponentType::DistanceSensor) {
+    if (comp.type_name == "DistanceSensor") {
         int echo_pin = comp.pin;
         QLineEdit* input = new QLineEdit();
         input->setFixedSize(60, 20);
@@ -314,9 +314,9 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         input->setText("10");
     }
 
-    if (comp.type == ComponentType::LightSensor  ||
-        comp.type == ComponentType::TempSensor   ||
-        comp.type == ComponentType::AnalogSensor) {
+    if (comp.type_name == "LightSensor"  ||
+        comp.type_name == "TempSensor"   ||
+        comp.type_name == "AnalogSensor") {
         int sensor_pin = comp.pin;
         QLineEdit* input = new QLineEdit("0");
         input->setFixedSize(60, 20);
@@ -334,7 +334,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         });
     }
 
-    if (comp.type == ComponentType::ColorSensor && comp.pins.size() >= 5) {
+    if (comp.type_name == "ColorSensor" && comp.pins.size() >= 5) {
         int s2_pin  = comp.pins[2];
         int s3_pin  = comp.pins[3];
         int out_pin = comp.pins[4];
@@ -369,7 +369,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         emit_color();
     }
 
-    if (comp.type == ComponentType::Servo) {
+    if (comp.type_name == "Servo") {
         QGraphicsTextItem* angleText = new QGraphicsTextItem("0°", rect);
         angleText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         angleText->setFont(QFont("Courier New", 9));
@@ -377,7 +377,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         servoLabels_[comp.pin] = angleText;
     }
 
-    if (comp.type == ComponentType::LCD) {
+    if (comp.type_name == "LCD") {
         QGraphicsTextItem* row0 = new QGraphicsTextItem("                ", rect);
         row0->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         row0->setFont(QFont("Courier New", 7));
@@ -390,7 +390,7 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
         row1->setPos(6, 36);
         lcdRow1Labels_[comp.pin] = row1;
     }
-    if (comp.type == ComponentType::Buzzer) {
+    if (comp.type_name == "Buzzer") {
         QGraphicsTextItem* pwmText = new QGraphicsTextItem("PWM: 0", rect);
         pwmText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
         pwmText->setFont(QFont("Courier New", 8));
@@ -467,33 +467,32 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
     int pin = pinItems_.key(
         dynamic_cast<QGraphicsRectItem*>(item), -1);
 
-    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Button) {
+    if (pin >= 0 && pinTypes_.value(pin) == "Button") {
         buttonStates_[pin] = true;
         dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
-            QBrush(componentColor(ComponentType::Button, true)));
-        emit buttonBounced(pin, 0); // LOW = pressed; bounced path
+            QBrush(componentColor("Button", true)));
+        emit buttonBounced(pin, 0);
         return;
     }
 
-    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::ButtonClean) {
+    if (pin >= 0 && pinTypes_.value(pin) == "ButtonClean") {
         buttonStates_[pin] = true;
         dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
-            QBrush(componentColor(ComponentType::ButtonClean, true)));
-        emit buttonPressed(pin, 0); // LOW = pressed; no bounce
+            QBrush(componentColor("ButtonClean", true)));
+        emit buttonPressed(pin, 0);
         return;
     }
 
-    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Switch) {
+    if (pin >= 0 && pinTypes_.value(pin) == "Switch") {
         bool new_state = !switchStates_.value(pin, false);
         switchStates_[pin] = new_state;
         dynamic_cast<QGraphicsRectItem*>(item)->setBrush(
-            QBrush(componentColor(ComponentType::Switch, new_state)));
-        // HIGH when on, LOW when off (opposite of INPUT_PULLUP button)
+            QBrush(componentColor("Switch", new_state)));
         emit buttonPressed(pin, new_state ? 1 : 0);
         return;
     }
 
-    if (pin >= 0 && pinTypes_.value(pin) == ComponentType::Potentiometer) {
+    if (pin >= 0 && pinTypes_.value(pin) == "Potentiometer") {
         dragPin_        = pin;
         dragStartY_     = event->pos().y();
         dragStartValue_ = analogValues_.value(pin, 512);
@@ -514,9 +513,9 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
     for (auto pin : buttonStates_.keys()) {
         if (buttonStates_[pin]) {
             buttonStates_[pin] = false;
-            ComponentType t = pinTypes_.value(pin);
+            std::string t = pinTypes_.value(pin);
             pinItems_[pin]->setBrush(QBrush(componentColor(t, false)));
-            if (t == ComponentType::ButtonClean)
+            if (t == "ButtonClean")
                 emit buttonPressed(pin, 1);
             else
                 emit buttonBounced(pin, 1); // bounced release
@@ -546,43 +545,43 @@ QPointF CanvasWidget::pinLocation(int pin) {
     return QPointF(BOARD_X + BOARD_W / 2.0, BOARD_Y);
 }
 
-QColor CanvasWidget::componentColor(ComponentType type, bool active) {
-    static const std::map<ComponentType, QColor> activeColors = {
-        { ComponentType::LED,           COLOR_LED_ACTIVE     },
-        { ComponentType::Button,        COLOR_BUTTON_ACTIVE  },
-        { ComponentType::ButtonClean,   COLOR_BUTTON_ACTIVE  },
-        { ComponentType::Switch,        COLOR_SWITCH_ACTIVE  },
-        { ComponentType::Buzzer,        COLOR_BUZZER_ACTIVE  },
-        { ComponentType::Servo,         COLOR_SERVO_ACTIVE   },
-        { ComponentType::Potentiometer, COLOR_POT_ACTIVE     },
-        { ComponentType::LightSensor,   COLOR_LIGHT_ACTIVE   },
-        { ComponentType::TempSensor,    COLOR_TEMP_ACTIVE    },
-        { ComponentType::AnalogSensor,  COLOR_ANALOG_ACTIVE  },
-        { ComponentType::DistanceSensor,COLOR_DISTANCE_ACTIVE },
-        { ComponentType::HBridgeMotor,  COLOR_HBRIDGE_ACTIVE },
-        { ComponentType::ColorSensor,   COLOR_COLORSENSOR_ACTIVE },
-        { ComponentType::LCD,            COLOR_LCD_ACTIVE  },
+QColor CanvasWidget::componentColor(const std::string& type_name, bool active) {
+    static const std::map<std::string, QColor> activeColors = {
+        { "LED",            COLOR_LED_ACTIVE          },
+        { "Button",         COLOR_BUTTON_ACTIVE       },
+        { "ButtonClean",    COLOR_BUTTON_ACTIVE       },
+        { "Switch",         COLOR_SWITCH_ACTIVE       },
+        { "Buzzer",         COLOR_BUZZER_ACTIVE       },
+        { "Servo",          COLOR_SERVO_ACTIVE        },
+        { "Potentiometer",  COLOR_POT_ACTIVE          },
+        { "LightSensor",    COLOR_LIGHT_ACTIVE        },
+        { "TempSensor",     COLOR_TEMP_ACTIVE         },
+        { "AnalogSensor",   COLOR_ANALOG_ACTIVE       },
+        { "DistanceSensor", COLOR_DISTANCE_ACTIVE     },
+        { "HBridgeMotor",   COLOR_HBRIDGE_ACTIVE      },
+        { "ColorSensor",    COLOR_COLORSENSOR_ACTIVE  },
+        { "LCD",            COLOR_LCD_ACTIVE          },
     };
 
-    static const std::map<ComponentType, QColor> inactiveColors = {
-        { ComponentType::LED,           COLOR_LED_INACTIVE   },
-        { ComponentType::Button,        COLOR_BUTTON_INACTIVE},
-        { ComponentType::ButtonClean,   COLOR_BUTTON_INACTIVE},
-        { ComponentType::Switch,        COLOR_SWITCH_INACTIVE},
-        { ComponentType::Buzzer,        COLOR_BUZZER_INACTIVE},
-        { ComponentType::Servo,         COLOR_SERVO_INACTIVE },
-        { ComponentType::Potentiometer, COLOR_POT_INACTIVE   },
-        { ComponentType::LightSensor,   COLOR_LIGHT_INACTIVE },
-        { ComponentType::TempSensor,    COLOR_TEMP_INACTIVE  },
-        { ComponentType::AnalogSensor,  COLOR_ANALOG_INACTIVE},
-        { ComponentType::DistanceSensor,COLOR_DISTANCE_INACTIVE },
-        { ComponentType::HBridgeMotor,  COLOR_HBRIDGE_INACTIVE },
-        { ComponentType::ColorSensor,   COLOR_COLORSENSOR_INACTIVE },
-        { ComponentType::LCD,            COLOR_LCD_INACTIVE},
+    static const std::map<std::string, QColor> inactiveColors = {
+        { "LED",            COLOR_LED_INACTIVE        },
+        { "Button",         COLOR_BUTTON_INACTIVE     },
+        { "ButtonClean",    COLOR_BUTTON_INACTIVE     },
+        { "Switch",         COLOR_SWITCH_INACTIVE     },
+        { "Buzzer",         COLOR_BUZZER_INACTIVE     },
+        { "Servo",          COLOR_SERVO_INACTIVE      },
+        { "Potentiometer",  COLOR_POT_INACTIVE        },
+        { "LightSensor",    COLOR_LIGHT_INACTIVE      },
+        { "TempSensor",     COLOR_TEMP_INACTIVE       },
+        { "AnalogSensor",   COLOR_ANALOG_INACTIVE     },
+        { "DistanceSensor", COLOR_DISTANCE_INACTIVE   },
+        { "HBridgeMotor",   COLOR_HBRIDGE_INACTIVE    },
+        { "ColorSensor",    COLOR_COLORSENSOR_INACTIVE},
+        { "LCD",            COLOR_LCD_INACTIVE        },
     };
 
     const auto& colors = active ? activeColors : inactiveColors;
-    auto it = colors.find(type);
+    auto it = colors.find(type_name);
     return it != colors.end() ? it->second
                               : (active ? COLOR_GENERIC_ACTIVE : COLOR_GENERIC_INACTIVE);
 }
@@ -598,8 +597,8 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
     auto it = pinItems_.find(dragPin_);
     if (it != pinItems_.end()) {
         float ratio = new_value / 1023.0f;
-        QColor active = componentColor(ComponentType::Potentiometer, true);
-        QColor inactive = componentColor(ComponentType::Potentiometer, false);
+        QColor active = componentColor("Potentiometer", true);
+        QColor inactive = componentColor("Potentiometer", false);
         int r = inactive.red()   + ratio * (active.red()   - inactive.red());
         int g = inactive.green() + ratio * (active.green() - inactive.green());
         int b = inactive.blue()  + ratio * (active.blue()  - inactive.blue());

@@ -764,7 +764,7 @@ void MainWindow::onRunClicked() {
     // No-components-detected hints
     const auto& comps = detector_.components();
     bool has_non_serial = std::any_of(comps.begin(), comps.end(),
-        [](const DetectedComponent& c) { return c.type != ComponentType::Serial; });
+        [](const DetectedComponent& c) { return c.type_name != "Serial"; });
     if (!has_non_serial) {
         std::string src = codeEditor_->toPlainText().toStdString();
         bool has_pin_defines = false;

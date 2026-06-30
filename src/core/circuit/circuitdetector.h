@@ -4,30 +4,9 @@
 #include <map>
 #include <set>
 
-// The type of component inferred from the sketch
-enum class ComponentType {
-    LED,
-    Button,
-    ButtonClean,    // ideal button — no bounce simulation (TACT/CLEAN/IDEAL prefix)
-    Switch,
-    Buzzer,
-    Servo,
-    Potentiometer,
-    LightSensor,
-    TempSensor,
-    AnalogSensor,   // generic fallback
-    LCD,
-    GenericOutput,
-    GenericInput,
-    Serial,
-    DistanceSensor,
-    HBridgeMotor,
-    ColorSensor
-};
-
 // A single detected component
 struct DetectedComponent {
-    ComponentType type;
+    std::string type_name;
     int           pin;          // -1 for non-pin components like Serial
     std::vector<int> pins;        // for multi-pin components like LCD (RS, E, D4-D7)
     std::string   pin_name;     // original #define name e.g. "LED_PIN"
@@ -68,7 +47,7 @@ private:
         const std::string& source,
         const std::map<std::string, std::string>& defines);
 
-    ComponentType infer_type(const std::string& name, const std::string& mode);
+    std::string infer_type(const std::string& name, const std::string& mode);
     int resolve_pin(const std::string& token,
                     const std::map<std::string, std::string>& defines);
     bool contains_any(const std::string& str,

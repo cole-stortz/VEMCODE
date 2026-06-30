@@ -39,13 +39,13 @@ private:
     void drawComponent(const DetectedComponent& comp);
     void drawWire(QPointF from, QPointF to);
     QPointF pinLocation(int pin);
-    QColor componentColor(ComponentType type, bool active);
+    QColor componentColor(const std::string& type_name, bool active);
 
     QGraphicsScene*               scene_;
     QMap<int, QGraphicsRectItem*> pinItems_;
     QMap<int, bool>               buttonStates_;
     QMap<int, bool>               switchStates_;
-    QMap<int, ComponentType>      pinTypes_;
+    QMap<int, std::string>        pinTypes_;
     QMap<int, int>                analogValues_;
     QMap<int, QGraphicsTextItem*> servoLabels_;
     QMap<int, QGraphicsTextItem*> lcdRow0Labels_;
