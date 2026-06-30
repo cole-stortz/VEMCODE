@@ -229,14 +229,14 @@ Pull the component plugin architecture forward so that all new components added 
 - [x] `CMakeLists.txt` updated to glob `src/components/*.cpp` — new component files added by dropping a file, no CMake edits needed
 
 **Step 2 — Component migration (one file per component in `src/components/`):**
-- [ ] `led.cpp` — output; `onPinChanged` sets active/inactive color; keywords: `LED`, `LAMP`, `DIODE`, `INDICATOR` (unambiguous output-only terms; `LIGHT` belongs to analogsensor only)
-- [ ] `button.cpp` — input; overrides `mousePressEvent`/`mouseReleaseEvent`, emits `BouncePress`; keywords: `BUTTON`, `BTN`, `TACT`, `PUSH`; `ButtonClean` variant (`CLEAN`, `IDEAL` prefix) emits `DigitalPress` instead
+- [x] `led.cpp` — output; `onPinChanged` sets active/inactive color; keywords: `LED`, `LAMP`, `DIODE`, `INDICATOR` (unambiguous output-only terms; `LIGHT` belongs to analogsensor only)
+- [x] `button.cpp` — input; overrides `mousePressEvent`/`mouseReleaseEvent`, emits `BouncePress`; keywords: `BUTTON`, `BTN`, `TACT`, `PUSH`; `ButtonClean` variant (`CLEAN`, `IDEAL` prefix) emits `DigitalPress` instead
 - [ ] `switch.cpp` — input; click toggles latched state, emits `DigitalPress`; keywords: `SWITCH`, `TOGGLE`, `RELAY`
 - [ ] `buzzer.cpp` — output; `onPinChanged` shows active indicator; keywords: `BUZZER`, `PIEZO`, `SPEAKER`, `BEEPER`
 - [ ] `servo.cpp` — output; `onPinChanged` updates angle label; detect pattern: `.attach(`; keywords: `SERVO`
 - [ ] `potentiometer.cpp` — input; overrides `mouseMoveEvent` for drag, emits `AnalogValue`; keywords: `POT`, `POTENTIOMETER`, `KNOB`, `DIAL`
-- [ ] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
-- [ ] `distancesensor.cpp` — input; text field (cm → µs), emits `PulseUs`; detect pattern: `pulseIn(` paired with trig/echo timing; keywords: `TRIG`, `ECHO`, `DISTANCE`, `ULTRASONIC`, `SONAR`, `HCSR`
+- [x] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
+- [x] `distancesensor.cpp` — input; text field (cm → µs), emits `PulseUs`; detect pattern: `pulseIn(` paired with trig/echo timing; keywords: `TRIG`, `ECHO`, `DISTANCE`, `ULTRASONIC`, `SONAR`, `HCSR`
 - [ ] `hbridgemotor.cpp` — output; `onPinChanged` updates speed/direction label; multi-pin role map (PWM, CWISE, ANTI_CWISE); keywords: `MOTOR`, `HBRIDGE`, `ENA`, `IN1`
 - [ ] `colorsensor.cpp` — input; R/G/B text fields, emits `ColorRGB`; multi-pin role map (OUT, S2, S3); detect pattern: `pulseIn(` on a pin with `S2`/`S3` siblings; keywords: `COLOR`, `TCS`, `S2`, `S3`
 - [ ] `lcd.cpp` — output; `onPinChanged` not used; overrides `updateText(int row, const QString& text)` to update its own row labels; `CanvasWidget::updateLcdText(int pin, int row, const QString& text)` stays as a public method but routes through `pinItems_[pin]->updateText(row, text)` instead of separate QMaps; detect pattern: `LiquidCrystal`; multi-pin role map (RS, EN, D4–D7); RS pin is representative

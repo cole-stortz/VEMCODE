@@ -25,6 +25,9 @@ public:
 Q_SIGNALS:
     void inputChanged(int pin, int eventType, QVariant value);
 
+protected:
+    int pin() const { return pin_; }
+
 private:
     int pin_;
 };
