@@ -6,3 +6,4 @@ ComponentItem::ComponentItem(int pin, QGraphicsItem* parent)
 void ComponentItem::onPinChanged(int, int) {}
 void ComponentItem::updateText(int, const QString&) {}
 void ComponentItem::configureMultiPin(const std::vector<int>&) {}
+void ComponentItem::emitInitialValue() {}

@@ -180,3 +180,8 @@ void SketchThread::injectSoftSerial(int rxPin, const QString& data) {
     QMutexLocker lock(&inject_mutex_);
     host_.runtime().inject_soft_serial(rxPin, data.toStdString());
 }
+
+void SketchThread::resetRuntimeState() {
+    QMutexLocker lock(&inject_mutex_);
+    host_.reset_state();
+}

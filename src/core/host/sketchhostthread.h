@@ -29,6 +29,7 @@ public:
     void injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
     void setProfile(BoardProfile p);
     void injectSoftSerial(int rxPin, const QString& data);
+    void resetRuntimeState();
 
 signals:
     void serialOutput(QString text);

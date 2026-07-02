@@ -1,5 +1,6 @@
 #include "src/ui/mainwindow.h"
 #include "src/ui/canvaswidget.h"
+#include "src/core/circuit/componentitem.h"
 #include <regex>
 #include <algorithm>
 #include <QVBoxLayout>
@@ -397,35 +398,8 @@ QWidget* MainWindow::buildCanvasPanel() {
     canvasWidget_ = new CanvasWidget();
     layout->addWidget(canvasWidget_);
 
-    connect(canvasWidget_, &CanvasWidget::potentiometerChanged,
-        this, [this](int pin, int value) {
-            sketchThread_->injectAnalog(pin, value);
-        });
-
-    connect(canvasWidget_, &CanvasWidget::buttonPressed,
-            this, [this](int pin, int value) {
-                sketchThread_->injectPin(pin, value);
-            });
-
-    connect(canvasWidget_, &CanvasWidget::buttonBounced,
-            this, [this](int pin, int value) {
-                sketchThread_->injectButtonBounce(pin, value);
-            });
-
-    connect(canvasWidget_, &CanvasWidget::pulseInjected,
-        this, [this](int pin, unsigned long micros) {
-            sketchThread_->injectPulseDuration(pin, micros);
-        });
-
-    connect(canvasWidget_, &CanvasWidget::analogInjected,
-        this, [this](int pin, int value) {
-            sketchThread_->injectAnalog(pin, value);
-        });
-
-    connect(canvasWidget_, &CanvasWidget::colorInjected,
-        this, [this](int out_pin, int s2_pin, int s3_pin, int r, int g, int b) {
-            sketchThread_->injectColor(out_pin, s2_pin, s3_pin, r, g, b);
-        });
+    connect(canvasWidget_, &CanvasWidget::inputChanged,
+            this, &MainWindow::onComponentInput);
 
     return panel;
 }
@@ -595,6 +569,30 @@ void MainWindow::onPinChanged(int pin, int value) {
     );
 }
 
+void MainWindow::onComponentInput(int pin, int eventType, QVariant value) {
+    switch (static_cast<ComponentEventType>(eventType)) {
+        case ComponentEventType::DigitalPress:
+            sketchThread_->injectPin(pin, value.toInt());
+            break;
+        case ComponentEventType::BouncePress:
+            sketchThread_->injectButtonBounce(pin, value.toInt());
+            break;
+        case ComponentEventType::AnalogValue:
+            sketchThread_->injectAnalog(pin, value.toInt());
+            break;
+        case ComponentEventType::PulseUs:
+            sketchThread_->injectPulseDuration(pin, value.toULongLong());
+            break;
+        case ComponentEventType::ColorRGB: {
+            QVariantList c = value.toList();
+            sketchThread_->injectColor(
+                pin, c.value(3).toInt(), c.value(4).toInt(),
+                c.value(0).toInt(), c.value(1).toInt(), c.value(2).toInt());
+            break;
+        }
+    }
+}
+
 void MainWindow::onSketchReloaded() {
     serialMonitor_->appendPlainText("\n--- sketch reloaded ---\n");
     statusBar()->showMessage("Sketch hot-reloaded");
@@ -746,7 +744,13 @@ void MainWindow::onRunClicked() {
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
-    sketchThread_->startSketch(QString::fromStdString(result.dll_path));
+
+    // Stop any previous run and reset runtime state, then set up components
+    // (which inject their initial values) BEFORE starting the sketch thread --
+    // otherwise the sketch can start reading pins before the initial
+    // injections land, and leftover state from the previous run can leak in.
+    sketchThread_->stopSketch();
+    sketchThread_->resetRuntimeState();
 
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
@@ -792,6 +796,8 @@ void MainWindow::onRunClicked() {
                 "try moving them into the main sketch\n");
         }
     }
+
+    sketchThread_->startSketch(QString::fromStdString(result.dll_path));
 }
 
 void MainWindow::onStopClicked() {

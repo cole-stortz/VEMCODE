@@ -9,6 +9,9 @@ static const QColor COLOR_SENSOR_FILL("#aa44ff");
 class ColorSensorItem : public ComponentItem {
     int s2Pin_ = -1;
     int s3Pin_ = -1;
+    QLineEdit* r_in_;
+    QLineEdit* g_in_;
+    QLineEdit* b_in_;
 
 public:
     ColorSensorItem(int p, QGraphicsItem* parent)
@@ -24,24 +27,13 @@ public:
             return in;
         };
 
-        QLineEdit* r_in = make_input("#ff4444", "#1a0000", 4);
-        QLineEdit* g_in = make_input("#44ff44", "#001a00", 34);
-        QLineEdit* b_in = make_input("#4444ff", "#00001a", 64);
+        r_in_ = make_input("#ff4444", "#1a0000", 4);
+        g_in_ = make_input("#44ff44", "#001a00", 34);
+        b_in_ = make_input("#4444ff", "#00001a", 64);
 
-        auto emit_color = [this, r_in, g_in, b_in]() {
-            bool rok, gok, bok;
-            int r = qBound(0, r_in->text().toInt(&rok), 255);
-            int g = qBound(0, g_in->text().toInt(&gok), 255);
-            int b = qBound(0, b_in->text().toInt(&bok), 255);
-            if (rok && gok && bok) {
-                QVariantList payload{ r, g, b, s2Pin_, s3Pin_ };
-                emit inputChanged(pin(), (int)ComponentEventType::ColorRGB, payload);
-            }
-        };
-
-        connect(r_in, &QLineEdit::textChanged, this, emit_color);
-        connect(g_in, &QLineEdit::textChanged, this, emit_color);
-        connect(b_in, &QLineEdit::textChanged, this, emit_color);
+        connect(r_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
+        connect(g_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
+        connect(b_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
     }
 
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
@@ -57,8 +49,31 @@ public:
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {
-        if (pins.size() > 1) s2Pin_ = pins[1];
-        if (pins.size() > 2) s3Pin_ = pins[2];
+        // CircuitDetector currently produces {S0, S1, S2, S3, OUT} for
+        // ColorSensor (pre-Step-3 detection, see circuitdetector.cpp:322-323),
+        // not the simplified {OUT, S2, S3} role order used by the registry's
+        // detect_multi map -- re-check this indexing once the detector is
+        // generalized in Step 3.
+        if (pins.size() > 2) s2Pin_ = pins[2];
+        if (pins.size() > 3) s3Pin_ = pins[3];
+    }
+
+    // Called by CanvasWidget after inputChanged is connected and
+    // configureMultiPin has run, so s2Pin_/s3Pin_ are already valid.
+    void emitInitialValue() override {
+        emitColor();
+    }
+
+private:
+    void emitColor() {
+        bool rok, gok, bok;
+        int r = qBound(0, r_in_->text().toInt(&rok), 255);
+        int g = qBound(0, g_in_->text().toInt(&gok), 255);
+        int b = qBound(0, b_in_->text().toInt(&bok), 255);
+        if (rok && gok && bok) {
+            QVariantList payload{ r, g, b, s2Pin_, s3Pin_ };
+            emit inputChanged(pin(), (int)ComponentEventType::ColorRGB, payload);
+        }
     }
 };
 

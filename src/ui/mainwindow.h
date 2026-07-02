@@ -43,6 +43,7 @@ private slots:
     void onSerial2Output(QString text);
     void onSoftSerialOutput(int rxPin, QString text);
     void onPinChanged(int pin, int value);
+    void onComponentInput(int pin, int eventType, QVariant value);
     void onSketchReloaded();
     void onLoadFailed(QString reason);
     void onRunClicked();

@@ -8,17 +8,19 @@
 static const QColor DISTANCE_SENSOR_FILL("#003a3a");
 
 class DistanceSensorItem : public ComponentItem {
+    QLineEdit* input_;
+
 public:
     DistanceSensorItem(int p, QGraphicsItem* parent)
         : ComponentItem(p, parent) {
-        auto* input = new QLineEdit("10");
-        input->setFixedSize(60, 20);
-        input->setPlaceholderText("cm");
-        input->setStyleSheet("background:#001a1a; color:#44ffff; border:1px solid #44ffff;");
+        input_ = new QLineEdit();
+        input_->setFixedSize(60, 20);
+        input_->setPlaceholderText("cm");
+        input_->setStyleSheet("background:#001a1a; color:#44ffff; border:1px solid #44ffff;");
         auto* proxy = new QGraphicsProxyWidget(this);
-        proxy->setWidget(input);
+        proxy->setWidget(input_);
         proxy->setPos(34, 18);
-        connect(input, &QLineEdit::textChanged, this, [this](const QString& text) {
+        connect(input_, &QLineEdit::textChanged, this, [this](const QString& text) {
             bool ok;
             float cm = text.toFloat(&ok);
             if (ok && cm >= 0) {
@@ -38,6 +40,13 @@ public:
         p->setPen(QColor("#44ffff"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Distance");
+    }
+
+    // Called by CanvasWidget after inputChanged is connected -- setting this
+    // in the constructor would fire textChanged before anything outside this
+    // object could possibly be connected yet, silently dropping the signal.
+    void emitInitialValue() override {
+        input_->setText("10");
     }
 };
 

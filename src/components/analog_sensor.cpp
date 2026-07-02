@@ -7,17 +7,19 @@
 static const QColor ANALOG_SENSOR_FILL("#2a2a2a");
 
 class AnalogSensorItem : public ComponentItem {
+    QLineEdit* input_;
+
 public:
     AnalogSensorItem(int p, QGraphicsItem* parent)
         : ComponentItem(p, parent) {
-        auto* input = new QLineEdit("0");
-        input->setFixedSize(60, 20);
-        input->setPlaceholderText("0-1023");
-        input->setStyleSheet("background:#1a1a00; color:#ffff44; border:1px solid #ffff44;");
+        input_ = new QLineEdit();
+        input_->setFixedSize(60, 20);
+        input_->setPlaceholderText("0-1023");
+        input_->setStyleSheet("background:#1a1a00; color:#ffff44; border:1px solid #ffff44;");
         auto* proxy = new QGraphicsProxyWidget(this);
-        proxy->setWidget(input);
+        proxy->setWidget(input_);
         proxy->setPos(34, 18);
-        connect(input, &QLineEdit::textChanged, this, [this](const QString& text) {
+        connect(input_, &QLineEdit::textChanged, this, [this](const QString& text) {
             bool ok;
             int val = text.toInt(&ok);
             if (ok)
@@ -35,6 +37,12 @@ public:
         p->setPen(QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Sensor");
+    }
+
+    // Called by CanvasWidget after inputChanged is connected -- see
+    // DistanceSensorItem for why this can't just happen in the constructor.
+    void emitInitialValue() override {
+        input_->setText("0");
     }
 };
 

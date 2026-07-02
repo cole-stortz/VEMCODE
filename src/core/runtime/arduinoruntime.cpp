@@ -277,10 +277,16 @@ unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long tim
         return g_runtime->state_.pulse_durations_[pin];
     }
 
-    if (g_runtime->state_.color_channels_.count(pin)) {
-        int s2 = impl_digitalRead(g_runtime->state_.color_sensor_s2_[pin]);
-        int s3 = impl_digitalRead(g_runtime->state_.color_sensor_s3_[pin]);
-        return g_runtime->state_.color_channels_[pin][s2 * 2 + s3];
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.color_mtx_);
+        if (g_runtime->state_.color_channels_.count(pin)) {
+            int s2_pin = g_runtime->state_.color_sensor_s2_[pin];
+            int s3_pin = g_runtime->state_.color_sensor_s3_[pin];
+            auto channels = g_runtime->state_.color_channels_[pin];
+            int s2 = impl_digitalRead(s2_pin);
+            int s3 = impl_digitalRead(s3_pin);
+            return channels[s2 * 2 + s3];
+        }
     }
     unsigned long start_time = impl_micros();
     // Phase 1

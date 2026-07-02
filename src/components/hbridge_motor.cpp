@@ -18,7 +18,7 @@ public:
     HBridgeMotorItem(int pin, QGraphicsItem* parent)
         : ComponentItem(pin, parent), pwmPin_(pin) {}
 
-    QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
+    QRectF boundingRect() const override { return QRectF(0, 0, 100, 54); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         bool active = (cwise_ || antiCwise_) && pwm_ > 0;

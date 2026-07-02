@@ -11,6 +11,7 @@
 #include <map>
 #include <array>
 #include <random>
+#include <new>
 
 struct RuntimeState {
     int  pin_modes[80]    = {};
@@ -23,6 +24,9 @@ struct RuntimeState {
     std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
     std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
     std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
+    std::mutex color_mtx_; // guards the three maps above -- written from the
+                            // GUI thread (inject_color), read from the sketch
+                            // thread (impl_pulseIn)
     std::map<int, int> tone_frequencies_; // pin → frequency
     std::chrono::steady_clock::time_point start_time;
     std::map<int, void(*)()> interrupt_callbacks_; // pin → callback
@@ -106,6 +110,11 @@ public:
 
     void setProfile(BoardProfile p) { profile_ = p; }
 
+    void reset_state() {
+        state_.~RuntimeState();
+        new (&state_) RuntimeState();
+    }
+
     void inject_pulse_duration(int pin, unsigned long micros) {
         if (pin >= 0 && pin < profile_.pin_count)
             state_.pulse_durations_[pin] = micros;
@@ -115,6 +124,7 @@ public:
         auto to_period = [](int v) -> unsigned long {
             return (unsigned long)(387 - (v * 348 / 255));
         };
+        std::lock_guard<std::mutex> lock(state_.color_mtx_);
         state_.color_channels_[out_pin][0] = to_period(r);
         state_.color_channels_[out_pin][1] = to_period(b);
         state_.color_channels_[out_pin][2] = 200;

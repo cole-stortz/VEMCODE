@@ -45,6 +45,8 @@ public:
         runtime_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
     }
 
+    void reset_state() { runtime_.reset_state(); }
+
 private:
     SketchDLL      dll_;
     ArduinoRuntime runtime_;
