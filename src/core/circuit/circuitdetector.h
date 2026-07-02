@@ -49,6 +49,16 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
+    void detect_pattern_matches(const std::string& source,
+        const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void detect_method_call_pattern(const ComponentDefinition& def, const std::string& pattern,
+        const std::string& source, const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void detect_wrapper_function_pattern(const ComponentDefinition& def, const std::string& pattern,
+        const std::string& source, const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void detect_constructor_pattern(const ComponentDefinition& def, const std::string& pattern,
+        const std::string& source, const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    std::string regex_escape(const std::string& s);
+
     std::vector<DetectedComponent> components_;
     std::vector<std::string>       warnings_;
 

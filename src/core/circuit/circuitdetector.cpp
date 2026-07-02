@@ -398,6 +398,141 @@ void CircuitDetector::detect_generic_multipin(
     }
 }
 
+std::string CircuitDetector::regex_escape(const std::string& s) {
+    static const std::string special = ".()[]{}+*?^$|\\";
+    std::string out;
+    for (char c : s) {
+        if (special.find(c) != std::string::npos) out += '\\';
+        out += c;
+    }
+    return out;
+}
+
+void CircuitDetector::detect_method_call_pattern(
+    const ComponentDefinition& def,
+    const std::string& pattern,
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    std::regex call_re(R"(\b(\w+)\s*)" + regex_escape(pattern) + R"(\s*(\w+)\s*\))");
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), call_re);
+         it != std::sregex_iterator(); ++it) {
+        std::string obj_name  = (*it)[1].str();
+        std::string pin_token = (*it)[2].str();
+        int pin = resolve_pin(pin_token, defines);
+        if (pin < 0 || claimed.count(pin) || pin_already_added(pin)) continue;
+
+        DetectedComponent comp;
+        comp.type_name = def.type_name;
+        comp.pin       = pin;
+        comp.pins      = {pin};
+        comp.pin_name  = obj_name;
+        comp.label     = def.type_name + " " + obj_name + " (pin " + std::to_string(pin) + ")";
+        comp.confirmed = false;
+        components_.push_back(comp);
+        claimed.insert(pin);
+    }
+}
+
+void CircuitDetector::detect_wrapper_function_pattern(
+    const ComponentDefinition& def,
+    const std::string& pattern,
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    std::regex pattern_re(R"(\b)" + regex_escape(pattern));
+    static const std::regex func_def_re(R"(\b(?:int|long|void|float)\s+(\w+)\s*\([^)]*\)\s*\{)");
+
+    std::set<std::string> wrapper_funcs;
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), pattern_re);
+         it != std::sregex_iterator(); ++it) {
+        std::string before = source.substr(0, it->position());
+        std::string last_func;
+        for (auto fit = std::sregex_iterator(before.begin(), before.end(), func_def_re);
+             fit != std::sregex_iterator(); ++fit)
+            last_func = (*fit)[1].str();
+        if (!last_func.empty())
+            wrapper_funcs.insert(last_func);
+    }
+
+    for (const auto& fn : wrapper_funcs) {
+        std::regex call_re("\\b" + fn + R"(\s*\(\s*(\w+)\s*\))");
+        for (auto it = std::sregex_iterator(source.begin(), source.end(), call_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string pin_token = (*it)[1].str();
+            int pin = resolve_pin(pin_token, defines);
+            if (pin < 0 || claimed.count(pin) || pin_already_added(pin)) continue;
+
+            DetectedComponent comp;
+            comp.type_name = def.type_name;
+            comp.pin       = pin;
+            comp.pins      = {pin};
+            comp.pin_name  = pin_token;
+            comp.label     = def.type_name + " (pin " + std::to_string(pin) + ")";
+            comp.confirmed = false;
+            components_.push_back(comp);
+            claimed.insert(pin);
+        }
+    }
+}
+
+void CircuitDetector::detect_constructor_pattern(
+    const ComponentDefinition& def,
+    const std::string& pattern,
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    if (def.detect_multi.empty()) return;
+    for (const auto& c : components_)
+        if (c.type_name == def.type_name) return;
+
+    size_t n = def.detect_multi.size();
+    std::string regex_str = regex_escape(pattern) + R"(\s+\w+\s*\()";
+    for (size_t i = 0; i < n; ++i) {
+        if (i > 0) regex_str += ",";
+        regex_str += R"(\s*(\w+)\s*)";
+    }
+    regex_str += R"(\))";
+
+    std::smatch m;
+    std::regex ctor_re(regex_str);
+    if (!std::regex_search(source, m, ctor_re)) return;
+
+    auto resolve_arg = [&](const std::string& arg) -> int {
+        try { return std::stoi(arg); } catch (...) {}
+        return resolve_pin(arg, defines);
+    };
+
+    std::vector<int> pins;
+    for (size_t i = 0; i < n; ++i)
+        pins.push_back(resolve_arg(m[i + 1].str()));
+    for (int p : pins)
+        if (p < 0) return;
+
+    add_multipin_component(def, pins, def.type_name, claimed);
+}
+
+void CircuitDetector::detect_pattern_matches(
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    for (const auto& def : ComponentRegistry::instance().all()) {
+        for (const auto& pattern : def.detect_pattern) {
+            if (pattern.empty()) continue;
+            if (pattern.front() == '.' && pattern.back() == '(')
+                detect_method_call_pattern(def, pattern, source, defines, claimed);
+            else if (pattern.back() == '(')
+                detect_wrapper_function_pattern(def, pattern, source, defines, claimed);
+            else
+                detect_constructor_pattern(def, pattern, source, defines, claimed);
+        }
+    }
+}
+
 std::set<int> CircuitDetector::detect_multipin(
     const std::string& source,
     const std::map<std::string, std::string>& defines,
@@ -406,134 +541,7 @@ std::set<int> CircuitDetector::detect_multipin(
     std::set<int> claimed;
 
     detect_generic_multipin(defines, arrays, claimed);
-
-    // LCD ctor fallback -- the generic Singleton scan above only catches LCD
-    // wired via named defines; if that didn't find one, try parsing the
-    // LiquidCrystal constructor call directly. Still bespoke for now.
-    bool lcd_found = false;
-    for (const auto& c : components_)
-        if (c.type_name == "LCD") { lcd_found = true; break; }
-
-    if (!lcd_found) {
-        std::smatch m;
-        std::regex lcd_ctor(R"(LiquidCrystal\s+\w+\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\))");
-        std::string src_copy = source;
-        if (std::regex_search(src_copy, m, lcd_ctor)) {
-            auto resolve_arg = [&](const std::string& arg) -> int {
-                try { return std::stoi(arg); } catch (...) {}
-                return resolve_pin(arg, defines);
-            };
-            int rs_pin = resolve_arg(m[1]), e_pin  = resolve_arg(m[2]);
-            int d4_pin = resolve_arg(m[3]), d5_pin = resolve_arg(m[4]);
-            int d6_pin = resolve_arg(m[5]), d7_pin = resolve_arg(m[6]);
-
-            if (rs_pin >= 0 && e_pin >= 0 && d4_pin >= 0 && d5_pin >= 0 && d6_pin >= 0 && d7_pin >= 0) {
-                DetectedComponent comp;
-                comp.type_name = "LCD";
-                comp.pin       = rs_pin;
-                comp.pins      = {rs_pin, e_pin, d4_pin, d5_pin, d6_pin, d7_pin};
-                comp.pin_name  = "LCD";
-                comp.label     = "LCD 16x2 (RS=" + std::to_string(rs_pin) +
-                                 ", E=" + std::to_string(e_pin) +
-                                 ", D4=" + std::to_string(d4_pin) +
-                                 ", D5=" + std::to_string(d5_pin) +
-                                 ", D6=" + std::to_string(d6_pin) +
-                                 ", D7=" + std::to_string(d7_pin) + ")";
-                comp.confirmed = false;
-                if (pin_already_added(rs_pin)) {
-                    for (const auto& existing : components_) {
-                        if (existing.pin == rs_pin) {
-                            warnings_.push_back("WARNING: Pin " + std::to_string(rs_pin) +
-                                " is used by both '" + existing.label + "' and '" + comp.label +
-                                "' — only " + existing.label + " will be simulated");
-                            break;
-                        }
-                    }
-                } else {
-                    components_.push_back(comp);
-                    claimed.insert(rs_pin);
-                    claimed.insert(e_pin);
-                    claimed.insert(d4_pin);
-                    claimed.insert(d5_pin);
-                    claimed.insert(d6_pin);
-                    claimed.insert(d7_pin);
-                }
-            }
-        }
-    }
-
-    // --- Servo ---
-    // Find "Servo Name;" declarations, then "Name.attach(pin)" calls
-    {
-        static const std::regex servo_decl_re(R"(\bServo\s+(\w+)\s*;)");
-        auto sd_begin = std::sregex_iterator(source.begin(), source.end(), servo_decl_re);
-        auto sd_end   = std::sregex_iterator();
-
-        for (auto it = sd_begin; it != sd_end; ++it) {
-            std::string servo_name = (*it)[1].str();
-
-            std::regex attach_re("\\b" + servo_name + R"(\s*\.\s*attach\s*\(\s*(\w+)\s*\))");
-            auto ab = std::sregex_iterator(source.begin(), source.end(), attach_re);
-            auto ae = std::sregex_iterator();
-
-            for (auto ait = ab; ait != ae; ++ait) {
-                std::string pin_token = (*ait)[1].str();
-                int pin = resolve_pin(pin_token, defines);
-                if (pin < 0 || claimed.count(pin)) continue;
-
-                DetectedComponent comp;
-                comp.type_name = "Servo";
-                comp.pin      = pin;
-                comp.pins     = {pin};
-                comp.pin_name = servo_name;
-                comp.label    = "Servo " + servo_name + " (pin " + std::to_string(pin) + ")";
-                comp.confirmed = false;
-                components_.push_back(comp);
-                claimed.insert(pin);
-            }
-        }
-    }
-
-    // --- PING))) / single-pin ultrasonic sensors ---
-    // Find user-defined functions whose body calls pulseIn, then resolve their call-site pin args.
-    {
-        static const std::regex pulseIn_re(R"(\bpulseIn\s*\()");
-        static const std::regex func_def_re(R"(\b(?:int|long|void|float)\s+(\w+)\s*\([^)]*\)\s*\{)");
-
-        std::set<std::string> ping_funcs;
-        for (auto it = std::sregex_iterator(source.begin(), source.end(), pulseIn_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string before = source.substr(0, (*it).position());
-            std::string last_func;
-            for (auto fit = std::sregex_iterator(before.begin(), before.end(), func_def_re);
-                 fit != std::sregex_iterator(); ++fit)
-                last_func = (*fit)[1].str();
-            if (!last_func.empty())
-                ping_funcs.insert(last_func);
-        }
-
-        for (const auto& fn : ping_funcs) {
-            std::regex call_re("\\b" + fn + R"(\s*\(\s*(\w+)\s*\))");
-            for (auto it = std::sregex_iterator(source.begin(), source.end(), call_re);
-                 it != std::sregex_iterator(); ++it) {
-                std::string pin_token = (*it)[1].str();
-                int pin = resolve_pin(pin_token, defines);
-                if (pin < 0 || claimed.count(pin)) continue;
-
-                if (pin_already_added(pin)) continue;
-
-                DetectedComponent comp;
-                comp.type_name = "DistanceSensor";
-                comp.pin       = pin;
-                comp.pins      = {pin};
-                comp.pin_name  = pin_token;
-                comp.label     = "Distance Sensor (pin " + std::to_string(pin) + ")";
-                comp.confirmed = false;
-                components_.push_back(comp);
-                claimed.insert(pin);
-            }
-        }
-    }
+    detect_pattern_matches(source, defines, claimed);
 
     return claimed;
 }
