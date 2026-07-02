@@ -234,7 +234,7 @@ Pull the component plugin architecture forward so that all new components added 
 - [x] `switch.cpp` — input; click toggles latched state, emits `DigitalPress`; keywords: `SWITCH`, `TOGGLE`, `RELAY`
 - [x] `buzzer.cpp` — output; `onPinChanged` shows active indicator; keywords: `BUZZER`, `PIEZO`, `SPEAKER`, `BEEPER`
 - [x] `servo.cpp` — output; `onPinChanged` updates angle label; detect pattern: `.attach(`; keywords: `SERVO`
-- [ ] `potentiometer.cpp` — input; overrides `mouseMoveEvent` for drag, emits `AnalogValue`; keywords: `POT`, `POTENTIOMETER`, `KNOB`, `DIAL`
+- [x] `potentiometer.cpp` — input; overrides `mouseMoveEvent` for drag, emits `AnalogValue`; keywords: `POT`, `POTENTIOMETER`, `KNOB`, `DIAL`
 - [x] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
 - [x] `distancesensor.cpp` — input; text field (cm → µs), emits `PulseUs`; detect pattern: `pulseIn(` paired with trig/echo timing; keywords: `TRIG`, `ECHO`, `DISTANCE`, `ULTRASONIC`, `SONAR`, `HCSR`
 - [ ] `hbridgemotor.cpp` — output; `onPinChanged` updates speed/direction label; multi-pin role map (PWM, CWISE, ANTI_CWISE); keywords: `MOTOR`, `HBRIDGE`, `ENA`, `IN1`
