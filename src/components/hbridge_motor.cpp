@@ -2,6 +2,9 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
+static const QColor HBRIDGE_ACTIVE  ("#ff44aa");
+static const QColor HBRIDGE_INACTIVE("#3a0020");
+
 class HBridgeMotorItem : public ComponentItem {
     int pwmPin_;
     int cwisePin_ = -1;
@@ -18,10 +21,8 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor active_color("#db7d25");
-        static const QColor inactive_color("#401f01");
         bool active = (cwise_ || antiCwise_) && pwm_ > 0;
-        QColor fill = active ? active_color : inactive_color;
+        QColor fill = active ? HBRIDGE_ACTIVE : HBRIDGE_INACTIVE;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

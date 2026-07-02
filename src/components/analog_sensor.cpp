@@ -4,6 +4,8 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
+static const QColor ANALOG_SENSOR_FILL("#2a2a2a");
+
 class AnalogSensorItem : public ComponentItem {
 public:
     AnalogSensorItem(int p, QGraphicsItem* parent)
@@ -26,7 +28,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor fill("#2a2a2a");
+        QColor fill = ANALOG_SENSOR_FILL;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

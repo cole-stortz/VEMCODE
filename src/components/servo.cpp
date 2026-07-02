@@ -2,6 +2,8 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
+static const QColor SERVO_FILL("#0c9520");
+
 class ServoItem : public ComponentItem {
     int angle_;
 
@@ -12,7 +14,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor fill("#0c9520");
+        QColor fill = SERVO_FILL;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

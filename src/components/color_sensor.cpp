@@ -4,6 +4,8 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
+static const QColor COLOR_SENSOR_FILL("#aa44ff");
+
 class ColorSensorItem : public ComponentItem {
     int s2Pin_ = -1;
     int s3Pin_ = -1;
@@ -45,7 +47,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor fill("#2a2a2a");
+        QColor fill = COLOR_SENSOR_FILL;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

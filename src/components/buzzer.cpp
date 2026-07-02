@@ -2,19 +2,20 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
+static const QColor BUZZER_ACTIVE  ("#db7d25");
+static const QColor BUZZER_INACTIVE("#401f01");
+
 class BuzzerItem : public ComponentItem {
     bool active_;
 
 public:
     BuzzerItem(int pin, QGraphicsItem* parent)
         : ComponentItem(pin, parent), active_(false) {}
-    
+
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor active_color("#db7d25");
-        static const QColor inactive_color("#401f01");
-        QColor fill = active_ ? active_color : inactive_color;
+        QColor fill = active_ ? BUZZER_ACTIVE : BUZZER_INACTIVE;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

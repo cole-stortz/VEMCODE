@@ -2,6 +2,9 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
+static const QColor LED_ACTIVE  ("#ffdd44");
+static const QColor LED_INACTIVE("#3a3000");
+
 class LedItem : public ComponentItem {
     bool active_;
 
@@ -12,9 +15,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor active_color("#ffdd44");
-        static const QColor inactive_color("#3a3000");
-        QColor fill = active_ ? active_color : inactive_color;
+        QColor fill = active_ ? LED_ACTIVE : LED_INACTIVE;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

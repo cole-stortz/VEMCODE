@@ -5,6 +5,8 @@
 #include <QGraphicsProxyWidget>
 #include <cmath>
 
+static const QColor DISTANCE_SENSOR_FILL("#003a3a");
+
 class DistanceSensorItem : public ComponentItem {
 public:
     DistanceSensorItem(int p, QGraphicsItem* parent)
@@ -29,7 +31,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        static const QColor fill("#003a3a");
+        QColor fill = DISTANCE_SENSOR_FILL;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
