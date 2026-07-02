@@ -29,7 +29,6 @@ public:
     }
 };
 
-
 static bool registered = []() {
     ComponentRegistry::instance().register_component({
         "LED",
