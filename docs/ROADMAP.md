@@ -238,7 +238,7 @@ Pull the component plugin architecture forward so that all new components added 
 - [x] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
 - [x] `distancesensor.cpp` — input; text field (cm → µs), emits `PulseUs`; detect pattern: `pulseIn(` paired with trig/echo timing; keywords: `TRIG`, `ECHO`, `DISTANCE`, `ULTRASONIC`, `SONAR`, `HCSR`
 - [x] `hbridgemotor.cpp` — output; `onPinChanged` updates speed/direction label; multi-pin role map (PWM, CWISE, ANTI_CWISE); keywords: `MOTOR`, `HBRIDGE`, `ENA`, `IN1`
-- [ ] `colorsensor.cpp` — input; R/G/B text fields, emits `ColorRGB`; multi-pin role map (OUT, S2, S3); detect pattern: `pulseIn(` on a pin with `S2`/`S3` siblings; keywords: `COLOR`, `TCS`, `S2`, `S3`
+- [x] `colorsensor.cpp` — input; R/G/B text fields, emits `ColorRGB`; multi-pin role map (OUT, S2, S3); detect pattern: `pulseIn(` on a pin with `S2`/`S3` siblings; keywords: `COLOR`, `TCS`, `S2`, `S3`
 - [ ] `lcd.cpp` — output; `onPinChanged` not used; overrides `updateText(int row, const QString& text)` to update its own row labels; `CanvasWidget::updateLcdText(int pin, int row, const QString& text)` stays as a public method but routes through `pinItems_[pin]->updateText(row, text)` instead of separate QMaps; detect pattern: `LiquidCrystal`; multi-pin role map (RS, EN, D4–D7); RS pin is representative
 
 **Step 3 — Detector and canvas refactor:**
