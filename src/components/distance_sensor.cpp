@@ -54,12 +54,17 @@ static bool registered = []() {
     ComponentRegistry::instance().register_component({
         "DistanceSensor",
         {"TRIG", "ECHO", "DISTANCE", "ULTRASONIC", "SONAR", "HCSR"},
-        {},
+        {
+            {"TRIG", {"TRIG"}},
+            {"ECHO", {"ECHO"}},
+        },
         {"pulseIn("},
         false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new DistanceSensorItem(pin, parent);
-        }
+        },
+        MultiPinStrategy::Suffix,
+        "ECHO"
     });
     return true;
 }();

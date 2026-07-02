@@ -1,4 +1,5 @@
 #include "src/core/circuit/circuitdetector.h"
+#include "src/core/circuit/componentregistry.h"
 #include <cstddef>
 #include <regex>
 #include <sstream>
@@ -185,6 +186,218 @@ std::map<std::string, std::vector<int>> CircuitDetector::parse_arrays(
     return arrays;
 }
 
+void CircuitDetector::add_multipin_component(
+    const ComponentDefinition& def,
+    const std::vector<int>& pins,
+    const std::string& group_label,
+    std::set<int>& claimed)
+{
+    size_t rep_idx = 0;
+    if (!def.representative_role.empty()) {
+        for (size_t i = 0; i < def.detect_multi.size(); ++i) {
+            if (def.detect_multi[i].name == def.representative_role) { rep_idx = i; break; }
+        }
+    }
+    if (rep_idx >= pins.size() || pins[rep_idx] < 0) return;
+    int rep_pin = pins[rep_idx];
+
+    DetectedComponent comp;
+    comp.type_name = def.type_name;
+    comp.pin       = rep_pin;
+    comp.pins      = pins;
+    comp.pin_name  = group_label.empty() ? def.type_name : group_label;
+    comp.confirmed = false;
+
+    std::string label = def.type_name + " (";
+    bool first = true;
+    for (size_t i = 0; i < def.detect_multi.size() && i < pins.size(); ++i) {
+        if (pins[i] < 0) continue;
+        if (!first) label += ", ";
+        first = false;
+        label += def.detect_multi[i].name + "=" + std::to_string(pins[i]);
+    }
+    label += ")";
+    comp.label = label;
+
+    if (pin_already_added(rep_pin)) {
+        for (const auto& existing : components_) {
+            if (existing.pin == rep_pin) {
+                warnings_.push_back("WARNING: Pin " + std::to_string(rep_pin) +
+                    " is used by both '" + existing.label + "' and '" + comp.label +
+                    "' — only " + existing.label + " will be simulated");
+                break;
+            }
+        }
+        return;
+    }
+
+    components_.push_back(comp);
+    for (int p : pins)
+        if (p >= 0) claimed.insert(p);
+}
+
+void CircuitDetector::detect_suffix_group(
+    const ComponentDefinition& def,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    std::vector<std::map<std::string, int>> role_suffix(def.detect_multi.size());
+
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0) continue;
+        for (size_t r = 0; r < def.detect_multi.size(); ++r) {
+            bool matched = false;
+            for (const auto& kw : def.detect_multi[r].keywords) {
+                size_t pos = upper.find(kw);
+                if (pos != std::string::npos) {
+                    role_suffix[r][upper.substr(pos + kw.size())] = pin;
+                    matched = true;
+                    break;
+                }
+            }
+            if (matched) break;
+        }
+    }
+
+    if (role_suffix.empty()) return;
+    for (const auto& [suffix, pin0] : role_suffix[0]) {
+        std::vector<int> pins;
+        bool all_found = true;
+        for (auto& rs : role_suffix) {
+            auto it = rs.find(suffix);
+            if (it == rs.end()) { all_found = false; break; }
+            pins.push_back(it->second);
+        }
+        if (!all_found) continue;
+        add_multipin_component(def, pins, def.type_name + suffix, claimed);
+    }
+}
+
+void CircuitDetector::detect_prefix_group(
+    const ComponentDefinition& def,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    static constexpr int MAX_PIN = 53;
+    std::vector<std::string> all_keywords;
+    for (const auto& role : def.detect_multi)
+        for (const auto& kw : role.keywords)
+            all_keywords.push_back(kw);
+
+    std::map<std::string, std::vector<std::pair<std::string, int>>> groups;
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0 || pin > MAX_PIN) continue;
+        if (!contains_any(upper, all_keywords)) continue;
+        size_t pos = upper.find('_');
+        if (pos == std::string::npos) continue;
+        groups[upper.substr(0, pos)].push_back({upper, pin});
+    }
+
+    for (const auto& g : groups) {
+        const auto& members = g.second;
+        if (members.size() < 2) continue;
+
+        std::vector<int> pins(def.detect_multi.size(), -1);
+        std::vector<bool> used(members.size(), false);
+        for (size_t r = 0; r < def.detect_multi.size(); ++r) {
+            for (size_t m = 0; m < members.size(); ++m) {
+                if (used[m]) continue;
+                if (contains_any(members[m].first, def.detect_multi[r].keywords)) {
+                    pins[r] = members[m].second;
+                    used[m] = true;
+                    break;
+                }
+            }
+        }
+        size_t mi = 0;
+        for (size_t r = 0; r < pins.size(); ++r) {
+            if (pins[r] >= 0) continue;
+            while (mi < members.size() && used[mi]) mi++;
+            if (mi < members.size()) { pins[r] = members[mi].second; used[mi] = true; }
+        }
+
+        int filled = 0;
+        for (int p : pins) if (p >= 0) filled++;
+        if (filled < 2) continue;
+
+        add_multipin_component(def, pins, g.first, claimed);
+    }
+}
+
+void CircuitDetector::detect_array_group(
+    const ComponentDefinition& def,
+    const std::map<std::string, std::vector<int>>& arrays,
+    std::set<int>& claimed)
+{
+    std::vector<std::vector<int>> role_pins(def.detect_multi.size());
+    std::vector<bool> role_found(def.detect_multi.size(), false);
+
+    for (const auto& arr : arrays) {
+        std::string upper = to_upper(arr.first);
+        for (size_t r = 0; r < def.detect_multi.size(); ++r) {
+            if (role_found[r]) continue;
+            if (contains_any(upper, def.detect_multi[r].keywords)) {
+                role_pins[r] = arr.second;
+                role_found[r] = true;
+                break;
+            }
+        }
+    }
+
+    for (bool f : role_found) if (!f) return;
+
+    size_t len = role_pins[0].size();
+    for (const auto& rp : role_pins) if (rp.size() != len) return;
+
+    for (size_t i = 0; i < len; ++i) {
+        std::vector<int> pins;
+        for (const auto& rp : role_pins) pins.push_back(rp[i]);
+        add_multipin_component(def, pins, def.type_name, claimed);
+    }
+}
+
+void CircuitDetector::detect_singleton_group(
+    const ComponentDefinition& def,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    std::vector<int> pins(def.detect_multi.size(), -1);
+    for (const auto& d : defines) {
+        std::string upper = to_upper(d.first);
+        int pin = resolve_pin(d.second, defines);
+        if (pin < 0) continue;
+        for (size_t r = 0; r < def.detect_multi.size(); ++r) {
+            if (pins[r] >= 0) continue;
+            if (contains_any(upper, def.detect_multi[r].keywords)) {
+                pins[r] = pin;
+                break;
+            }
+        }
+    }
+    for (int p : pins) if (p < 0) return;
+    add_multipin_component(def, pins, def.type_name, claimed);
+}
+
+void CircuitDetector::detect_generic_multipin(
+    const std::map<std::string, std::string>& defines,
+    const std::map<std::string, std::vector<int>>& arrays,
+    std::set<int>& claimed)
+{
+    for (const auto& def : ComponentRegistry::instance().all()) {
+        switch (def.multi_pin_strategy) {
+            case MultiPinStrategy::Suffix:    detect_suffix_group(def, defines, claimed); break;
+            case MultiPinStrategy::Prefix:    detect_prefix_group(def, defines, claimed); break;
+            case MultiPinStrategy::Array:     detect_array_group(def, arrays, claimed); break;
+            case MultiPinStrategy::Singleton: detect_singleton_group(def, defines, claimed); break;
+            case MultiPinStrategy::None:      break;
+        }
+    }
+}
+
 std::set<int> CircuitDetector::detect_multipin(
     const std::string& source,
     const std::map<std::string, std::string>& defines,
@@ -192,227 +405,60 @@ std::set<int> CircuitDetector::detect_multipin(
 {
     std::set<int> claimed;
 
-    // --- HC-SR04 (multiple sensors supported) ---
-    // Collect all TRIG and ECHO defines, keyed by the suffix after the keyword
-    // e.g. "TRIGPIN1" → suffix "PIN1", "ECHOPIN1" → suffix "PIN1" → they pair up
-    std::map<std::string, int> trig_map;  // suffix → pin
-    std::map<std::string, int> echo_map;
-    for (const auto& d : defines) {
-        std::string upper = to_upper(d.first);
-        int pin = resolve_pin(d.second, defines);
-        if (pin < 0) continue;
-        size_t pos;
-        if ((pos = upper.find("TRIG")) != std::string::npos)
-            trig_map[upper.substr(pos + 4)] = pin;
-        else if ((pos = upper.find("ECHO")) != std::string::npos)
-            echo_map[upper.substr(pos + 4)] = pin;
-    }
-    for (const auto& t : trig_map) {
-        auto e_it = echo_map.find(t.first);
-        if (e_it == echo_map.end()) continue;
-        int trig_pin = t.second;
-        int echo_pin = e_it->second;
-        DetectedComponent comp;
-        comp.type_name = "DistanceSensor";
-        comp.pin       = echo_pin;
-        comp.pins      = {trig_pin, echo_pin};
-        comp.pin_name  = "HC-SR04";
-        comp.label     = "Distance Sensor (TRIG=" + std::to_string(trig_pin)
-                       + ", ECHO=" + std::to_string(echo_pin) + ")";
-        comp.confirmed = false;
-        if (pin_already_added(echo_pin) || pin_already_added(trig_pin)) {
-            for (const auto& existing : components_) {
-                if (existing.pin == echo_pin || existing.pin == trig_pin) {
-                    warnings_.push_back("WARNING: Pin " + std::to_string(echo_pin) +
-                        " is used by both '" + existing.label + "' and '" + comp.label +
-                        "' — only " + existing.label + " will be simulated");
-                    break;
-                }
-            }
-        } else {
-            components_.push_back(comp);
-            claimed.insert(trig_pin);
-            claimed.insert(echo_pin);
-        }
-    }
+    detect_generic_multipin(defines, arrays, claimed);
 
-    // --- H-bridge motors ---
-    // Group defines by prefix: MOTOR1_, MOTOR2_, MOTOR3_
-    // Pin values above 53 are treated as constants (e.g. PWM duty cycle), not pin numbers.
-    static constexpr int MAX_PIN = 53;
-    std::map<std::string, std::vector<std::pair<std::string, int>>> groups;
-    for (const auto& d : defines) {
-        std::string upper = to_upper(d.first);
-        int pin = resolve_pin(d.second, defines);
-        if (pin < 0 || pin > MAX_PIN) continue;
-        if (contains_any(upper, {"MOTOR", "SRV", "SERVO"})) {
-            size_t pos = upper.find('_');
-            if (pos != std::string::npos) {
-                std::string prefix = upper.substr(0, pos);
-                groups[prefix].push_back({upper, pin});
-            }
-        }
-    }
+    // LCD ctor fallback -- the generic Singleton scan above only catches LCD
+    // wired via named defines; if that didn't find one, try parsing the
+    // LiquidCrystal constructor call directly. Still bespoke for now.
+    bool lcd_found = false;
+    for (const auto& c : components_)
+        if (c.type_name == "LCD") { lcd_found = true; break; }
 
-    for (const auto& g : groups) {
-        const auto& pins = g.second;
-        if (pins.size() >= 2) {
-            // Sort into canonical order: pins[0]=PWM, pins[1]=CWISE, pins[2]=ANTI_CWISE
-            int pwm_pin = -1, cwise_pin = -1, anti_cwise_pin = -1;
-            for (const auto& p : pins) {
-                const std::string& name = p.first;
-                if (contains_any(name, {"PWM"}))
-                    pwm_pin = p.second;
-                else if (contains_any(name, {"ANTI"}))
-                    anti_cwise_pin = p.second;
-                else if (contains_any(name, {"CWISE", "CW", "DIR"}))
-                    cwise_pin = p.second;
-            }
-            // Fall back to source order for any unrecognised suffixes
-            if (pwm_pin < 0)       pwm_pin       = pins[0].second;
-            if (cwise_pin < 0)     cwise_pin     = (pins.size() > 1) ? pins[1].second : -1;
-            if (anti_cwise_pin < 0) anti_cwise_pin = (pins.size() > 2) ? pins[2].second : -1;
-
-            DetectedComponent comp;
-            comp.type_name = "HBridgeMotor";
-            comp.pin      = pwm_pin;
-            comp.pins     = { pwm_pin, cwise_pin, anti_cwise_pin };
-            comp.pin_name = g.first;
-            comp.label    = "Motor (" + g.first + ")";
-            comp.confirmed = false;
-            if (pin_already_added(pwm_pin)) {
-                for (const auto& existing : components_) {
-                    if (existing.pin == pwm_pin) {
-                        warnings_.push_back("WARNING: Pin " + std::to_string(pwm_pin) +
-                            " is used by both '" + existing.label + "' and '" + comp.label +
-                            "' — only " + existing.label + " will be simulated");
-                        break;
-                    }
-                }
-            } else {
-                components_.push_back(comp);
-                for (const auto& p : pins)
-                    claimed.insert(p.second);
-            }
-        }
-    }
-
-    // --- Color Sensor ---
-    // Look for S0, S1, S2, S3, sensorOut arrays all present and same length
-    bool has_s0 = false, has_s1 = false, has_s2 = false, has_s3 = false, has_out = false;
-    std::vector<int> s0_pins, s1_pins, s2_pins, s3_pins, out_pins;
-    for (const auto& arr : arrays) {
-        std::string upper = to_upper(arr.first);
-        if (contains_any(upper, {"S0"})) { has_s0 = true; s0_pins = arr.second; }
-        if (contains_any(upper, {"S1"})) { has_s1 = true; s1_pins = arr.second; }
-        if (contains_any(upper, {"S2"})) { has_s2 = true; s2_pins = arr.second; }
-        if (contains_any(upper, {"S3"})) { has_s3 = true; s3_pins = arr.second; }
-        if (contains_any(upper, {"OUT", "SENSOROUT", "OUTPUT"})) { has_out = true; out_pins = arr.second; }
-    }
-
-    // If all 5 arrays are present and have the same number of pins, assume it's a color sensor
-    if (has_s0 && has_s1 && has_s2 && has_s3 && has_out &&
-        s0_pins.size() == s1_pins.size() &&
-        s0_pins.size() == s2_pins.size() &&
-        s0_pins.size() == s3_pins.size() &&
-        s0_pins.size() == out_pins.size()) {
-        for (size_t i = 0; i < s0_pins.size(); ++i) {
-            DetectedComponent comp;
-            comp.type_name = "ColorSensor";
-            comp.pin       = out_pins[i]; // Representative pin
-            comp.pins      = {s0_pins[i], s1_pins[i], s2_pins[i], s3_pins[i], out_pins[i]};
-            comp.pin_name  = "ColorSensor";
-            comp.label     = "Color Sensor (S0=" + std::to_string(s0_pins[i]) +
-                             ", S1=" + std::to_string(s1_pins[i]) +
-                             ", S2=" + std::to_string(s2_pins[i]) +
-                             ", S3=" + std::to_string(s3_pins[i]) +
-                             ", OUT=" + std::to_string(out_pins[i]) + ")";
-            comp.confirmed = false;
-            if (pin_already_added(out_pins[i])) {
-                for (const auto& existing : components_) {
-                    if (existing.pin == out_pins[i]) {
-                        warnings_.push_back("WARNING: Pin " + std::to_string(out_pins[i]) +
-                            " is used by both '" + existing.label + "' and '" + comp.label +
-                            "' — only " + existing.label + " will be simulated");
-                        break;
-                    }
-                }
-            } else {
-                components_.push_back(comp);
-                claimed.insert(s0_pins[i]);
-                claimed.insert(s1_pins[i]);
-                claimed.insert(s2_pins[i]);
-                claimed.insert(s3_pins[i]);
-                claimed.insert(out_pins[i]);
-            }
-        }
-    }
-
-    // --- LCD 16x2 ---
-    // Look for defines containing RS, E, D4, D5, D6, D7
-    int rs_pin = -1, e_pin = -1, d4_pin = -1, d5_pin = -1, d6_pin = -1, d7_pin = -1;
-    for (const auto& d : defines) {
-        std::string upper = to_upper(d.first);
-        int pin = resolve_pin(d.second, defines);
-        if (pin < 0) continue;
-        if (contains_any(upper, {"RS"})) rs_pin = pin;
-        if (contains_any(upper, {"LCD_EN", "LCD_E", "_ENABLE", "_EN"}) ||
-            upper == "E" || upper == "EN") e_pin = pin;
-        if (contains_any(upper, {"D4", "DB4", "DATA4"})) d4_pin = pin;
-        if (contains_any(upper, {"D5", "DB5", "DATA5"})) d5_pin = pin;
-        if (contains_any(upper, {"D6", "DB6", "DATA6"})) d6_pin = pin;
-        if (contains_any(upper, {"D7", "DB7", "DATA7"})) d7_pin = pin;
-    }
-
-    // Fallback: scan for LiquidCrystal ctor with literal ints OR named constants
-    // e.g. LiquidCrystal lcd(12, 11, 5, 4, 3, 2) or LiquidCrystal lcd(RS, E, DB4, ...)
-    if (rs_pin < 0) {
+    if (!lcd_found) {
         std::smatch m;
         std::regex lcd_ctor(R"(LiquidCrystal\s+\w+\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\))");
         std::string src_copy = source;
         if (std::regex_search(src_copy, m, lcd_ctor)) {
             auto resolve_arg = [&](const std::string& arg) -> int {
-                // Try direct number first, then look up in defines
                 try { return std::stoi(arg); } catch (...) {}
                 return resolve_pin(arg, defines);
             };
-            rs_pin = resolve_arg(m[1]); e_pin  = resolve_arg(m[2]);
-            d4_pin = resolve_arg(m[3]); d5_pin = resolve_arg(m[4]);
-            d6_pin = resolve_arg(m[5]); d7_pin = resolve_arg(m[6]);
-        }
-    }
+            int rs_pin = resolve_arg(m[1]), e_pin  = resolve_arg(m[2]);
+            int d4_pin = resolve_arg(m[3]), d5_pin = resolve_arg(m[4]);
+            int d6_pin = resolve_arg(m[5]), d7_pin = resolve_arg(m[6]);
 
-    // If all 6 pins are found, assume it's an LCD 16x2
-    if (rs_pin >= 0 && e_pin >= 0 && d4_pin >= 0 && d5_pin >= 0 && d6_pin >= 0 && d7_pin >= 0) {
-        DetectedComponent comp;
-        comp.type_name = "LCD";
-        comp.pin       = rs_pin; // Representative pin
-        comp.pins      = {rs_pin, e_pin, d4_pin, d5_pin, d6_pin, d7_pin};
-        comp.pin_name  = "LCD";
-        comp.label     = "LCD 16x2 (RS=" + std::to_string(rs_pin) +
-                         ", E=" + std::to_string(e_pin) +
-                         ", D4=" + std::to_string(d4_pin) +
-                         ", D5=" + std::to_string(d5_pin) +
-                         ", D6=" + std::to_string(d6_pin) +
-                         ", D7=" + std::to_string(d7_pin) + ")";
-        comp.confirmed = false;
-        if (pin_already_added(rs_pin)) {
-            for (const auto& existing : components_) {
-                if (existing.pin == rs_pin) {
-                    warnings_.push_back("WARNING: Pin " + std::to_string(rs_pin) +
-                        " is used by both '" + existing.label + "' and '" + comp.label +
-                        "' — only " + existing.label + " will be simulated");
-                    break;
+            if (rs_pin >= 0 && e_pin >= 0 && d4_pin >= 0 && d5_pin >= 0 && d6_pin >= 0 && d7_pin >= 0) {
+                DetectedComponent comp;
+                comp.type_name = "LCD";
+                comp.pin       = rs_pin;
+                comp.pins      = {rs_pin, e_pin, d4_pin, d5_pin, d6_pin, d7_pin};
+                comp.pin_name  = "LCD";
+                comp.label     = "LCD 16x2 (RS=" + std::to_string(rs_pin) +
+                                 ", E=" + std::to_string(e_pin) +
+                                 ", D4=" + std::to_string(d4_pin) +
+                                 ", D5=" + std::to_string(d5_pin) +
+                                 ", D6=" + std::to_string(d6_pin) +
+                                 ", D7=" + std::to_string(d7_pin) + ")";
+                comp.confirmed = false;
+                if (pin_already_added(rs_pin)) {
+                    for (const auto& existing : components_) {
+                        if (existing.pin == rs_pin) {
+                            warnings_.push_back("WARNING: Pin " + std::to_string(rs_pin) +
+                                " is used by both '" + existing.label + "' and '" + comp.label +
+                                "' — only " + existing.label + " will be simulated");
+                            break;
+                        }
+                    }
+                } else {
+                    components_.push_back(comp);
+                    claimed.insert(rs_pin);
+                    claimed.insert(e_pin);
+                    claimed.insert(d4_pin);
+                    claimed.insert(d5_pin);
+                    claimed.insert(d6_pin);
+                    claimed.insert(d7_pin);
                 }
             }
-        } else {
-            components_.push_back(comp);
-            claimed.insert(rs_pin);
-            claimed.insert(e_pin);
-            claimed.insert(d4_pin);
-            claimed.insert(d5_pin);
-            claimed.insert(d6_pin);
-            claimed.insert(d7_pin);
         }
     }
 
@@ -535,41 +581,9 @@ std::string CircuitDetector::infer_type(
 {
     std::string upper = to_upper(name);
 
-    if (contains_any(upper, {"LED", "LIGHT", "LAMP", "INDICATOR"}))
-        return "LED";
+    const ComponentDefinition* def = ComponentRegistry::instance().find_by_single_keyword(upper);
+    if (def) return def->type_name;
 
-    // TACT/CLEAN/IDEAL checked before BTN/BUTTON so they take priority
-    if (contains_any(upper, {"TACT", "CLEAN", "IDEAL"}))
-        return "ButtonClean";
-
-    if (contains_any(upper, {"BTN", "BUTTON", "KEY"}))
-        return "Button";
-
-    if (contains_any(upper, {"SWITCH", "SW", "TOGGLE"}))
-        return "Switch";
-
-    if (contains_any(upper, {"BUZZER", "BUZZ", "SPEAKER", "TONE", "PIEZO"}))
-        return "Buzzer";
-
-    if (contains_any(upper, {"SERVO", "MOTOR", "SRV"}))
-        return "Servo";
-
-    if (contains_any(upper, {"POT", "POTENTIOMETER", "DIAL"}))
-        return "Potentiometer";
-
-    if (contains_any(upper, {"PHOTO", "LDR", "LIGHT_SENSOR", "PHOTORESISTOR"}))
-        return "LightSensor";
-
-    if (contains_any(upper, {"TEMP", "TEMPERATURE", "THERMISTOR"}))
-        return "TempSensor";
-
-    if (contains_any(upper, {"SENSOR", "ANALOG", "ADC"}))
-        return "AnalogSensor";
-
-    if (contains_any(upper, {"LCD", "DISPLAY", "SCREEN", "OLED"}))
-        return "LCD";
-
-    // Fall back to mode
     if (mode == "OUTPUT")
         return "GenericOutput";
 

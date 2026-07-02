@@ -49,7 +49,7 @@ public:
 static bool registered = []() {
     ComponentRegistry::instance().register_component({
         "AnalogSensor",
-        {"LIGHT", "LDR", "PHOTO", "TEMP", "TEMPERATURE", "NTC", "SENSOR"},
+        {"LIGHT", "LDR", "PHOTO", "TEMP", "TEMPERATURE", "THERMISTOR", "NTC", "SENSOR", "ANALOG", "ADC"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new AnalogSensorItem(pin, parent);

@@ -57,7 +57,9 @@ static bool registered = []() {
         true, // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new LCDItem(pin, parent);
-        }
+        },
+        MultiPinStrategy::Singleton,
+        "RS"
     });
     return true;
 }();

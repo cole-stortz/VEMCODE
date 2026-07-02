@@ -76,18 +76,9 @@ public:
     }
 };
 
-static bool reg_button = []() {
-    ComponentRegistry::instance().register_component({
-        "Button",
-        {"BUTTON", "BTN", "TACT", "PUSH"},
-        {}, {}, false,
-        [](int pin, QGraphicsItem* parent) -> ComponentItem* {
-            return new ButtonItem(pin, parent);
-        }
-    });
-    return true;
-}();
-
+// Registered before Button so ambiguous names (e.g. "CLEAN_BUTTON") match
+// ButtonClean first -- registration order across files is unspecified, but
+// within this file it's guaranteed top-to-bottom.
 static bool reg_button_clean = []() {
     ComponentRegistry::instance().register_component({
         "ButtonClean",
@@ -95,6 +86,18 @@ static bool reg_button_clean = []() {
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ButtonCleanItem(pin, parent);
+        }
+    });
+    return true;
+}();
+
+static bool reg_button = []() {
+    ComponentRegistry::instance().register_component({
+        "Button",
+        {"BUTTON", "BTN", "TACT", "PUSH", "KEY"},
+        {}, {}, false,
+        [](int pin, QGraphicsItem* parent) -> ComponentItem* {
+            return new ButtonItem(pin, parent);
         }
     });
     return true;

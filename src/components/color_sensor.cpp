@@ -49,13 +49,8 @@ public:
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {
-        // CircuitDetector currently produces {S0, S1, S2, S3, OUT} for
-        // ColorSensor (pre-Step-3 detection, see circuitdetector.cpp:322-323),
-        // not the simplified {OUT, S2, S3} role order used by the registry's
-        // detect_multi map -- re-check this indexing once the detector is
-        // generalized in Step 3.
-        if (pins.size() > 2) s2Pin_ = pins[2];
-        if (pins.size() > 3) s3Pin_ = pins[3];
+        if (pins.size() > 1) s2Pin_ = pins[1];
+        if (pins.size() > 2) s3Pin_ = pins[2];
     }
 
     // Called by CanvasWidget after inputChanged is connected and
@@ -90,7 +85,9 @@ static bool registered = []() {
         false, // is_output — this is an input component
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ColorSensorItem(pin, parent);
-        }
+        },
+        MultiPinStrategy::Array,
+        "OUT"
     });
     return true;
 }();

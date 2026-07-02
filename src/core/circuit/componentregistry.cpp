@@ -16,3 +16,13 @@ const ComponentDefinition* ComponentRegistry::find_by_type(const std::string& ty
     }
     return nullptr;
 }
+
+const ComponentDefinition* ComponentRegistry::find_by_single_keyword(const std::string& upper_name) const {
+    for (const auto& def : definitions_) {
+        for (const auto& kw : def.detect_single) {
+            if (upper_name.find(kw) != std::string::npos)
+                return &def;
+        }
+    }
+    return nullptr;
+}

@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include "src/core/circuit/componentregistry.h"
 
 // A single detected component
 struct DetectedComponent {
@@ -32,6 +33,21 @@ private:
         const std::string& source,
         const std::map<std::string, std::string>& defines,
         const std::map<std::string, std::vector<int>>& arrays);
+
+    void detect_generic_multipin(
+        const std::map<std::string, std::string>& defines,
+        const std::map<std::string, std::vector<int>>& arrays,
+        std::set<int>& claimed);
+    void detect_suffix_group(const ComponentDefinition& def,
+        const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void detect_prefix_group(const ComponentDefinition& def,
+        const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void detect_array_group(const ComponentDefinition& def,
+        const std::map<std::string, std::vector<int>>& arrays, std::set<int>& claimed);
+    void detect_singleton_group(const ComponentDefinition& def,
+        const std::map<std::string, std::string>& defines, std::set<int>& claimed);
+    void add_multipin_component(const ComponentDefinition& def,
+        const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
     std::vector<DetectedComponent> components_;
     std::vector<std::string>       warnings_;

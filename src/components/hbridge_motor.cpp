@@ -38,8 +38,8 @@ public:
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {
-        if (pins.size() > 1) cwisePin_ = pins[1];
-        if (pins.size() > 2) antiCwisePin_ = pins[2];
+        if (pins.size() > 1) antiCwisePin_ = pins[1];
+        if (pins.size() > 2) cwisePin_ = pins[2];
     }
 
     void onPinChanged(int pin, int value) override {
@@ -56,14 +56,16 @@ static bool registered = []() {
         {"MOTOR", "HBRIDGE", "ENA", "IN1"},
         {
             {"PWM",        {"PWM"}},
-            {"CWISE",      {"CWISE", "CW", "DIR"}},
             {"ANTI_CWISE", {"ANTI"}},
+            {"CWISE",      {"CWISE", "CW", "DIR"}},
         },
         {},    // detect_pattern — none
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new HBridgeMotorItem(pin, parent);
-        }
+        },
+        MultiPinStrategy::Prefix,
+        "PWM"
     });
     return true;
 }();
