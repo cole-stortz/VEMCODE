@@ -21,7 +21,7 @@ public:
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, QString("Servo: %1°").arg(angle_));
     }
 
-    void onPinChanged(int value) override {
+    void onPinChanged(int, int value) override {
         angle_ = value;
         update();
     }

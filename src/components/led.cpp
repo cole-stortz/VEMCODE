@@ -23,7 +23,7 @@ public:
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "LED");
     }
 
-    void onPinChanged(int value) override {
+    void onPinChanged(int, int value) override {
         active_ = (value > 0);
         update();
     }
