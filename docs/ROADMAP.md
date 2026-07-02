@@ -231,8 +231,8 @@ Pull the component plugin architecture forward so that all new components added 
 **Step 2 — Component migration (one file per component in `src/components/`):**
 - [x] `led.cpp` — output; `onPinChanged` sets active/inactive color; keywords: `LED`, `LAMP`, `DIODE`, `INDICATOR` (unambiguous output-only terms; `LIGHT` belongs to analogsensor only)
 - [x] `button.cpp` — input; overrides `mousePressEvent`/`mouseReleaseEvent`, emits `BouncePress`; keywords: `BUTTON`, `BTN`, `TACT`, `PUSH`; `ButtonClean` variant (`CLEAN`, `IDEAL` prefix) emits `DigitalPress` instead
-- [ ] `switch.cpp` — input; click toggles latched state, emits `DigitalPress`; keywords: `SWITCH`, `TOGGLE`, `RELAY`
-- [ ] `buzzer.cpp` — output; `onPinChanged` shows active indicator; keywords: `BUZZER`, `PIEZO`, `SPEAKER`, `BEEPER`
+- [x] `switch.cpp` — input; click toggles latched state, emits `DigitalPress`; keywords: `SWITCH`, `TOGGLE`, `RELAY`
+- [x] `buzzer.cpp` — output; `onPinChanged` shows active indicator; keywords: `BUZZER`, `PIEZO`, `SPEAKER`, `BEEPER`
 - [ ] `servo.cpp` — output; `onPinChanged` updates angle label; detect pattern: `.attach(`; keywords: `SERVO`
 - [ ] `potentiometer.cpp` — input; overrides `mouseMoveEvent` for drag, emits `AnalogValue`; keywords: `POT`, `POTENTIOMETER`, `KNOB`, `DIAL`
 - [x] `analogsensor.cpp` — input; text field, emits `AnalogValue`; keywords: `LIGHT`, `LDR`, `PHOTO`, `TEMP`, `TEMPERATURE`, `NTC`, `SENSOR` (generic fallback)
