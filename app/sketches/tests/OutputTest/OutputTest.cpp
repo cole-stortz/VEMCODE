@@ -6,6 +6,9 @@
 #define MOTOR_PWM     5
 #define MOTOR_CW      6
 #define MOTOR_ANTI    7
+#define RED_PIN       3
+#define GREEN_PIN     8
+#define BLUE_PIN     10
 
 void setup() {
     Serial.begin(9600);
@@ -15,6 +18,9 @@ void setup() {
     pinMode(MOTOR_PWM,  OUTPUT);
     pinMode(MOTOR_CW,   OUTPUT);
     pinMode(MOTOR_ANTI, OUTPUT);
+    pinMode(RED_PIN,    OUTPUT);
+    pinMode(GREEN_PIN,  OUTPUT);
+    pinMode(BLUE_PIN,   OUTPUT);
     Serial.println("OutputTest started");
 }
 
@@ -51,5 +57,19 @@ void loop() {
     analogWrite(MOTOR_PWM, 0);
     digitalWrite(MOTOR_CW, LOW);
     Serial.println("Motor stop");
+    delay(500);
+
+    // RGB LED color cycle
+    analogWrite(RED_PIN, 255); analogWrite(GREEN_PIN, 0);   analogWrite(BLUE_PIN, 0);
+    Serial.println("RGB: red");
+    delay(500);
+    analogWrite(RED_PIN, 0);   analogWrite(GREEN_PIN, 255); analogWrite(BLUE_PIN, 0);
+    Serial.println("RGB: green");
+    delay(500);
+    analogWrite(RED_PIN, 0);   analogWrite(GREEN_PIN, 0);   analogWrite(BLUE_PIN, 255);
+    Serial.println("RGB: blue");
+    delay(500);
+    analogWrite(RED_PIN, 0);   analogWrite(GREEN_PIN, 0);   analogWrite(BLUE_PIN, 0);
+    Serial.println("RGB: off");
     delay(500);
 }

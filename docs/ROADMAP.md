@@ -255,7 +255,7 @@ Pull the component plugin architecture forward so that all new components added 
 - [x] `MainWindow` refactored to one `onComponentInput(int pin, int eventType, QVariant)` slot with a switch on `ComponentEventType` — dispatches to the correct `sketchThread_->inject_*` call; all per-component signal/slot pairs removed
 
 **Step 4 — New simple components:**
-- [ ] RGB LED — three PWM pins (R, G, B); `onPinChanged` blends channel values into a colored circle; detected from `#define` pin names containing `RED`/`GREEN`/`BLUE` as a group
+- [x] RGB LED — three PWM pins (R, G, B); `onPinChanged` blends channel values into a colored circle; detected from `#define` pin names containing `RED`/`GREEN`/`BLUE` as a group
 - [ ] Rotary encoder — two digital pins (CLK/DT) plus optional button; canvas shows a turn counter; pairs naturally with `attachInterrupt`; keywords: `CLK`, `DT`, `ENCODER`, `ROTARY`
 
 **Step 5 — New complex components:**
