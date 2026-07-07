@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1.1274147"
-     inkscape:cx="442.60554"
-     inkscape:cy="452.80586"
+     inkscape:zoom="0.91203295"
+     inkscape:cx="363.47371"
+     inkscape:cy="436.93597"
      inkscape:window-width="1737"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -1020,14 +1020,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:800;font-stretch:normal;font-size:33.4671px;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono, Ultra-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;writing-mode:lr-tb;direction:ltr;fill:#404040;fill-opacity:1;stroke-width:0.591466;stroke-dasharray:none"
-       x="210.62054"
-       y="103.71936"
+       x="209.94531"
+       y="103.64918"
        id="text168-5-6"
        transform="matrix(0.95876985,0.51555591,-1.1349594,0.43270549,0,0)"><tspan
          sodipodi:role="line"
          id="tspan169"
-         x="210.62054"
-         y="103.71936"
+         x="209.94531"
+         y="103.64918"
          style="stroke-width:0.591466">V</tspan></text>
     <g
        id="g9-1-3"
@@ -1085,5 +1085,13 @@
          y="171.54012"
          transform="matrix(-0.89415698,0.4477536,0,1,0,0)" />
     </g>
+    <ellipse
+       style="fill:#404040;fill-opacity:1;stroke-width:0.509799;stroke-dasharray:none"
+       id="path168-1"
+       cx="113.38055"
+       cy="159.49086"
+       transform="rotate(1.72703)"
+       rx="4.3353543"
+       ry="1.8580092" />
   </g>
 </svg>

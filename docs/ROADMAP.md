@@ -270,17 +270,6 @@ Pull the component plugin architecture forward so that all new components added 
 - [ ] Basic OLED — text and simple graphics (SSD1306-compatible); `Adafruit_SSD1306.h` or `U8g2` injection
 - [ ] NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length; `Adafruit_NeoPixel.h` injection
 
-**Step 7 — Dev component generator (last):**
-
-A dev-only panel under Settings → Developer Tools, hidden in release builds, visible when built with `-DVEMCODE_DEV=ON`. Built on top of the stable plugin interface established in Steps 1–6.
-
-- [ ] **Identity** — component name, display label, detection keywords (comma-separated); single-pin or multi-pin toggle; if multi-pin, named pin roles each with their own keyword list and an `is_representative` flag
-- [ ] **Detection patterns** — optional source patterns that fire before keyword matching; each entry is a string that must appear in the sketch source
-- [ ] **Interaction** — None (output only), Click, Click and Drag, or Text Input; shows relevant config fields per selection
-- [ ] **API functions** — new `ArduinoAPI` entries: function name, return type, parameter list; optional preprocessor replacement string; optional injected header wrapper
-- [ ] **Preview** — diff-style view of every file that will be created or modified before committing; single Generate button writes everything at once
-- [ ] **What the generator writes:** `src/components/yourcomponent.cpp` (self-registering `ComponentItem` subclass); appends to `arduinoapi.h`, `arduinoruntime.h`, `arduinoruntime.cpp` (impl + get_api), `preprocessor.cpp`, `injected_header.inc`; if a canvas input field is needed, adds an entry to `ComponentEventType` and one case to `MainWindow::onComponentInput`
-
 > **Milestone:** All existing components registered through the plugin system with three-tier detection; `CircuitDetector` and `CanvasWidget` contain no per-component knowledge; adding a new component is a single self-contained file; RGB LED, rotary encoder, joystick, keypad, DHT, 7-segment, OLED, and NeoPixel sketches all run on the canvas.
 
 ---
@@ -309,7 +298,7 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 Polish the editor into a first-class coding environment, consolidate settings, add a serial plotter, and give the canvas a proper layout system.
 
 **Editor:**
-- [ ] **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
+- [x] **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
 - [ ] **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
 - [ ] **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
 - [ ] **Autosave / crash recovery** — editor content written to a `.autosave` file in the sketch folder every 30 seconds; on next open, if an `.autosave` file is newer than the `.cpp` file, offer to restore it; file is deleted on a clean save or close

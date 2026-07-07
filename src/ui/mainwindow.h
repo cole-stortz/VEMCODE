@@ -15,6 +15,10 @@
 #include <QSettings>
 #include <QSlider>
 #include <QLineEdit>
+#include <QCompleter>
+#include <QStringListModel>
+#include <QScrollBar>
+#include <qcombobox.h>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
@@ -56,6 +60,7 @@ private slots:
     void addToRecentSketches(const QString& path);
     void onSpeedChanged(int value);
     void onSerialSend();
+    void insertCompletion(const QString& completion);
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -65,6 +70,7 @@ private:
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
     QStringList runStaticChecks(const QString& source);
+    QStringList scanSketchSymbols();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -78,9 +84,10 @@ private:
     QLabel*         boardLabel_     = nullptr;
 
     // Editor panel (left)
-    EditorWithLines* codeEditor_    = nullptr;
+    EditorWithLines* codeEditor_  = nullptr;
     CodeHighlighter* highlighter_ = nullptr;
-    LineNumberArea* lineNumbers_ = nullptr;
+    LineNumberArea* lineNumbers_  = nullptr;
+    QCompleter* completer_        = nullptr;
     
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;

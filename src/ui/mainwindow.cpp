@@ -359,6 +359,15 @@ QWidget* MainWindow::buildEditorPanel() {
     QFontMetrics metrics(codeEditor_->font());
     codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
     codeEditor_->installEventFilter(this);
+    
+    // Auto Complete
+    completer_ = new QCompleter(this);
+    completer_->setWidget(codeEditor_);
+    completer_->setCompletionMode(QCompleter::PopupCompletion);
+    completer_->setCaseSensitivity(Qt::CaseInsensitive);
+    connect(completer_, QOverload<const QString&>::of(&QCompleter::activated),
+            this, &MainWindow::insertCompletion);
+    completer_->popup()->installEventFilter(this);
 
     lineNumbers_ = new LineNumberArea(codeEditor_);
     lineNumbers_->show();
@@ -591,6 +600,13 @@ void MainWindow::onComponentInput(int pin, int eventType, QVariant value) {
             break;
         }
     }
+}
+
+void MainWindow::insertCompletion(const QString& completion) {
+    QTextCursor tc = codeEditor_->textCursor();
+    tc.select(QTextCursor::WordUnderCursor);
+    tc.insertText(completion);
+    codeEditor_->setTextCursor(tc);
 }
 
 void MainWindow::onSketchReloaded() {
@@ -859,6 +875,26 @@ void MainWindow::onSaveClicked() {
 
 // Editor helpers
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
+    if (completer_ && obj == completer_->popup() && event->type() == QEvent::KeyPress) {
+        QKeyEvent* key = static_cast<QKeyEvent*>(event);
+        switch (key->key()) {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Tab: {
+            QModelIndex idx = completer_->popup()->currentIndex();
+            if (idx.isValid())
+                insertCompletion(idx.data().toString());
+            completer_->popup()->hide();
+            return true;
+        }
+        case Qt::Key_Escape:
+            completer_->popup()->hide();
+            return true;
+        default:
+            break;
+        }
+    }
+
     if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
         QKeyEvent* key = static_cast<QKeyEvent*>(event);
 
@@ -889,7 +925,6 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         }
 
-        // Auto-dedent -- when } is typed on a line with only spaces, remove one indent level
         if (key->key() == Qt::Key_BraceRight) {
             QTextCursor cursor = codeEditor_->textCursor();
 
@@ -904,6 +939,52 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
                 codeEditor_->setTextCursor(cursor);
                 return true;
             }
+        }
+
+        if (key->key() == Qt::Key_Space &&
+            key->modifiers().testFlag(Qt::ControlModifier) &&
+            key->modifiers().testFlag(Qt::ShiftModifier)) {
+
+            static const QStringList kArduinoApi = {
+                // GPIO / timing / interrupts
+                "pinMode", "digitalWrite", "digitalRead", "analogWrite", "analogRead",
+                "delay", "delayMicroseconds", "millis", "micros", "tone", "noTone",
+                "attachInterrupt", "detachInterrupt", "noInterrupts", "interrupts",
+                // Serial
+                "Serial.begin", "Serial.print", "Serial.println", "Serial.available", "Serial.read",
+                "Serial1.begin", "Serial1.print", "Serial1.println",
+                "Serial2.begin", "Serial2.print", "Serial2.println",
+                // EEPROM
+                "EEPROM.write", "EEPROM.read", "EEPROM.update",
+                // Watchdog / sleep
+                "wdt_enable", "wdt_disable", "wdt_reset",
+                "set_sleep_mode", "sleep_enable", "sleep_disable", "sleep_cpu",
+                // Pure computation (no hardware I/O, not rewritten by the preprocessor)
+                "map", "constrain", "abs", "min", "max", "random", "randomSeed",
+                "pulseIn", "shiftIn", "shiftOut",
+                // Constants
+                "HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP",
+                "LED_BUILTIN", "A0", "A1", "A2", "A3", "A4", "A5",
+                "CHANGE", "RISING", "FALLING",
+                "PI", "TWO_PI", "HALF_PI"
+            };
+
+            QStringList symbols = scanSketchSymbols();
+            symbols += kArduinoApi;
+
+            completer_->setModel(new QStringListModel(symbols, completer_));
+
+            QTextCursor tc = codeEditor_->textCursor();
+            tc.select(QTextCursor::WordUnderCursor);
+            completer_->setCompletionPrefix(tc.selectedText());
+            completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
+
+            QRect cr = codeEditor_->cursorRect();
+            cr.setWidth(completer_->popup()->sizeHintForColumn(0)
+                        + completer_->popup()->verticalScrollBar()->sizeHint().width());
+            completer_->complete(cr);
+
+            return true;
         }
     }
     return QMainWindow::eventFilter(obj, event);
@@ -1290,4 +1371,24 @@ QStringList MainWindow::runStaticChecks(const QString& source) {
     }
 
     return warnings;
+}
+
+QStringList MainWindow::scanSketchSymbols() {
+    QStringList symbols;
+    std::string src = codeEditor_->toPlainText().toStdString();
+
+    auto collect = [&](const std::regex& re) {
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
+            it != std::sregex_iterator(); ++it) {
+            QString name = QString::fromStdString((*it)[1].str());
+            if (!symbols.contains(name))
+                symbols << name;
+        }
+    };
+
+    collect(std::regex(R"(#\s*define\s+(\w+))"));                                   // constants
+    collect(std::regex(R"(\b(?:void|int|float|double|bool|long|char|byte|String)\s+(\w+)\s*\()"));  // functions
+    collect(std::regex(R"(\b(?:int|float|double|bool|long|char|byte|String)\s+(\w+)\s*[=;])"));      // variables
+
+    return symbols;
 }
