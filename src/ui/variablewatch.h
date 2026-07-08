@@ -1,28 +1,37 @@
 #pragma once
 #include <QWidget>
 #include <QTableWidget>
-#include <QMap>
+#include <utility>
+#include <vector>
 
-// Variable Watch Panel: 
-// - Watches variable changes and sets new values
-// - Sets panel information to be drawn inside Debug section.
+// Variable Watch panel: a table of sketch global-variable name -> type,
+// polled live from the running sketch DLL by SketchThread. No code changes
+// to the sketch are needed -- just type a global's name and pick its type.
 class VariableWatch : public QWidget {
     Q_OBJECT
 
 public:
-    // Set panel info
-    explicit VariableWatch(QWidget* parent = nullptr);  
-    // Clear helper method
-    void clear();
+    explicit VariableWatch(QWidget* parent = nullptr);
+
+    // Blanks the Value column on a fresh Run without discarding the
+    // user-configured Name/Type rows.
+    void clearValues();
+
+signals:
+    // Emitted on any Name/Type edit or row add/remove -- name, type ("int"/
+    // "float"/"long"/"ulong"/"bool").
+    void watchListChanged(std::vector<std::pair<QString, QString>> vars);
 
 public slots:
-    // Watch for inputed variable changes and set the new values
-    void onVariableChanged(QString name, int value);   
+    void onVariableChanged(QString name, QString value);
+
+private slots:
+    void onAddClicked();
+    void onRemoveClicked();
+    void onCellChanged(int row, int column);
 
 private:
-    QTableWidget* table_; // Initialize panel
+    void emitWatchList();
 
-    // Maps variable name to its row index in the table
-    // so we can update existing rows instead of adding duplicates
-    QMap<QString, int> rowMap_;
+    QTableWidget* table_;
 };

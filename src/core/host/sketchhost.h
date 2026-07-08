@@ -11,6 +11,10 @@ struct SketchDLL {
     std::filesystem::file_time_type last_write_time = {};
 };
 
+// Type the Variable Watch panel reads a polled global as -- dlsym/GetProcAddress
+// only gives back a void*, so the caller has to say how to interpret it.
+enum class WatchVarType { Int, Float, Long, ULong, Bool };
+
 class SketchHost {
 public:
     ~SketchHost();
@@ -48,6 +52,12 @@ public:
     void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
         runtime_.inject_wire_device(address, bytes);
     }
+
+    // Resolves `name` as a global symbol in the loaded sketch DLL and formats
+    // its current value per `type`. Returns false if the symbol can't be
+    // resolved -- wrong name, a local variable (no fixed address), or no
+    // sketch loaded yet.
+    bool read_watched_variable(const std::string& name, WatchVarType type, std::string& out_value) const;
 
     void reset_state() { runtime_.reset_state(); }
 

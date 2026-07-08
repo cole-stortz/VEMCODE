@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <filesystem>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -132,4 +133,21 @@ void SketchHost::inject_pin(int pin, int value) {
 
 void SketchHost::set_speed(float speed) {
     runtime_.set_speed_multiplier(speed);
+}
+
+bool SketchHost::read_watched_variable(const std::string& name, WatchVarType type, std::string& out_value) const {
+    if (!dll_.handle) return false;
+    void* addr = lib_sym(dll_.handle, name.c_str());
+    if (!addr) return false;
+
+    std::ostringstream ss;
+    switch (type) {
+        case WatchVarType::Int:   ss << *reinterpret_cast<int*>(addr);           break;
+        case WatchVarType::Float: ss << *reinterpret_cast<float*>(addr);         break;
+        case WatchVarType::Long:  ss << *reinterpret_cast<long*>(addr);          break;
+        case WatchVarType::ULong: ss << *reinterpret_cast<unsigned long*>(addr); break;
+        case WatchVarType::Bool:  ss << (*reinterpret_cast<bool*>(addr) ? "true" : "false"); break;
+    }
+    out_value = ss.str();
+    return true;
 }

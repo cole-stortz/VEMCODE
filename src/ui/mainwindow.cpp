@@ -226,6 +226,10 @@ MainWindow::MainWindow(QWidget* parent)
             this, [this](int address, std::vector<uint8_t> bytes) {
                 sketchThread_->injectWireDevice(address, bytes);
             });
+    connect(variableWatch_, &VariableWatch::watchListChanged,
+            this, [this](std::vector<std::pair<QString, QString>> vars) {
+                sketchThread_->setWatchList(vars);
+            });
 
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
@@ -762,7 +766,7 @@ void MainWindow::onRunClicked() {
 
     clearCompileErrors();
     signalTimeline_->clear();
-    variableWatch_->clear();
+    variableWatch_->clearValues();
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);

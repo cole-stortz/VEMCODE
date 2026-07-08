@@ -94,6 +94,10 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 #ifdef _WIN32
         << " -static-libgcc"
         << " -static-libstdc++"
+        // MinGW doesn't export DLL symbols by default the way a Linux .so
+        // does -- Variable Watch's dlsym-by-name polling needs every sketch
+        // global visible, not just the VB_EXPORT-marked vb_init/setup/loop.
+        << " -Wl,--export-all-symbols"
 #endif
         << " -o \"" << result.dll_path << "\""
         << " \"" << temp_path << "\""

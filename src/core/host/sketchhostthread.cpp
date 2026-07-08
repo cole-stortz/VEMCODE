@@ -13,6 +13,15 @@ static void sketch_signal_handler(int sig) {
     ::siglongjmp(tl_crash_jmp, 1);
 }
 
+static WatchVarType parse_watch_type(const QString& type) {
+    QString t = type.trimmed().toLower();
+    if (t == "float")           return WatchVarType::Float;
+    if (t == "long")            return WatchVarType::Long;
+    if (t == "ulong" || t == "unsigned long") return WatchVarType::ULong;
+    if (t == "bool")            return WatchVarType::Bool;
+    return WatchVarType::Int;
+}
+
 
 SketchThread::SketchThread(QObject* parent)
     : QThread(parent)
@@ -65,7 +74,7 @@ void SketchThread::run() {
 
     // Check to see if a variable changed and emit that signal
     runtime.on_variable_changed = [this](const std::string& name, int value) {
-        emit variableChanged(QString::fromStdString(name), value);
+        emit variableChanged(QString::fromStdString(name), QString::number(value));
     };
 
     // LCD text output
@@ -109,6 +118,7 @@ void SketchThread::run() {
     }
 
     auto last_reload_check = std::chrono::steady_clock::now();
+    auto last_watch_poll   = std::chrono::steady_clock::now();
 
     while (running_) {
         try {
@@ -126,6 +136,21 @@ void SketchThread::run() {
             last_reload_check = now;
             if (host_.reload_if_changed())
                 emit sketchReloaded();
+        }
+
+        // Polled here (same thread as vb_loop()) so reads of the sketch's own
+        // globals never race its writes.
+        if (now - last_watch_poll >= std::chrono::milliseconds(100)) {
+            last_watch_poll = now;
+            std::vector<std::pair<QString, QString>> watches;
+            { QMutexLocker lock(&watch_mutex_); watches = watchList_; }
+            for (const auto& [name, typeStr] : watches) {
+                std::string value;
+                if (host_.read_watched_variable(name.toStdString(), parse_watch_type(typeStr), value))
+                    emit variableChanged(name, QString::fromStdString(value));
+                else
+                    emit variableChanged(name, "?");
+            }
         }
     }
 
@@ -189,4 +214,9 @@ void SketchThread::injectSoftSerial(int rxPin, const QString& data) {
 void SketchThread::resetRuntimeState() {
     QMutexLocker lock(&inject_mutex_);
     host_.reset_state();
+}
+
+void SketchThread::setWatchList(std::vector<std::pair<QString, QString>> vars) {
+    QMutexLocker lock(&watch_mutex_);
+    watchList_ = std::move(vars);
 }

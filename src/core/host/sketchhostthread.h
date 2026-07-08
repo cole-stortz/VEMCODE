@@ -4,6 +4,8 @@
 #include <QString>
 #include <atomic>
 #include <QMutex>
+#include <vector>
+#include <utility>
 
 // Runs SketchHost on a background thread so the simulation never blocks the UI.
 class SketchThread : public QThread {
@@ -32,6 +34,10 @@ public:
     void injectSoftSerial(int rxPin, const QString& data);
     void resetRuntimeState();
 
+    // name -> type string ("int"/"float"/"long"/"ulong"/"bool"), polled from
+    // the sketch thread's own loop so reads never race the sketch's writes.
+    void setWatchList(std::vector<std::pair<QString, QString>> vars);
+
 signals:
     void serialOutput(QString text);
     void serial1Output(QString text);
@@ -41,7 +47,7 @@ signals:
     void sketchReloaded();
     void loadFailed(QString reason);
     void sketchCrashed(QString reason);
-    void variableChanged(QString name, int value);
+    void variableChanged(QString name, QString value);
     void lcdPrint(int pin, int row, QString text);
     void watchdogReset();
     void sleepChanged(bool sleeping);
@@ -53,5 +59,7 @@ private:
     SketchHost    host_;
     QString       dll_path_;
     std::atomic<bool> running_{false};
-    QMutex        inject_mutex_;    
+    QMutex        inject_mutex_;
+    QMutex        watch_mutex_;
+    std::vector<std::pair<QString, QString>> watchList_;
 };
