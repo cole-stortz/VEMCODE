@@ -12,6 +12,7 @@
 #include <array>
 #include <random>
 #include <new>
+#include <vector>
 
 struct RuntimeState {
     int  pin_modes[80]    = {};
@@ -53,6 +54,13 @@ struct RuntimeState {
     std::condition_variable sleep_cv_;
     std::mutex sleep_mtx_;
 
+    std::map<int, std::vector<uint8_t>> wire_devices_; // address -> configured response bytes
+    std::mutex wire_mtx_; // guards wire_devices_ -- written from the GUI thread
+                           // (inject_wire_device), read from the sketch thread
+                           // (impl_wire_request_from)
+    int wire_tx_address_ = -1;
+    std::vector<uint8_t> wire_tx_buffer_;   // bytes written since beginTransmission
+    std::deque<uint8_t> wire_rx_buffer_;    // bytes available to read since requestFrom
 };
 
 class ArduinoRuntime {
@@ -133,6 +141,11 @@ public:
         state_.color_sensor_s3_[out_pin] = s3_pin;
     }
 
+    void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
+        std::lock_guard<std::mutex> lock(state_.wire_mtx_);
+        state_.wire_devices_[address] = bytes;
+    }
+
 
 private:
     RuntimeState state_;
@@ -182,7 +195,14 @@ private:
     static void          impl_sleep_enable         ();
     static void          impl_sleep_disable          ();
     static void          impl_sleep_cpu            ();
-        
+
+    static void          impl_wire_begin_transmission(int address);
+    static void          impl_wire_write             (uint8_t b);
+    static int           impl_wire_end_transmission  ();
+    static int           impl_wire_request_from      (int address, int quantity);
+    static int           impl_wire_available          ();
+    static int           impl_wire_read               ();
+
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

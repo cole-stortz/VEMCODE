@@ -93,6 +93,17 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Serial2.print(",   "api->Serial2_print(");
     s = replace_token(s, "Serial2.println(", "api->Serial2_println(");
 
+    // Wire (I2C) -- begin/write/endTransmission/requestFrom route through inline
+    // wrappers in injected_header.inc (not directly to api->) since they have
+    // optional/overloaded arguments that a bare function pointer can't express.
+    s = replace_token(s, "Wire.beginTransmission(", "api->wire_begin_transmission(");
+    s = replace_token(s, "Wire.available(",         "api->wire_available(");
+    s = replace_token(s, "Wire.read(",              "api->wire_read(");
+    s = replace_token(s, "Wire.begin(",              "wire_begin(");
+    s = replace_token(s, "Wire.write(",              "wire_write(");
+    s = replace_token(s, "Wire.endTransmission(",    "wire_end_transmission(");
+    s = replace_token(s, "Wire.requestFrom(",        "wire_request_from(");
+
     // Watchdog
     s = replace_token(s, "wdt_enable(", "api->wdt_enable(");
     s = replace_token(s, "wdt_disable(", "api->wdt_disable(");
@@ -115,6 +126,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "Servo",          g_servo_lib         },
         { "LiquidCrystal",  g_liquidcrystal_lib },
         { "SoftwareSerial", g_softwareserial_lib },
+        { "Wire",            nullptr },
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },

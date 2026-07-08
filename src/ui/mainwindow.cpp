@@ -222,6 +222,10 @@ MainWindow::MainWindow(QWidget* parent)
             variableWatch_, &VariableWatch::onVariableChanged);
     connect(sketchThread_, &SketchThread::lcdPrint,
             canvasWidget_, &CanvasWidget::updateLcdText);
+    connect(devicesPanel_, &DevicesPanel::deviceChanged,
+            this, [this](int address, std::vector<uint8_t> bytes) {
+                sketchThread_->injectWireDevice(address, bytes);
+            });
 
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
@@ -524,6 +528,8 @@ QWidget* MainWindow::buildDebugPanel() {
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
     variableWatch_ = new VariableWatch();
     debugTabs_->addTab(variableWatch_, "Variable watch");
+    devicesPanel_ = new DevicesPanel();
+    debugTabs_->addTab(devicesPanel_, "Devices");
 
     layout->addWidget(debugTabs_);
     return panel;
@@ -770,6 +776,7 @@ void MainWindow::onRunClicked() {
 
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
+    devicesPanel_->pushAll(); // re-inject the Devices table into the freshly reset runtime
 
     // Show detected components on the serial monitor
     serialMonitor_->appendPlainText(QString::fromStdString("=== Components detected ===\n"));

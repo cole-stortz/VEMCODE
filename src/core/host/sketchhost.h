@@ -45,6 +45,10 @@ public:
         runtime_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
     }
 
+    void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
+        runtime_.inject_wire_device(address, bytes);
+    }
+
     void reset_state() { runtime_.reset_state(); }
 
 private:

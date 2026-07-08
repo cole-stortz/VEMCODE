@@ -171,6 +171,11 @@ void SketchThread::injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g
     host_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
 }
 
+void SketchThread::injectWireDevice(int address, const std::vector<uint8_t>& bytes) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_wire_device(address, bytes);
+}
+
 void SketchThread::setProfile(BoardProfile p) {
     QMutexLocker lock(&inject_mutex_);
     host_.setProfile(p);

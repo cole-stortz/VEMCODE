@@ -88,6 +88,17 @@ struct ArduinoAPI {
     void (*sleep_enable)();
     void (*sleep_disable)();
     void (*sleep_cpu)();
+
+    // Wire (I2C) -- master mode only, byte-level, no bus electrical characteristics.
+    // Device responses come from a virtual address->bytes table configured in the UI.
+    // Wire.begin() itself needs no runtime state, so it's a no-op inline wrapper
+    // in injected_header.inc rather than an API call.
+    void (*wire_begin_transmission)(int address);
+    void (*wire_write)(uint8_t b);
+    int  (*wire_end_transmission)();
+    int  (*wire_request_from)(int address, int quantity);
+    int  (*wire_available)();
+    int  (*wire_read)();
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

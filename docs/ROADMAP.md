@@ -280,8 +280,8 @@ Pull the component plugin architecture forward so that all new components added 
 Heavier runtime work requiring more architectural changes: bus protocol simulation, virtual device responses, and direct register access.
 
 **Protocol libraries (preprocessor injection + virtual device responses):**
-- [ ] `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation; no electrical bus characteristics; device responses come from the virtual I2C device panel
-- [ ] Virtual I2C device panel — "Devices" tab in the debug panel; table of 7-bit address → response byte sequence; when the sketch calls `Wire.requestFrom(addr, n)`, the runtime looks up the address and returns the configured bytes; entries are editable at runtime; covers the common pattern of reading a sensor register: `Wire.beginTransmission` → `Wire.write(reg)` → `Wire.endTransmission` → `Wire.requestFrom` → `Wire.read()`
+- [x] `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation; no electrical bus characteristics; device responses come from the virtual I2C device panel
+- [x] Virtual I2C device panel — "Devices" tab in the debug panel; table of 7-bit address → response byte sequence; when the sketch calls `Wire.requestFrom(addr, n)`, the runtime looks up the address and returns the configured bytes; entries are editable at runtime; covers the common pattern of reading a sensor register: `Wire.beginTransmission` → `Wire.write(reg)` → `Wire.endTransmission` → `Wire.requestFrom` → `Wire.read()`
 - [ ] `SPI.begin` / `SPI.transfer` — same scope as Wire
 
 **Low-level AVR simulation:**

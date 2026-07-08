@@ -27,6 +27,7 @@ public:
 
     void injectPulseDuration(int pin, unsigned long micros);
     void injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
+    void injectWireDevice(int address, const std::vector<uint8_t>& bytes);
     void setProfile(BoardProfile p);
     void injectSoftSerial(int rxPin, const QString& data);
     void resetRuntimeState();

@@ -28,6 +28,7 @@
 #include "src/core/build/preprocessor.h"
 #include "src/ui/linenumberarea.h"
 #include "src/ui/variablewatch.h"
+#include "src/ui/devicespanel.h"
 #include "src/ui/settingsdialog.h"
 #include "src/core/runtime/boardprofile.h"
 
@@ -40,6 +41,7 @@ public:
     SignalTimeline* signalTimeline_ = nullptr;
     QElapsedTimer   simTimer_;
     VariableWatch* variableWatch_ = nullptr;
+    DevicesPanel*  devicesPanel_  = nullptr;
 
 private slots:
     void onSerialOutput(QString text);

@@ -72,6 +72,12 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.sleep_enable          = impl_sleep_enable;
     api.sleep_disable         = impl_sleep_disable;
     api.sleep_cpu             = impl_sleep_cpu;
+    api.wire_begin_transmission = impl_wire_begin_transmission;
+    api.wire_write              = impl_wire_write;
+    api.wire_end_transmission   = impl_wire_end_transmission;
+    api.wire_request_from       = impl_wire_request_from;
+    api.wire_available          = impl_wire_available;
+    api.wire_read               = impl_wire_read;
     return api;
 }
 
@@ -548,4 +554,49 @@ void ArduinoRuntime::impl_sleep_cpu() {
     }
 
     if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(false);
+}
+
+void ArduinoRuntime::impl_wire_begin_transmission(int address) {
+    if (!g_runtime) return;
+    g_runtime->state_.wire_tx_address_ = address;
+    g_runtime->state_.wire_tx_buffer_.clear();
+}
+
+void ArduinoRuntime::impl_wire_write(uint8_t b) {
+    if (!g_runtime) return;
+    g_runtime->state_.wire_tx_buffer_.push_back(b);
+}
+
+int ArduinoRuntime::impl_wire_end_transmission() {
+    if (!g_runtime) return 4; // "other error" -- matches real Wire's status code for no active transmission
+    g_runtime->state_.wire_tx_address_ = -1;
+    g_runtime->state_.wire_tx_buffer_.clear();
+    return 0; // success -- no bus errors are modeled
+}
+
+int ArduinoRuntime::impl_wire_request_from(int address, int quantity) {
+    if (!g_runtime || quantity <= 0) return 0;
+    std::vector<uint8_t> bytes;
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.wire_mtx_);
+        auto it = g_runtime->state_.wire_devices_.find(address);
+        if (it != g_runtime->state_.wire_devices_.end())
+            bytes = it->second;
+    }
+    g_runtime->state_.wire_rx_buffer_.clear();
+    for (int i = 0; i < quantity; ++i)
+        g_runtime->state_.wire_rx_buffer_.push_back(i < (int)bytes.size() ? bytes[i] : 0);
+    return (int)g_runtime->state_.wire_rx_buffer_.size();
+}
+
+int ArduinoRuntime::impl_wire_available() {
+    if (!g_runtime) return 0;
+    return (int)g_runtime->state_.wire_rx_buffer_.size();
+}
+
+int ArduinoRuntime::impl_wire_read() {
+    if (!g_runtime || g_runtime->state_.wire_rx_buffer_.empty()) return -1;
+    uint8_t b = g_runtime->state_.wire_rx_buffer_.front();
+    g_runtime->state_.wire_rx_buffer_.pop_front();
+    return b;
 }
