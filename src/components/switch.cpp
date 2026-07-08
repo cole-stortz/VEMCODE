@@ -38,7 +38,7 @@ public:
 static bool reg_switch = []() {
     ComponentRegistry::instance().register_component({
         "Switch",
-        {"TOGGLE", "SWITCH", "RELAY"},
+        {"TOGGLE", "SWITCH"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new SwitchItem(pin, parent);
