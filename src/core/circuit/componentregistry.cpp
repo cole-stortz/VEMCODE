@@ -18,11 +18,16 @@ const ComponentDefinition* ComponentRegistry::find_by_type(const std::string& ty
 }
 
 const ComponentDefinition* ComponentRegistry::find_by_single_keyword(const std::string& upper_name) const {
+    // Longest matching keyword wins, so a specific keyword beats a generic catch-all.
+    const ComponentDefinition* best = nullptr;
+    size_t best_len = 0;
     for (const auto& def : definitions_) {
         for (const auto& kw : def.detect_single) {
-            if (upper_name.find(kw) != std::string::npos)
-                return &def;
+            if (kw.size() > best_len && upper_name.find(kw) != std::string::npos) {
+                best = &def;
+                best_len = kw.size();
+            }
         }
     }
-    return nullptr;
+    return best;
 }
