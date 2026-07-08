@@ -111,7 +111,7 @@ const int forceThreshold = 600; // Force threshold
 
 int gripperPosition = maxGripperPosition; // Initialize gripper position
 int forceValue;
-int IRSensor = 30;
+const int IRSensor = 30;
 
 
 // Variables for the 
