@@ -537,7 +537,7 @@ QWidget* MainWindow::buildDebugPanel() {
     variableWatch_ = new VariableWatch();
     debugTabs_->addTab(variableWatch_, "Variable watch");
     devicesPanel_ = new DevicesPanel();
-    debugTabs_->addTab(devicesPanel_, "Devices");
+    debugTabs_->addTab(devicesPanel_, "I2C");
     spiPanel_ = new SpiPanel();
     debugTabs_->addTab(spiPanel_, "SPI");
 
