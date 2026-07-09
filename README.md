@@ -102,6 +102,7 @@ The circuit canvas is a custom panel placed on the top right which will automati
 - Outputs: LED, Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
 - Inputs: Button (clean and bouncy variants), Switch, Potentiometer
 - Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Generic Analog Sensor
+- TODO:
 
 ### Supported Libraries
 VEMCODE does not support standard Arduino libraries directly. Instead, each supported library is a custom implementation injected at compile time by the preprocessor, replacing the original `#include`.
@@ -112,6 +113,7 @@ VEMCODE does not support standard Arduino libraries directly. Instead, each supp
 - **EEPROM** — `read()`, `write()`, `update()`; backed by a 1024-byte array in the runtime; does not persist between sessions
 - **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
 - **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
+- TODO:
 
 ### Simulation
 VEMCODE compiles your sketch to a native shared library and runs it directly on your machine. The C++ executes as compiled x86 code. The runtime implements the Arduino API through a function pointer table injected into your sketch at compile time. Calls like `digitalWrite()` or `analogRead()` route through the host, which updates the canvas and debug panels in realtime.
@@ -132,9 +134,13 @@ Displays all `Serial.print()` and `Serial.println()` output from your sketch. Bo
 Displays a logic analyzer style view of digital pin activity. When a pin changes state it is automatically added to the timeline and shown as a scrollable square wave.
 
 #### Variable Watch
-Displays all variables that are tracked in the sketch and their current values in real time. The variables are added by adding this line of code to track it:
-- `watch_variable("LABEL", value);`
+TODO:
 
+#### I2C
+TODO:
+
+#### SPI
+TODO:
 
 ---
 
@@ -202,6 +208,9 @@ cmake --build build
 
 On first launch VEMCODE will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VEMCODE repo. These are saved to `app/settings.ini`.
 
+### Headless mode
+TODO:
+
 ---
 
 ## Writing sketches
@@ -263,8 +272,10 @@ VEMCODE/
 ├── app/                        # Runtime — exe + Qt DLLs
 │   ├── sketches/               # Saved sketches
 │   └── settings.ini            # Compiler path + recent sketches (gitignored)
+├── docs/                       # Docs, logo/resources, ROADMAP, demo media
 ├── src/
 │   ├── main.cpp
+│   ├── lsan_suppressions.cpp   # LeakSanitizer suppression list
 │   ├── ui/
 │   │   ├── mainwindow.cpp/h    # Main window, toolbar, all UI wiring
 │   │   ├── canvaswidget.cpp/h  # Circuit canvas + component rendering
@@ -272,7 +283,10 @@ VEMCODE/
 │   │   ├── codehighlighter.cpp/h
 │   │   ├── linenumberarea.cpp/h
 │   │   ├── variablewatch.cpp/h
+│   │   ├── devicespanel.cpp/h  # "I2C" debug tab — virtual device responses
+│   │   ├── spipanel.cpp/h      # "SPI" debug tab — virtual response sequence
 │   │   └── settingsdialog.cpp/h
+│   ├── components/             # One .cpp per component type — drop a file in, CMake glob auto-registers it
 │   └── core/
 │       ├── runtime/
 │       │   ├── arduinoapi.h        # API function pointer struct
@@ -283,10 +297,13 @@ VEMCODE/
 │       │   └── sketchhostthread.cpp/h  # Background simulation thread
 │       ├── build/
 │       │   ├── compiler.cpp/h      # Invokes g++
-│       │   └── preprocessor.cpp/h  # Sketch → VEMCODE transform
+│       │   ├── preprocessor.cpp/h  # Sketch → VEMCODE transform
+│       │   ├── injected_header.inc # Core primitives injected into every sketch
+│       │   └── libs/               # Per-library .inc (Servo, LiquidCrystal, SoftwareSerial, Wire, SPI)
 │       └── circuit/
-│           └── circuitdetector.cpp/h   # Auto component detection
-├── sketches/                   # Example sketches
+│           ├── circuitdetector.cpp/h    # Auto component detection
+│           ├── componentitem.cpp/h      # Base canvas item class
+│           └── componentregistry.cpp/h  # Component type → detection rules
 └── CMakeLists.txt
 ```
 
