@@ -282,7 +282,7 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 **Protocol libraries (preprocessor injection + virtual device responses):**
 - [x] `Wire.begin` / `Wire.write` / `Wire.read` — byte-level I2C simulation; no electrical bus characteristics; device responses come from the virtual I2C device panel
 - [x] Virtual I2C device panel — "Devices" tab in the debug panel; table of 7-bit address → response byte sequence; when the sketch calls `Wire.requestFrom(addr, n)`, the runtime looks up the address and returns the configured bytes; entries are editable at runtime; covers the common pattern of reading a sensor register: `Wire.beginTransmission` → `Wire.write(reg)` → `Wire.endTransmission` → `Wire.requestFrom` → `Wire.read()`
-- [ ] `SPI.begin` / `SPI.transfer` — same scope as Wire
+- [x] `SPI.begin` / `SPI.transfer` — byte-level SPI simulation; no electrical bus characteristics; also stubs `beginTransaction`/`endTransaction`/`SPISettings` as no-ops for real-world sketch compatibility; unlike Wire there's no address field, so device responses come from a single configurable byte sequence in the "SPI" tab that `transfer()` cycles through on every call
 
 **Low-level AVR simulation:**
 - [ ] AVR GPIO register simulation — `DDRB`, `PORTB`, `PINB`, `DDRC`, `PORTC`, `PINC`, `DDRD`, `PORTD`, `PIND` etc. as overloaded-operator structs in injected header; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`; bit-mask operations (`PORTB |= (1 << PB5)`) work correctly by routing through `impl_digitalWrite` per affected pin

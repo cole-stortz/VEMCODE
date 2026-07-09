@@ -73,6 +73,7 @@ set(SOURCES
     src/ui/linenumberarea.cpp
     src/ui/variablewatch.cpp
     src/ui/devicespanel.cpp
+    src/ui/spipanel.cpp
     src/ui/settingsdialog.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
@@ -98,6 +99,7 @@ set(HEADERS
     src/ui/linenumberarea.h
     src/ui/variablewatch.h
     src/ui/devicespanel.h
+    src/ui/spipanel.h
     src/ui/settingsdialog.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h

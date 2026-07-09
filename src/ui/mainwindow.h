@@ -29,6 +29,7 @@
 #include "src/ui/linenumberarea.h"
 #include "src/ui/variablewatch.h"
 #include "src/ui/devicespanel.h"
+#include "src/ui/spipanel.h"
 #include "src/ui/settingsdialog.h"
 #include "src/core/runtime/boardprofile.h"
 
@@ -42,6 +43,7 @@ public:
     QElapsedTimer   simTimer_;
     VariableWatch* variableWatch_ = nullptr;
     DevicesPanel*  devicesPanel_  = nullptr;
+    SpiPanel*      spiPanel_      = nullptr;
 
 private slots:
     void onSerialOutput(QString text);

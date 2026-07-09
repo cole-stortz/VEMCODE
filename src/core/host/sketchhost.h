@@ -53,6 +53,10 @@ public:
         runtime_.inject_wire_device(address, bytes);
     }
 
+    void inject_spi_bytes(const std::vector<uint8_t>& bytes) {
+        runtime_.inject_spi_bytes(bytes);
+    }
+
     // Resolves `name` as a global symbol in the loaded sketch DLL and formats
     // its current value per `type`. Returns false if the symbol can't be
     // resolved -- wrong name, a local variable (no fixed address), or no

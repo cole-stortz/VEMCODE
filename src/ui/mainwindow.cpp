@@ -226,6 +226,10 @@ MainWindow::MainWindow(QWidget* parent)
             this, [this](int address, std::vector<uint8_t> bytes) {
                 sketchThread_->injectWireDevice(address, bytes);
             });
+    connect(spiPanel_, &SpiPanel::bytesChanged,
+            this, [this](std::vector<uint8_t> bytes) {
+                sketchThread_->injectSpiBytes(bytes);
+            });
     connect(variableWatch_, &VariableWatch::watchListChanged,
             this, [this](std::vector<std::pair<QString, QString>> vars) {
                 sketchThread_->setWatchList(vars);
@@ -534,6 +538,8 @@ QWidget* MainWindow::buildDebugPanel() {
     debugTabs_->addTab(variableWatch_, "Variable watch");
     devicesPanel_ = new DevicesPanel();
     debugTabs_->addTab(devicesPanel_, "Devices");
+    spiPanel_ = new SpiPanel();
+    debugTabs_->addTab(spiPanel_, "SPI");
 
     layout->addWidget(debugTabs_);
     return panel;
@@ -781,6 +787,7 @@ void MainWindow::onRunClicked() {
     detector_.detect(codeEditor_->toPlainText().toStdString());
     canvasWidget_->refresh(detector_.components());
     devicesPanel_->pushAll(); // re-inject the Devices table into the freshly reset runtime
+    spiPanel_->pushAll(); // re-inject the SPI response sequence into the freshly reset runtime
 
     // Show detected components on the serial monitor
     serialMonitor_->appendPlainText(QString::fromStdString("=== Components detected ===\n"));

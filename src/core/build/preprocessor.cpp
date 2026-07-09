@@ -104,6 +104,14 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Wire.endTransmission(",    "wire_end_transmission(");
     s = replace_token(s, "Wire.requestFrom(",        "wire_request_from(");
 
+    // SPI -- same shape as Wire above: begin/transfer/beginTransaction/
+    // endTransaction route through inline wrappers since transfer() is
+    // overloaded (byte vs. buffer) and beginTransaction() takes a SPISettings.
+    s = replace_token(s, "SPI.beginTransaction(", "spi_begin_transaction(");
+    s = replace_token(s, "SPI.endTransaction(",   "spi_end_transaction(");
+    s = replace_token(s, "SPI.begin(",            "spi_begin(");
+    s = replace_token(s, "SPI.transfer(",         "spi_transfer(");
+
     // Watchdog
     s = replace_token(s, "wdt_enable(", "api->wdt_enable(");
     s = replace_token(s, "wdt_disable(", "api->wdt_disable(");
@@ -127,6 +135,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "LiquidCrystal",  g_liquidcrystal_lib },
         { "SoftwareSerial", g_softwareserial_lib },
         { "Wire",            nullptr },
+        { "SPI",             nullptr },
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },

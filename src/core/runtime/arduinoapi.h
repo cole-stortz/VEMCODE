@@ -99,6 +99,9 @@ struct ArduinoAPI {
     int  (*wire_request_from)(int address, int quantity);
     int  (*wire_available)();
     int  (*wire_read)();
+
+    // SPI -- no per-device addressing; transfer() cycles through a configurable response sequence.
+    uint8_t (*spi_transfer)(uint8_t b);
 };
 
 // Arduino constants live in a namespace to avoid clashing with windows.h

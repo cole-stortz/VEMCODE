@@ -61,6 +61,11 @@ struct RuntimeState {
     int wire_tx_address_ = -1;
     std::vector<uint8_t> wire_tx_buffer_;   // bytes written since beginTransmission
     std::deque<uint8_t> wire_rx_buffer_;    // bytes available to read since requestFrom
+
+    std::vector<uint8_t> spi_response_bytes_; // configured response sequence, cycled by transfer()
+    size_t spi_response_index_ = 0;
+    std::mutex spi_mtx_; // guards the two fields above -- written from the GUI
+                          // thread (inject_spi_bytes), read from the sketch thread (impl_spi_transfer)
 };
 
 class ArduinoRuntime {
@@ -146,6 +151,12 @@ public:
         state_.wire_devices_[address] = bytes;
     }
 
+    void inject_spi_bytes(const std::vector<uint8_t>& bytes) {
+        std::lock_guard<std::mutex> lock(state_.spi_mtx_);
+        state_.spi_response_bytes_ = bytes;
+        state_.spi_response_index_ = 0;
+    }
+
 
 private:
     RuntimeState state_;
@@ -202,6 +213,8 @@ private:
     static int           impl_wire_request_from      (int address, int quantity);
     static int           impl_wire_available          ();
     static int           impl_wire_read               ();
+
+    static uint8_t       impl_spi_transfer             (uint8_t b);
 
 
     std::deque<char> serial_buffer_;

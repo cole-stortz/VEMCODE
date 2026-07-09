@@ -201,6 +201,11 @@ void SketchThread::injectWireDevice(int address, const std::vector<uint8_t>& byt
     host_.inject_wire_device(address, bytes);
 }
 
+void SketchThread::injectSpiBytes(const std::vector<uint8_t>& bytes) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_spi_bytes(bytes);
+}
+
 void SketchThread::setProfile(BoardProfile p) {
     QMutexLocker lock(&inject_mutex_);
     host_.setProfile(p);

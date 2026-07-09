@@ -78,6 +78,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.wire_request_from       = impl_wire_request_from;
     api.wire_available          = impl_wire_available;
     api.wire_read               = impl_wire_read;
+    api.spi_transfer            = impl_spi_transfer;
     return api;
 }
 
@@ -598,5 +599,15 @@ int ArduinoRuntime::impl_wire_read() {
     if (!g_runtime || g_runtime->state_.wire_rx_buffer_.empty()) return -1;
     uint8_t b = g_runtime->state_.wire_rx_buffer_.front();
     g_runtime->state_.wire_rx_buffer_.pop_front();
+    return b;
+}
+
+uint8_t ArduinoRuntime::impl_spi_transfer(uint8_t /*tx*/) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.spi_mtx_);
+    auto& bytes = g_runtime->state_.spi_response_bytes_;
+    if (bytes.empty()) return 0;
+    uint8_t b = bytes[g_runtime->state_.spi_response_index_];
+    g_runtime->state_.spi_response_index_ = (g_runtime->state_.spi_response_index_ + 1) % bytes.size();
     return b;
 }
