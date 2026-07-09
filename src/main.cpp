@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QIcon>
 #include "src/ui/mainwindow.h"
 #include "src/core/build/compiler.h"
 #include "src/core/circuit/circuitdetector.h"
@@ -187,6 +188,7 @@ int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("VEMCODE");
     app.setApplicationVersion("0.1");
+    app.setWindowIcon(QIcon(":/logo.svg"));
 
     MainWindow window;
     window.show();

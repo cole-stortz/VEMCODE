@@ -12,12 +12,14 @@ list(PREPEND CMAKE_PREFIX_PATH /usr/lib64)
 
 # Qt6 modules we need right now
 # We'll add WebEngineWidgets later for the Monaco editor
+# Note: QIcon/QPixmap load .svg (e.g. the app logo) via the qsvgicon/qsvg
+# plugins at runtime automatically -- no Qt6::Svg link needed for that.
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Auto-run Qt's code generators on files that need it
 # MOC  = processes Q_OBJECT macros
 # UIC  = processes .ui files (we don't have any yet)
-# RCC  = processes .qrc resource files (we don't have any yet)
+# RCC  = processes .qrc resource files (docs/resources.qrc, for the app logo)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -109,6 +111,7 @@ set(SOURCES
     src/core/circuit/componentitem.cpp
     src/core/circuit/componentregistry.cpp
     src/lsan_suppressions.cpp
+    docs/resources.qrc
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
     ${CMAKE_BINARY_DIR}/generated/servo_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp

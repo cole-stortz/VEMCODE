@@ -1,6 +1,10 @@
+<img src="docs/LogoV1.svg" align="left" width="140" hspace="20" alt="VEMCODE logo">
+
 # VEMCODE — Virtual Embedded Code Development Environment
 
 VEMCODE reads your sketch and automatically detects your components, builds the circuit, and simulates your firmware in real time. No hardware, no wiring, no setup needed.
+
+<br clear="left">
 
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)

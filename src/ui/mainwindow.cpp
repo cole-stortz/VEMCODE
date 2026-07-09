@@ -18,6 +18,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QToolTip>
+#include <QIcon>
 
 // Returns true if a define/const name looks like a pin definition
 static bool is_pin_name(const std::string& name) {
@@ -254,6 +255,11 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     toolbarLayout->setSpacing(6);
     toolbar->setStyleSheet(STYLE_TOOLBAR);
     toolbar->setFixedHeight(42);
+
+    QLabel* logo = new QLabel(toolbar);
+    logo->setPixmap(QIcon(":/logo.svg").pixmap(36, 36));
+    toolbarLayout->addWidget(logo);
+    toolbarLayout->addSpacing(6);
 
     QLabel* title = new QLabel("VEMCODE", toolbar);
     title->setStyleSheet(STYLE_TITLE);
