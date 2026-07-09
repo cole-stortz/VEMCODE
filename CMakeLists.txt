@@ -24,9 +24,15 @@ set(CMAKE_AUTORCC ON)
 
 # Embed injected_header.h as a C string at configure time.
 # set_property tells the build system to re-run cmake when the file changes.
+# avr_registers.inc is concatenated in here (not treated as a conditional
+# library like Servo/Wire/SPI below) since it must be injected into every
+# sketch unconditionally -- see the comment at the top of that file for why.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc")
+    "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc")
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc" INJECTED_HEADER_CONTENT)
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc" AVR_REGISTERS_CONTENT)
+string(APPEND INJECTED_HEADER_CONTENT "\n${AVR_REGISTERS_CONTENT}")
 configure_file(
     "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.cpp.in"
     "${CMAKE_BINARY_DIR}/generated/injected_header.cpp"
@@ -34,10 +40,15 @@ configure_file(
 )
 
 # Embed injectable library .inc files as C strings at configure time.
+# Each one's content replaces that library's #include line in the sketch
+# (see Preprocessor::strip_includes), so it's only ever present in sketches
+# that actually use it.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc"
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc")
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc")
 
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc" SERVO_LIB_CONTENT)
 configure_file(
@@ -57,6 +68,20 @@ file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc" SOFTWARES
 configure_file(
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial_lib.cpp.in"
     "${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp"
+    @ONLY
+)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire.inc" WIRE_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/wire_lib.cpp"
+    @ONLY
+)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc" SPI_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/spi_lib.cpp"
     @ONLY
 )
 
@@ -87,6 +112,8 @@ set(SOURCES
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
     ${CMAKE_BINARY_DIR}/generated/servo_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/wire_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/spi_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp
     ${COMPONENT_SOURCES}
 )
