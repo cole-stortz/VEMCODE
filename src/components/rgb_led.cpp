@@ -46,9 +46,9 @@ static bool registered = []() {
         "RGBLED",
         {},
         {
-            {"RED",   {"RED"}},
-            {"GREEN", {"GREEN"}},
-            {"BLUE",  {"BLUE"}},
+            {"RED",   {"REDPIN", "RPIN", "RED_PIN", "R_PIN"}},
+            {"GREEN", {"GREENPIN", "GPIN","GREEN_PIN", "G_PIN"}},
+            {"BLUE",  {"BLUEPIN", "BPIN", "BLUE_PIN","B_PIN"}},
         },
         {},    // detect_pattern — none
         true,  // is_output

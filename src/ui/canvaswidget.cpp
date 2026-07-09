@@ -7,6 +7,8 @@
 #include <QPen>
 #include <QBrush>
 #include <QFont>
+#include <algorithm>
+#include <map>
 
 // Canvas color palette
 static const QColor COLOR_BOARD_BG       ("#1a1a2e");
@@ -19,8 +21,13 @@ static const QColor COLOR_PIN_DOT_BG     ("#2a2a3a");
 static const QColor COLOR_PIN_DOT_BORDER ("#444466");
 static const QColor COLOR_PIN_LABEL      ("#333355");
 
-// Wire color
-static const QColor COLOR_WIRE           ("#444466");
+// Wire colors -- one per component, cycled from this palette so wires stay
+// visually distinguishable from each other without needing to match each
+// component's own (state-dependent) fill color.
+static const QColor WIRE_PALETTE[] = {
+    QColor("#e06c75"), QColor("#98c379"), QColor("#e5c07b"), QColor("#61afef"),
+    QColor("#c678dd"), QColor("#56b6c2"), QColor("#d19a66"), QColor("#ff6b9d"),
+};
 
 static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
 static const QColor COLOR_COMPONENT_SUBLABEL  ("#888888");
@@ -44,9 +51,74 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
 
     drawBoard();
 
+    // Phase 1: create every item and work out its pin-aligned target Y --
+    // boundingRect() varies per component type (44/54/64px), so heights can
+    // only be known after construction.
+    struct Placement {
+        const DetectedComponent* comp;
+        const ComponentDefinition* def;
+        ComponentItem* item;
+        float comp_x;
+        int comp_w, comp_h;
+        float target_y;
+    };
+
+    // H_GAP separates the two left-side columns. The outer column's right
+    // edge (BOARD_X - 180) doesn't depend on comp_w -- it cancels out of
+    // comp_x + comp_w -- so with every component currently 100px wide, the
+    // inner column's left edge (BOARD_X - comp_w - 80) landed on exactly the
+    // same X with zero gap. Padding the outer offset guarantees real
+    // clearance between the columns regardless of component width.
+    static constexpr float H_GAP = 12.0f;
+
+    std::vector<Placement> placements;
     for (const auto& comp : components) {
-        if (comp.pin >= 0)
-            drawComponent(comp);
+        if (comp.pin < 0) continue;
+        const ComponentDefinition* def = ComponentRegistry::instance().find_by_type(comp.type_name);
+        if (!def) continue;
+
+        ComponentItem* item = def->create_item(comp.pin, nullptr);
+        QRectF box = item->boundingRect();
+        int comp_w = (int)box.width();
+        int comp_h = (int)box.height();
+
+        QPointF pin_pos = pinLocation(comp.pin);
+        bool is_output = def->is_output;
+        bool is_analog_input = isAnalogPin(comp.pin);
+
+        float comp_x;
+        if (is_output) {
+            comp_x = BOARD_X + BOARD_W + 80;
+        } else if (is_analog_input) {
+            comp_x = BOARD_X - comp_w - 180 - H_GAP;  // outer column -- all analog
+        } else {
+            comp_x = BOARD_X - comp_w - 80;   // inner column -- digital inputs
+        }
+        float target_y = pin_pos.y() - comp_h / 2.0f;
+
+        placements.push_back({&comp, def, item, comp_x, comp_w, comp_h, target_y});
+    }
+
+    // Phase 2: stack each column (grouped by comp_x) top-to-bottom in
+    // pin order, pushing a component down past the previous one's bottom
+    // edge instead of letting it overlap when pins are packed closer
+    // together than the components placed on them are tall.
+    std::stable_sort(placements.begin(), placements.end(),
+        [](const Placement& a, const Placement& b) {
+            if (a.comp_x != b.comp_x) return a.comp_x < b.comp_x;
+            return a.target_y < b.target_y;
+        });
+
+    static constexpr float V_GAP = 12.0f;
+    std::map<float, float> column_bottom_y; // comp_x -> bottom edge of last placed item
+    for (auto& p : placements) {
+        float comp_y = p.target_y;
+        auto it = column_bottom_y.find(p.comp_x);
+        if (it != column_bottom_y.end())
+            comp_y = std::max(comp_y, it->second + V_GAP);
+        column_bottom_y[p.comp_x] = comp_y + p.comp_h;
+
+        placeComponent(*p.comp, p.def, p.item, p.comp_x, comp_y, p.comp_w, p.comp_h);
     }
 }
 
@@ -88,8 +160,10 @@ void CanvasWidget::drawBoard() {
     chipLabel->setFont(QFont("Courier New", 8));
     chipLabel->setPos(BOARD_X + 48, BOARD_Y + 100);
 
-    // Digital pins
-    for (int i = 0; i < profile_.analog_offset; i++) {
+    // Digital pins -- both below the analog block and (for boards like
+    // Teensy 4.1) any extra digital pins above it
+    for (int i = 0; i < profile_.pin_count; i++) {
+        if (isAnalogPin(i)) continue;
         QPointF pos = pinLocation(i);
         scene_->addEllipse(
             pos.x() - 3, pos.y() - 3, 6, 6,
@@ -118,30 +192,10 @@ void CanvasWidget::drawBoard() {
     }
 }
 
-void CanvasWidget::drawComponent(const DetectedComponent& comp) {
-    const ComponentDefinition* def = ComponentRegistry::instance().find_by_type(comp.type_name);
-    if (!def) return;
-
-    ComponentItem* item = def->create_item(comp.pin, nullptr);
-
-    QRectF box = item->boundingRect();
-    int comp_w = (int)box.width();
-    int comp_h = (int)box.height();
-
-    QPointF pin_pos = pinLocation(comp.pin);
+void CanvasWidget::placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
+                                   ComponentItem* item, float comp_x, float comp_y,
+                                   int comp_w, int comp_h) {
     bool is_output = def->is_output;
-    bool is_analog_input = (comp.pin >= profile_.analog_offset);
-
-    float comp_x;
-    if (is_output) {
-        comp_x = BOARD_X + BOARD_W + 80;
-    } else if (is_analog_input) {
-        comp_x = BOARD_X - comp_w - 180;  // outer column -- all analog
-    } else {
-        comp_x = BOARD_X - comp_w - 80;   // inner column -- digital inputs
-    }
-    // Align Y with the actual pin position on the board
-    float comp_y = pin_pos.y() - comp_h / 2.0f;
 
     item->setPos(comp_x, comp_y);
     scene_->addItem(item);
@@ -183,6 +237,8 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
     else
         wire_pins = { comp.pin };
 
+    const QColor& wireColor = WIRE_PALETTE[comp.pin % (sizeof(WIRE_PALETTE) / sizeof(WIRE_PALETTE[0]))];
+
     int i = 0;
     for (int wpin : wire_pins) {
         if (wpin < 0) { i++; continue; }
@@ -196,47 +252,78 @@ void CanvasWidget::drawComponent(const DetectedComponent& comp) {
             ? QPointF(comp_x, attach_y)
             : QPointF(comp_x + comp_w, attach_y);
 
-        bool pin_is_analog = (wpin >= profile_.analog_offset);
+        bool pin_is_analog = isAnalogPin(wpin);
         if (pin_is_analog) {
-            // Analog: 3-segment route around board left edge, staggered per wire
-            float inter_x = BOARD_X - 80 - i * WIRE_SPACING;
+            // Analog: turn down right off the pin, in the empty gap before the
+            // inner digital-input column starts (that column's right edge is
+            // BOARD_X - 80), then one long run at the destination's own row.
+            // Turning near the destination instead sent the vertical segment
+            // straight through however many components got stacked between
+            // the pin's raw row and wherever the component actually landed.
+            float inter_x = BOARD_X - 20.0f - i * WIRE_SPACING;
             QPointF mid1(inter_x, target.y());
             QPointF mid2(inter_x, attach_y);
-            drawWire(target, mid1);
-            drawWire(mid1, mid2);
-            drawWire(mid2, comp_edge);
+            drawWire(target, mid1, wireColor);
+            drawWire(mid1, mid2, wireColor);
+            drawWire(mid2, comp_edge, wireColor);
+        } else if (is_output) {
+            // Digital output: component sits on the same side as the pin, so
+            // there's no column to cross -- turning near the component is fine.
+            float inter_x = comp_x - 10.0f - i * WIRE_SPACING;
+            QPointF mid1(inter_x, target.y());
+            QPointF mid2(inter_x, attach_y);
+            drawWire(target, mid1, wireColor);
+            drawWire(mid1, mid2, wireColor);
+            drawWire(mid2, comp_edge, wireColor);
         } else {
-            // Digital: horizontal from pin, vertical at staggered x, horizontal into component
-            float inter_x = is_output
-                ? comp_x - 10.0f - i * WIRE_SPACING
-                : comp_x + comp_w + 10.0f + i * WIRE_SPACING;
+            // Digital input: same fix as analog, mirrored -- turn right next
+            // to the pin (board's right edge) instead of next to the component.
+            float inter_x = target.x() + 10.0f + i * WIRE_SPACING;
             QPointF mid1(inter_x, target.y());
             QPointF mid2(inter_x, attach_y);
-            drawWire(target, mid1);
-            drawWire(mid1, mid2);
-            drawWire(mid2, comp_edge);
+            drawWire(target, mid1, wireColor);
+            drawWire(mid1, mid2, wireColor);
+            drawWire(mid2, comp_edge, wireColor);
         }
         i++;
     }
 }
 
-void CanvasWidget::drawWire(QPointF from, QPointF to) {
+void CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color) {
     scene_->addLine(
         from.x(), from.y(), to.x(), to.y(),
-        QPen(COLOR_WIRE, 1, Qt::SolidLine, Qt::RoundCap)
+        QPen(color, 1, Qt::SolidLine, Qt::RoundCap)
     );
 }
 
+bool CanvasWidget::isAnalogPin(int pin) const {
+    return pin >= profile_.analog_offset && pin < profile_.analog_offset + profile_.analog_count;
+}
+
+int CanvasWidget::digitalPinCount() const {
+    int low  = profile_.analog_offset;
+    int high = std::max(0, profile_.pin_count - (profile_.analog_offset + profile_.analog_count));
+    return low + high;
+}
+
+int CanvasWidget::digitalPinIndex(int pin) const {
+    if (pin < 0 || pin >= profile_.pin_count || isAnalogPin(pin)) return -1;
+    if (pin < profile_.analog_offset) return pin;
+    int high_start = profile_.analog_offset + profile_.analog_count;
+    return profile_.analog_offset + (pin - high_start);
+}
+
 QPointF CanvasWidget::pinLocation(int pin) {
-    if (pin >= 0 && pin < profile_.analog_offset) {
-        float spacing = (float)BOARD_H / (float)(profile_.analog_offset + 1);
-        float y = BOARD_Y + spacing * (pin + 1);
-        return QPointF(BOARD_X + BOARD_W, y);
-    }
-    if (pin >= profile_.analog_offset && pin < profile_.analog_offset + profile_.analog_count) {
+    if (isAnalogPin(pin)) {
         float spacing = (float)BOARD_H / (float)(profile_.analog_count + 1);
         float y = BOARD_Y + spacing * (pin - profile_.analog_offset + 1);
         return QPointF(BOARD_X, y);
+    }
+    int idx = digitalPinIndex(pin);
+    if (idx >= 0) {
+        float spacing = (float)BOARD_H / (float)(digitalPinCount() + 1);
+        float y = BOARD_Y + spacing * (idx + 1);
+        return QPointF(BOARD_X + BOARD_W, y);
     }
     return QPointF(BOARD_X + BOARD_W / 2.0, BOARD_Y);
 }
