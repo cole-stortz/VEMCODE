@@ -48,7 +48,7 @@ static bool registered = []() {
         {"LCD", "DISPLAY", "SCREEN", "OLED"},
         {
             {"RS", {"RS"}},
-            {"EN", {"LCD_EN", "LCD_E", "_ENABLE", "_EN", "E", "EN"}},
+            {"EN", {"LCD_EN", "LCD_E", "_ENABLE", "_EN"}},
             {"D4", {"D4", "DB4", "DATA4"}},
             {"D5", {"D5", "DB5", "DATA5"}},
             {"D6", {"D6", "DB6", "DATA6"}},

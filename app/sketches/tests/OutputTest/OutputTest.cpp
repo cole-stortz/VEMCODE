@@ -1,5 +1,7 @@
 // @board Arduino Uno
 
+#include <LiquidCrystal.h>
+
 #define LED_PIN      13
 #define BUZZER_PIN   11
 #define SERVO_PIN     9
@@ -9,6 +11,16 @@
 #define RED_PIN       3
 #define GREEN_PIN     8
 #define BLUE_PIN     10
+#define LCD_RS        2
+#define LCD_EN        4
+#define LCD_D4       12
+#define LCD_D5       A0
+#define LCD_D6       A1
+#define LCD_D7       A2
+#define MYSTERY_OUTPUT_PIN A3
+
+LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+int loopCount = 0;
 
 void setup() {
     Serial.begin(9600);
@@ -21,10 +33,20 @@ void setup() {
     pinMode(RED_PIN,    OUTPUT);
     pinMode(GREEN_PIN,  OUTPUT);
     pinMode(BLUE_PIN,   OUTPUT);
+    pinMode(MYSTERY_OUTPUT_PIN, OUTPUT);
+    lcd.begin(16, 2);
+    lcd.setCursor(0, 0);
+    lcd.print("VEMCODE Output");
     Serial.println("OutputTest started");
 }
 
 void loop() {
+    loopCount++;
+    lcd.setCursor(0, 1);
+    lcd.print("Loop: ");
+    lcd.print(loopCount);
+    lcd.print("   ");
+
     // LED
     digitalWrite(LED_PIN, HIGH);
     Serial.println("LED ON");

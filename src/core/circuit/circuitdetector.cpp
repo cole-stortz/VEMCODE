@@ -369,7 +369,7 @@ void CircuitDetector::detect_singleton_group(
     for (const auto& d : defines) {
         std::string upper = to_upper(d.first);
         int pin = resolve_pin(d.second, defines);
-        if (pin < 0) continue;
+        if (pin < 0 || claimed.count(pin)) continue;
         for (size_t r = 0; r < def.detect_multi.size(); ++r) {
             if (pins[r] >= 0) continue;
             if (contains_any(upper, def.detect_multi[r].keywords)) {
