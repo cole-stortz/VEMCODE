@@ -4,8 +4,8 @@
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 
-static const QColor ROTENC_ACTIVE  ("#55eb71");
-static const QColor ROTENC_INACTIVE("#17401f");
+static const QColor ROTENC_ACTIVE  ("#81dc74");
+static const QColor ROTENC_INACTIVE("#153710");
 
 static const int QUAD_CLK[4] = {1, 0, 0, 1};
 static const int QUAD_DT[4]  = {1, 1, 0, 0};
@@ -34,7 +34,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, QString("Rotary Enc: %1").arg(value_));
     }
@@ -83,7 +84,7 @@ private:
 };
 
 static bool reg_rotenc = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "RotaryEncoder",
         {"ENCODER", "ROTARY", "CLK", "DT"},
         {
@@ -97,6 +98,8 @@ static bool reg_rotenc = []() {
         },
         MultiPinStrategy::Suffix,
         "CLK"
-    });
+    };
+    def.wire_color = ROTENC_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

@@ -1,5 +1,6 @@
 #pragma once
 #include "src/core/circuit/componentitem.h"
+#include <QColor>
 #include <vector>
 #include <string>
 #include <functional>
@@ -26,6 +27,7 @@ struct ComponentDefinition {
     std::function<ComponentItem*(int pin, QGraphicsItem*)> create_item;
     MultiPinStrategy multi_pin_strategy = MultiPinStrategy::None;
     std::string representative_role;
+    QColor wire_color = QColor("#888888");
 };
 
 class ComponentRegistry {

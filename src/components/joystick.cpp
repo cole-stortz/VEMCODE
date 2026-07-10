@@ -5,8 +5,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <cmath>
 
-static const QColor JOY_ACTIVE  ("#51a549");
-static const QColor JOY_INACTIVE("#143111");
+static const QColor JOY_ACTIVE  ("#74dcb5");
+static const QColor JOY_INACTIVE("#103729");
 static const QColor JOY_PRESSED_BORDER("#2555e6");
 
 class JoystickItem : public ComponentItem {
@@ -52,7 +52,8 @@ public:
         p->setPen(QPen(pressed_ ? JOY_PRESSED_BORDER : fill.darker(150), pressed_ ? 2 : 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
                     QString("Joy: %1,%2").arg(vrx_).arg(vry_));
@@ -100,7 +101,7 @@ public:
 };
 
 static bool reg_joystick = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "Joystick",
         {"JOYSTICK", "JOY", "VRX", "VRY"},
         {
@@ -115,6 +116,8 @@ static bool reg_joystick = []() {
         },
         MultiPinStrategy::Suffix,
         "VRX"
-    });
+    };
+    def.wire_color = JOY_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

@@ -3,8 +3,8 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor BUTTON_ACTIVE  ("#44ff88");
-static const QColor BUTTON_INACTIVE("#003a15");
+static const QColor BUTTON_ACTIVE  ("#dc74c2");
+static const QColor BUTTON_INACTIVE("#37102e");
 
 class ButtonItem : public ComponentItem {
     bool pressed_ = false;
@@ -23,7 +23,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Button");
     }
@@ -58,7 +59,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Button (Clean)");
     }
@@ -80,25 +82,29 @@ public:
 // ButtonClean first -- registration order across files is unspecified, but
 // within this file it's guaranteed top-to-bottom.
 static bool reg_button_clean = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "ButtonClean",
         {"CLEAN", "IDEAL"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ButtonCleanItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = BUTTON_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();
 
 static bool reg_button = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "Button",
         {"BUTTON", "BTN", "TACT", "PUSH", "KEY"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ButtonItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = BUTTON_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

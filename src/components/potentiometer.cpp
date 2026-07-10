@@ -4,8 +4,8 @@
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 
-static const QColor POT_ACTIVE  ("#f9e749");
-static const QColor POT_INACTIVE("#6a5f02");
+static const QColor POT_ACTIVE  ("#a8dc74");
+static const QColor POT_INACTIVE("#243710");
 
 class PotItem : public ComponentItem {
     bool dragging_ = false;
@@ -32,7 +32,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, QString("Pot: %1").arg(value_));
     }
@@ -57,13 +58,15 @@ public:
 };
 
 static bool reg_pot = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "Potentiometer",
         {"POT", "POTENTIOMETER", "KNOB", "DIAL"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new PotItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = POT_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

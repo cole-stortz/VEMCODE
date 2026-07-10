@@ -3,8 +3,8 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor GENERIC_INPUT_ACTIVE  ("#aaaaaa");
-static const QColor GENERIC_INPUT_INACTIVE("#2a2a2a");
+static const QColor GENERIC_INPUT_ACTIVE  ("#748edc");
+static const QColor GENERIC_INPUT_INACTIVE("#101a37");
 
 class GenericInputItem : public ComponentItem {
     bool active_ = false;
@@ -24,7 +24,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Input");
     }
@@ -40,13 +41,15 @@ public:
 // assigns this type directly as its final fallback when nothing else matches
 // (see infer_type()), so detect_single/detect_multi/detect_pattern stay empty.
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "GenericInput",
         {}, {}, {},
         false, // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new GenericInputItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = GENERIC_INPUT_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

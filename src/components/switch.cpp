@@ -3,8 +3,8 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor SWITCH_ACTIVE  ("#49caf9");
-static const QColor SWITCH_INACTIVE("#02455e");
+static const QColor SWITCH_ACTIVE  ("#74dcdc");
+static const QColor SWITCH_INACTIVE("#103737");
 
 class SwitchItem : public ComponentItem {
     bool switch_ = false;
@@ -23,7 +23,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Switch");
     }
@@ -36,13 +37,15 @@ public:
 };
 
 static bool reg_switch = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "Switch",
         {"TOGGLE", "SWITCH"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new SwitchItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = SWITCH_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

@@ -2,8 +2,8 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor HBRIDGE_ACTIVE  ("#ff44aa");
-static const QColor HBRIDGE_INACTIVE("#3a0020");
+static const QColor HBRIDGE_ACTIVE  ("#dc7474");
+static const QColor HBRIDGE_INACTIVE("#371010");
 
 class HBridgeMotorItem : public ComponentItem {
     int pwmPin_;
@@ -26,7 +26,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
 
         QString dir = (cwise_ && antiCwise_) ? "BRAKE"
@@ -51,7 +52,7 @@ public:
 };
 
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "HBridgeMotor",
         {"MOTOR", "HBRIDGE", "ENA", "IN1"},
         {
@@ -66,6 +67,8 @@ static bool registered = []() {
         },
         MultiPinStrategy::Prefix,
         "PWM"
-    });
+    };
+    def.wire_color = HBRIDGE_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

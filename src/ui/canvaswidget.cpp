@@ -21,13 +21,6 @@ static const QColor COLOR_PIN_DOT_BG     ("#2a2a3a");
 static const QColor COLOR_PIN_DOT_BORDER ("#444466");
 static const QColor COLOR_PIN_LABEL      ("#333355");
 
-// Wire colors -- one per component, cycled from this palette so wires stay
-// visually distinguishable from each other without needing to match each
-// component's own (state-dependent) fill color.
-static const QColor WIRE_PALETTE[] = {
-    QColor("#e06c75"), QColor("#98c379"), QColor("#e5c07b"), QColor("#61afef"),
-    QColor("#c678dd"), QColor("#56b6c2"), QColor("#d19a66"), QColor("#ff6b9d"),
-};
 
 static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
 static const QColor COLOR_COMPONENT_SUBLABEL  ("#888888");
@@ -209,20 +202,20 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     }
     item->emitInitialValue();
 
-    // Commented because it add too much text, may want it later
-    // QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
-    // typeText->setPlainText(QString::fromStdString(comp.label));
-    // typeText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
-    // typeText->setFont(QFont("Courier New", 8));
-    // typeText->setPos(6, -16);
+    
+    QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
+    typeText->setPlainText(QString::fromStdString(comp.label));
+    typeText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
+    typeText->setFont(QFont("Courier New", 8));
+    typeText->setPos(6, -16);
 
-    if (!comp.pin_name.empty()) {
-        QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
-        nameText->setPlainText(QString::fromStdString(comp.pin_name));
-        nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
-        nameText->setFont(QFont("Courier New", 7));
-        nameText->setPos(6, -16);
-    }
+    // if (!comp.pin_name.empty()) {
+    //     QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
+    //     nameText->setPlainText(QString::fromStdString(comp.pin_name));
+    //     nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
+    //     nameText->setFont(QFont("Courier New", 7));
+    //     nameText->setPos(6, -16);
+    // }
 
     std::vector<int> wire_pins;
     if (!comp.pins.empty())
@@ -230,7 +223,7 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     else
         wire_pins = { comp.pin };
 
-    const QColor& wireColor = WIRE_PALETTE[comp.pin % (sizeof(WIRE_PALETTE) / sizeof(WIRE_PALETTE[0]))];
+    const QColor& wireColor = def->wire_color;
 
     int i = 0;
     for (int wpin : wire_pins) {

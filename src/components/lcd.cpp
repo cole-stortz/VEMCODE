@@ -3,7 +3,7 @@
 #include <QPainter>
 #include <QGraphicsTextItem>
 
-static const QColor LCD_FILL("#3d0076");
+static const QColor LCD_FILL("#cf74dc");
 
 class LCDItem : public ComponentItem {
     QGraphicsTextItem* row0_;
@@ -13,12 +13,12 @@ public:
     LCDItem(int p, QGraphicsItem* parent)
         : ComponentItem(p, parent) {
         row0_ = new QGraphicsTextItem("                ", this);
-        row0_->setDefaultTextColor(QColor("#cccccc"));
+        row0_->setDefaultTextColor(QColor("#1a1a1a"));
         row0_->setFont(QFont("Courier New", 7));
         row0_->setPos(6, 22);
 
         row1_ = new QGraphicsTextItem("                ", this);
-        row1_->setDefaultTextColor(QColor("#cccccc"));
+        row1_->setDefaultTextColor(QColor("#1a1a1a"));
         row1_->setFont(QFont("Courier New", 7));
         row1_->setPos(6, 36);
     }
@@ -30,7 +30,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "LCD");
     }
@@ -42,7 +43,7 @@ public:
 };
 
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "LCD",
         {"LCD", "DISPLAY", "SCREEN", "OLED"},
         {
@@ -60,6 +61,8 @@ static bool registered = []() {
         },
         MultiPinStrategy::Singleton,
         "RS"
-    });
+    };
+    def.wire_color = LCD_FILL;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

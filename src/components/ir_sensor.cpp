@@ -3,8 +3,8 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor IRSENSOR_ACTIVE  ("#f48d9b");
-static const QColor IRSENSOR_INACTIVE("#642e36");
+static const QColor IRSENSOR_ACTIVE  ("#dcc274");
+static const QColor IRSENSOR_INACTIVE("#372e10");
 
 class IRSensorItem : public ComponentItem {
     bool IRvalue_ = false;
@@ -23,7 +23,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "IR Sensor");
     }
@@ -36,13 +37,15 @@ public:
 };
 
 static bool reg_ir_sensor = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "IR Sensor",
         {"IR", "IRSENSOR","IR_SENSOR", "IR_OUT", "INFRARED"},
         {}, {}, false,
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new IRSensorItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = IRSENSOR_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

@@ -5,7 +5,7 @@
 #include <QGraphicsProxyWidget>
 #include <cmath>
 
-static const QColor DISTANCE_SENSOR_FILL("#003a3a");
+static const QColor DISTANCE_SENSOR_FILL("#74b5dc");
 
 class DistanceSensorItem : public ComponentItem {
     QLineEdit* input_;
@@ -37,7 +37,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#44ffff"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Distance");
     }
@@ -51,7 +52,7 @@ public:
 };
 
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "DistanceSensor",
         {"TRIG", "ECHO", "DISTANCE", "ULTRASONIC", "SONAR", "HCSR"},
         {
@@ -65,6 +66,8 @@ static bool registered = []() {
         },
         MultiPinStrategy::Suffix,
         "ECHO"
-    });
+    };
+    def.wire_color = DISTANCE_SENSOR_FILL;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

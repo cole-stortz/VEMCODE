@@ -4,7 +4,7 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
-static const QColor COLOR_SENSOR_FILL("#aa44ff");
+static const QColor COLOR_SENSOR_FILL("#a874dc");
 
 class ColorSensorItem : public ComponentItem {
     int s2Pin_ = -1;
@@ -43,7 +43,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Color");
     }
@@ -73,7 +74,7 @@ private:
 };
 
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "ColorSensor",
         {"COLOR", "TCS", "S2", "S3"},
         {
@@ -88,6 +89,8 @@ static bool registered = []() {
         },
         MultiPinStrategy::Array,
         "OUT"
-    });
+    };
+    def.wire_color = COLOR_SENSOR_FILL;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();

@@ -2,8 +2,8 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor BUZZER_ACTIVE  ("#db7d25");
-static const QColor BUZZER_INACTIVE("#401f01");
+static const QColor BUZZER_ACTIVE  ("#dc9b74");
+static const QColor BUZZER_INACTIVE("#371f10");
 
 class BuzzerItem : public ComponentItem {
     bool active_;
@@ -19,7 +19,8 @@ public:
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
-        p->setPen(QColor("#cccccc"));
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
         p->setFont(QFont("Courier New", 8));
         p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Buzzer");
     }
@@ -31,7 +32,7 @@ public:
 };
 
 static bool registered = []() {
-    ComponentRegistry::instance().register_component({
+    ComponentDefinition def{
         "Buzzer",
         {"BUZZER", "BUZZ", "SPEAKER", "TONE", "PIEZO"},
         {},    // detect_multi — none
@@ -40,6 +41,8 @@ static bool registered = []() {
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new BuzzerItem(pin, parent);
         }
-    });
+    };
+    def.wire_color = BUZZER_ACTIVE;
+    ComponentRegistry::instance().register_component(def);
     return true;
 }();
