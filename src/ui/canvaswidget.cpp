@@ -209,20 +209,19 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     }
     item->emitInitialValue();
 
-    // Descriptive label -- sits above the box so it doesn't collide with the
-    // item's own internal label drawn in its paint()
-    QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
-    typeText->setPlainText(QString::fromStdString(comp.label));
-    typeText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
-    typeText->setFont(QFont("Courier New", 8));
-    typeText->setPos(6, -16);
+    // Commented because it add too much text, may want it later
+    // QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
+    // typeText->setPlainText(QString::fromStdString(comp.label));
+    // typeText->setDefaultTextColor(COLOR_COMPONENT_LABEL);
+    // typeText->setFont(QFont("Courier New", 8));
+    // typeText->setPos(6, -16);
 
     if (!comp.pin_name.empty()) {
         QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
         nameText->setPlainText(QString::fromStdString(comp.pin_name));
         nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
         nameText->setFont(QFont("Courier New", 7));
-        nameText->setPos(6, -30);
+        nameText->setPos(6, -16);
     }
 
     std::vector<int> wire_pins;

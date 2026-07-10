@@ -260,7 +260,7 @@ Pull the component plugin architecture forward so that all new components added 
 - [x] Infrared sensor - One digital pin (OUT); canvas shows a toggle switch to activate and deactivate the IR sensor; keywords: `IR_SENSOR`, `IR`, `INFRARED`, `IR_OUT`
 
 **Step 5 — New complex components:**
-- [ ] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; canvas shows dual sliders and a clickable button; emits `AnalogValue` per axis and `DigitalPress` for the button; keywords: `JOYSTICK`, `JOY`, `VRX`, `VRY`
+- [x] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; canvas shows dual sliders and a clickable button; emits `AnalogValue` per axis and `DigitalPress` for the button; keywords: `JOYSTICK`, `JOY`, `VRX`, `VRY`
 - [ ] Stepper motor — step count and direction tracked from STEP/DIR or IN1–IN4 pin patterns; canvas displays a position counter and rotation indicator; keywords: `STEP`, `DIR`, `STEPPER`
 - [ ] Keypad matrix — 4×4 or 3×4; detected from row/col define groups; clickable grid on canvas; keywords: `ROW`, `COL`, `KEYPAD`
 - [ ] DHT11 / DHT22 — temperature and humidity; `#include <DHT.h>` stripped and replaced with injected class; `dht.read()` returns canvas-injected values; canvas shows temperature + humidity input fields; detect pattern: `DHT(`; keywords: `DHT`, `DHTPIN`, `DHT_PIN`
