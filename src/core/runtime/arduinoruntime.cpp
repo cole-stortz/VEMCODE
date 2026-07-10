@@ -23,6 +23,18 @@ ArduinoRuntime::ArduinoRuntime(BoardProfile profile) : profile_(profile) {
     state_.start_time = std::chrono::steady_clock::now();
 }
 
+ArduinoRuntime::~ArduinoRuntime() {
+    stop_wdt_thread();
+}
+
+// Must run before state_'s mutex/condvar are destroyed -- an unjoined
+// std::thread calls std::terminate() on destruction.
+void ArduinoRuntime::stop_wdt_thread() {
+    wdt_thread_stop_ = true;
+    if (wdt_thread_.joinable())
+        wdt_thread_.join();
+}
+
 ArduinoAPI ArduinoRuntime::get_api() {
     g_runtime = this;
     state_.start_time = std::chrono::steady_clock::now();
@@ -483,47 +495,69 @@ int ArduinoRuntime::impl_soft_serial_peek(int rxPin) {
 void ArduinoRuntime::impl_wdt_reset(){
     if(!g_runtime) return;
 
+    std::lock_guard<std::mutex> lock(g_runtime->state_.sleep_mtx_);
     g_runtime->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
 }
 
 void ArduinoRuntime::impl_wdt_disable(){
     if (!g_runtime) return;
 
+    std::lock_guard<std::mutex> lock(g_runtime->state_.sleep_mtx_);
     g_runtime->state_.wdt_enabled_ = false;
 }
 
 void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
     if (!g_runtime) return;
-    g_runtime->state_.wdt_enabled_   = true;
-    g_runtime->state_.wdt_timeout_ms_ = timeout_ms;
-    g_runtime->state_.wdt_last_reset_ = std::chrono::steady_clock::now(); // start the clock
-
     ArduinoRuntime* rt = g_runtime; // capture before thread — g_runtime is thread_local
-    std::thread([rt]() {
-        while (rt->state_.wdt_enabled_ && !rt->stop_requested_) {
+
+    // Join any previous watchdog monitor before starting a new one, and
+    // before touching state_ again -- see stop_wdt_thread()'s comment.
+    rt->stop_wdt_thread();
+
+    {
+        std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+        rt->state_.wdt_enabled_    = true;
+        rt->state_.wdt_timeout_ms_ = timeout_ms;
+        rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now(); // start the clock
+    }
+
+    rt->wdt_thread_stop_ = false;
+    rt->wdt_thread_ = std::thread([rt]() {
+        while (!rt->wdt_thread_stop_ && !rt->stop_requested_) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - rt->state_.wdt_last_reset_).count();
-            if (age_ms >= rt->state_.wdt_timeout_ms_) {
-                if (rt->state_.sleep_enabled_) {
-                    std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
-                    rt->state_.sleep_woken_ = true;
-                    rt->state_.sleep_cv_.notify_all();
-                }
-                auto isr_it = rt->state_.isr_handlers_.find("WDT_vect");
-                if (isr_it != rt->state_.isr_handlers_.end() && isr_it->second) {
-                    // Interrupt mode: fire ISR, reset timer, keep watching
-                    rt->state_.interrupts_enabled_ = false;
-                    isr_it->second();
-                    rt->state_.interrupts_enabled_ = true;
-                    rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
-                } else {
-                    if (rt->on_watchdog_reset) rt->on_watchdog_reset();
-                    return;
-                }
+
+            bool timed_out;
+            {
+                std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+                if (!rt->state_.wdt_enabled_) return; // disabled from the sketch thread
+                auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - rt->state_.wdt_last_reset_).count();
+                timed_out = age_ms >= rt->state_.wdt_timeout_ms_;
+            }
+            if (!timed_out) continue;
+
+            bool sleeping;
+            {
+                std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+                sleeping = rt->state_.sleep_enabled_;
+                if (sleeping) rt->state_.sleep_woken_ = true;
+            }
+            if (sleeping) rt->state_.sleep_cv_.notify_all();
+
+            auto isr_it = rt->state_.isr_handlers_.find("WDT_vect");
+            if (isr_it != rt->state_.isr_handlers_.end() && isr_it->second) {
+                // Interrupt mode: fire ISR, reset timer, keep watching
+                rt->state_.interrupts_enabled_ = false;
+                isr_it->second();
+                rt->state_.interrupts_enabled_ = true;
+                std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
+                rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
+            } else {
+                if (rt->on_watchdog_reset) rt->on_watchdog_reset();
+                return;
             }
         }
-    }).detach();
+    });
 }
 
 void ArduinoRuntime::impl_set_sleep_mode(int mode) {
@@ -533,11 +567,13 @@ void ArduinoRuntime::impl_set_sleep_mode(int mode) {
 
 void ArduinoRuntime::impl_sleep_enable() {
     if (!g_runtime) return;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.sleep_mtx_);
     g_runtime->state_.sleep_enabled_ = true;
 }
 
 void ArduinoRuntime::impl_sleep_disable() {
     if (!g_runtime) return;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.sleep_mtx_);
     g_runtime->state_.sleep_enabled_ = false;
 }
 

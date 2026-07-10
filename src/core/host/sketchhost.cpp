@@ -8,6 +8,8 @@
 #ifdef _WIN32
 #include <windows.h>
 
+static unsigned long current_pid() { return GetCurrentProcessId(); }
+
 static void* lib_open(const std::string& path) {
     return LoadLibraryA(path.c_str());
 }
@@ -26,6 +28,9 @@ static void lib_copy(const std::string& src, const std::string& dst) {
 
 #else
 #include <dlfcn.h>
+#include <unistd.h>
+
+static unsigned long current_pid() { return (unsigned long)getpid(); }
 
 static void* lib_open(const std::string& path) {
     return dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL);
@@ -58,6 +63,11 @@ static const std::string TMP_SUFFIX = ".tmp.so";
 
 SketchHost::~SketchHost() {
     if (dll_.handle) lib_close(dll_.handle);
+    if (!dll_path_.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(
+            dll_path_ + "." + std::to_string(current_pid()) + TMP_SUFFIX, ec);
+    }
 }
 
 bool SketchHost::load(const std::string& dll_path) {
@@ -72,10 +82,11 @@ bool SketchHost::load(const std::string& dll_path) {
         dll_.vb_loop  = nullptr;
     }
 
-    // Copy to a temp file so the compiler can overwrite the original.
-    // On Windows the original is locked while loaded; on Linux the copy
-    // is harmless and keeps behaviour consistent across platforms.
-    std::string tmp_path = dll_path + TMP_SUFFIX;
+    // Copy to a temp file so the compiler can overwrite the original (the
+    // original is locked while loaded on Windows). PID-scoped so two VEMCODE
+    // processes running the same sketch never overwrite each other's mapped
+    // file -- doing so while it's still dlopen'd elsewhere causes a SIGBUS.
+    std::string tmp_path = dll_path + "." + std::to_string(current_pid()) + TMP_SUFFIX;
     lib_copy(dll_path, tmp_path);
 
     void* h = lib_open(tmp_path);

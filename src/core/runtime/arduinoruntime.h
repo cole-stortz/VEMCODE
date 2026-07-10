@@ -13,6 +13,7 @@
 #include <random>
 #include <new>
 #include <vector>
+#include <thread>
 
 struct RuntimeState {
     int  pin_modes[80]    = {};
@@ -71,6 +72,7 @@ struct RuntimeState {
 class ArduinoRuntime {
 public:
     ArduinoRuntime(BoardProfile profile = BOARD_UNO);
+    ~ArduinoRuntime();
     ArduinoAPI get_api();
     RuntimeState& get_state() { return state_; }
 
@@ -124,6 +126,7 @@ public:
     void setProfile(BoardProfile p) { profile_ = p; }
 
     void reset_state() {
+        stop_wdt_thread(); // must fully join before destroying state_'s mutex/condvar
         state_.~RuntimeState();
         new (&state_) RuntimeState();
     }
@@ -216,6 +219,11 @@ private:
 
     static uint8_t       impl_spi_transfer             (uint8_t b);
 
+    // Must be joined before state_'s mutex/condvar are destroyed, or
+    // reset_state()/~ArduinoRuntime() can destroy them mid-use.
+    void stop_wdt_thread();
+    std::thread wdt_thread_;
+    std::atomic<bool> wdt_thread_stop_{false};
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

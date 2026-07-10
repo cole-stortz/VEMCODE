@@ -89,6 +89,9 @@ class String {
 public:
     String() {}
     String(const char* s) : s_(s ? s : "") {}
+    // Without this, char promotes to int and matches String(int) instead,
+    // turning e.g. String('!') into "33" (its ASCII code) instead of "!".
+    String(char c)        : s_(1, c) {}
     String(int v)         : s_(std::to_string(v)) {}
     String(long v)        : s_(std::to_string(v)) {}
     String(float v)       : s_(std::to_string(v)) {}

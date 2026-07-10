@@ -89,10 +89,8 @@ struct ArduinoAPI {
     void (*sleep_disable)();
     void (*sleep_cpu)();
 
-    // Wire (I2C) -- master mode only, byte-level, no bus electrical characteristics.
-    // Device responses come from a virtual address->bytes table configured in the UI.
-    // Wire.begin() itself needs no runtime state, so it's a no-op inline wrapper
-    // in injected_header.inc rather than an API call.
+    // Wire (I2C) -- master-mode, byte-level; responses come from a virtual
+    // address->bytes table configured in the UI.
     void (*wire_begin_transmission)(int address);
     void (*wire_write)(uint8_t b);
     int  (*wire_end_transmission)();
@@ -104,10 +102,8 @@ struct ArduinoAPI {
     uint8_t (*spi_transfer)(uint8_t b);
 };
 
-// Arduino constants live in a namespace to avoid clashing with windows.h
-// which defines INPUT as a struct and HIGH/LOW as macros.
-// sketch.cpp pulls these in with "using namespace vb;".
-// host.cpp never uses this namespace — it uses its own raw integers.
+// Namespaced to avoid clashing with windows.h's INPUT/HIGH/LOW macros.
+// sketch.cpp pulls these in via "using namespace vb;"; host code doesn't.
 namespace vb {
     constexpr int INPUT        = 0;
     constexpr int OUTPUT       = 1;
@@ -130,7 +126,5 @@ constexpr int A3 = 17;
 constexpr int A4 = 18;
 constexpr int A5 = 19;
 
-// Sketch DLL must export these three symbols:
-//   void vb_init(ArduinoAPI* api)   -- called once after LoadLibrary
-//   void vb_setup()                 -- called once (maps to Arduino setup())
-//   void vb_loop()                  -- called in a loop (maps to Arduino loop())
+// Sketch DLL must export vb_init/vb_setup/vb_loop (mapping to Arduino's
+// init/setup()/loop()).

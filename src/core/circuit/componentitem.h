@@ -24,11 +24,9 @@ public:
     virtual void updateText(int row, const QString& text);
     virtual void configureMultiPin(const std::vector<int>& pins);
 
-    // Called once by CanvasWidget after inputChanged is connected, so input
-    // components with a default value (color, distance) can safely push it
-    // without the emission being lost -- emitting from inside a constructor
-    // or from configureMultiPin (both of which run before the caller has a
-    // chance to connect to a freshly-created item) silently drops the signal.
+    // Called once by CanvasWidget after inputChanged is connected. Emitting
+    // from the constructor or configureMultiPin instead silently drops it --
+    // both run before the caller can connect to a freshly-created item.
     virtual void emitInitialValue();
 
 Q_SIGNALS:

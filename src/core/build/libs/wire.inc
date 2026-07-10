@@ -1,7 +1,5 @@
-// Wire (I2C) -- begin()/endTransmission()/requestFrom() take optional args real
-// Arduino overloads accept, and write() is overloaded by argument shape; none of
-// that fits a bare ArduinoAPI function pointer, so these wrap the fixed-signature
-// api-> calls (or, for begin(), do nothing -- slave mode isn't simulated).
+// Wire's optional args and overloaded write() don't fit a bare ArduinoAPI
+// function pointer, so these wrap the fixed-signature api-> calls instead.
 inline void wire_begin() {}
 inline void wire_begin(int /*slaveAddress*/) {}
 inline size_t wire_write(uint8_t b) { api->wire_write(b); return 1; }

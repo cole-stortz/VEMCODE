@@ -783,10 +783,8 @@ void MainWindow::onRunClicked() {
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
 
-    // Stop any previous run and reset runtime state, then set up components
-    // (which inject their initial values) BEFORE starting the sketch thread --
-    // otherwise the sketch can start reading pins before the initial
-    // injections land, and leftover state from the previous run can leak in.
+    // Reset state and inject component values before starting the sketch --
+    // otherwise it can read pins before injection, or see stale prior-run state.
     sketchThread_->stopSketch();
     sketchThread_->resetRuntimeState();
 

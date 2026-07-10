@@ -9,9 +9,7 @@ extern const char* g_softwareserial_lib;
 extern const char* g_wire_lib;
 extern const char* g_spi_lib;
 
-// Transforms standard Arduino sketch syntax into DLL format before compilation.
-// sketch:  void setup() { pinMode(13, OUTPUT); }
-// becomes: extern "C" void vb_setup() { api->pinMode(13, OUTPUT); }
+// Transforms Arduino sketch syntax into DLL format before compilation.
 // Passes through unchanged if source already contains "vb_init".
 class Preprocessor {
 public:

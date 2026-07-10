@@ -1,11 +1,7 @@
-// AVR direct port registers (ATmega328P layout: Uno/Nano) -- DDRx/PORTx/PINx
-// as overloaded-operator globals routing through the same api->pinMode/
-// digitalWrite/digitalRead calls as the normal Arduino API, so port-register
-// writes and digitalWrite/pinMode calls observe each other's effects on the
-// same simulated pin. Unlike Wire/SPI this is injected unconditionally (not
-// gated on an #include) since real sketches using DDRB/PORTB/etc almost never
-// write an explicit #include <avr/io.h> -- they get it transitively via
-// Arduino.h, so there's no include line to key off of.
+// AVR direct port registers (ATmega328P: Uno/Nano) -- DDRx/PORTx/PINx as
+// overloaded-operator globals routing through the normal pinMode/digitalWrite
+// calls. Injected unconditionally, unlike Wire/SPI: real sketches almost
+// never write an explicit #include <avr/io.h> to key off of.
 #define PB0 0
 #define PB1 1
 #define PB2 2

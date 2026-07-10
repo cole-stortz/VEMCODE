@@ -55,10 +55,8 @@ static bool resolve_sketch_path(const std::string& given, std::string& resolved)
     return false;
 }
 
-// Finds g++ on PATH and derives the project root structurally (the repo root
-// is always the parent of the app/ directory the binary runs from, since
-// arduinoapi.h lives at <repo>/src/core/runtime/arduinoapi.h). Returns false
-// if either can't be pinned down.
+// Repo root is always the parent of the app/ dir the binary runs from --
+// no need to search for it, unlike the compiler.
 static bool auto_detect_compiler_config(std::string& compilerPath, std::string& projectRoot) {
     QString found = QStandardPaths::findExecutable("g++");
 #ifndef _WIN32
@@ -161,6 +159,16 @@ static int run_headless(const std::string& given_path) {
     runtime.on_serial_output  = [](const std::string& t) { std::cout << t; std::cout.flush(); };
     runtime.on_serial1_output = [](const std::string& t) { std::cout << t; std::cout.flush(); };
     runtime.on_serial2_output = [](const std::string& t) { std::cout << t; std::cout.flush(); };
+    // These three have no std::cout fallback in the runtime, unlike Serial/watch_variable.
+    runtime.on_lcd_print = [](int pin, int row, const std::string& text) {
+        std::cout << "  LCD[" << pin << "] row" << row << ": \"" << text << "\"\n";
+    };
+    runtime.on_watchdog_reset = []() {
+        std::cout << "  WATCHDOG RESET\n";
+    };
+    runtime.on_sleep_changed = [](bool sleeping) {
+        std::cout << "  sleep: " << (sleeping ? "entering" : "woke") << "\n";
+    };
 
     if (!host.load(result.dll_path)) {
         std::cerr << "Failed to load compiled sketch\n";

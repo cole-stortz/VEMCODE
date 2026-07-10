@@ -34,11 +34,8 @@ private:
     void drawWire(QPointF from, QPointF to, const QColor& color);
     QPointF pinLocation(int pin);
 
-    // A pin is "digital" for layout purposes if it's outside the analog
-    // range, whether that's below it (the common case) or above it -- some
-    // boards (Teensy 4.1: pin_count=42, but analog_offset+analog_count=32)
-    // have analog-capable pins that don't cover the whole pin_count, leaving
-    // extra digital pins past the analog block.
+    // "Digital" = outside the analog range, above or below it -- Teensy 4.1's
+    // analog block doesn't cover the whole pin_count, leaving digital pins past it.
     bool isAnalogPin(int pin) const;
     int digitalPinIndex(int pin) const; // 0-based position among all digital pins, -1 if not digital
     int digitalPinCount() const;

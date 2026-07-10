@@ -63,12 +63,8 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         float target_y;
     };
 
-    // H_GAP separates the two left-side columns. The outer column's right
-    // edge (BOARD_X - 180) doesn't depend on comp_w -- it cancels out of
-    // comp_x + comp_w -- so with every component currently 100px wide, the
-    // inner column's left edge (BOARD_X - comp_w - 80) landed on exactly the
-    // same X with zero gap. Padding the outer offset guarantees real
-    // clearance between the columns regardless of component width.
+    // Without this, the two left-side columns land on the same X when every
+    // component is the same width (100px), since comp_w cancels out.
     static constexpr float H_GAP = 12.0f;
 
     std::vector<Placement> placements;
@@ -99,10 +95,8 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         placements.push_back({&comp, def, item, comp_x, comp_w, comp_h, target_y});
     }
 
-    // Phase 2: stack each column (grouped by comp_x) top-to-bottom in
-    // pin order, pushing a component down past the previous one's bottom
-    // edge instead of letting it overlap when pins are packed closer
-    // together than the components placed on them are tall.
+    // Phase 2: stack each column top-to-bottom, pushing components down past
+    // the previous one's bottom edge so tightly-packed pins don't overlap.
     std::stable_sort(placements.begin(), placements.end(),
         [](const Placement& a, const Placement& b) {
             if (a.comp_x != b.comp_x) return a.comp_x < b.comp_x;
@@ -254,12 +248,9 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
 
         bool pin_is_analog = isAnalogPin(wpin);
         if (pin_is_analog) {
-            // Analog: turn down right off the pin, in the empty gap before the
-            // inner digital-input column starts (that column's right edge is
-            // BOARD_X - 80), then one long run at the destination's own row.
-            // Turning near the destination instead sent the vertical segment
-            // straight through however many components got stacked between
-            // the pin's raw row and wherever the component actually landed.
+            // Turn near the pin (in the gap before the digital column), not
+            // near the destination -- otherwise the vertical segment cuts
+            // through whatever got stacked between the pin and its component.
             float inter_x = BOARD_X - 20.0f - i * WIRE_SPACING;
             QPointF mid1(inter_x, target.y());
             QPointF mid2(inter_x, attach_y);
