@@ -112,7 +112,9 @@ VEMCODE does not support standard Arduino libraries directly. Instead, each supp
 - **EEPROM** — `read()`, `write()`, `update()`; backed by a 1024-byte array in the runtime; does not persist between sessions
 - **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
 - **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
-- TODO:
+- **wire** — `wire_begin()`, `wire_write()`, `wire_end_transmission()`, `wire_request_from()`; TODO:
+- **spi** — TODO:
+
 
 ### Simulation
 VEMCODE compiles your sketch to a native shared library and runs it directly on your machine. The C++ executes as compiled x86 code. The runtime implements the Arduino API through a function pointer table injected into your sketch at compile time. Calls like `digitalWrite()` or `analogRead()` route through the host, which updates the canvas and debug panels in realtime.
@@ -133,13 +135,15 @@ Displays all `Serial.print()` and `Serial.println()` output from your sketch. Bo
 Displays a logic analyzer style view of digital pin activity. When a pin changes state it is automatically added to the timeline and shown as a scrollable square wave.
 
 #### Variable Watch
-TODO:
+Displays a two column table where you can add values by typing in the name of the variable to track which will start tracking the value in real time. There are two buttons on the bottom of the tab to add and remove values.
 
 #### I2C
-TODO:
+Displays a virtual I2C device panel as a two column table:
+- 7-bit address | response byte sequence.
+When the sketch calls Wire.requestFrom(addr, n), the runtime looks up addr here and returns the configured bytes, can change durring runtime.
 
 #### SPI
-TODO:
+Displays a virtual SPI device panel similar to I2C: SPI has no address field like I2C, so every transfer() just cycles through this one configurable byte sequence.
 
 ---
 
@@ -208,7 +212,10 @@ cmake --build build
 On first launch VEMCODE will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VEMCODE repo. These are saved to `app/settings.ini`.
 
 ### Headless mode
-TODO:
+VEMCODE can run headlessly in the terminal by typing either of these two forms of commands:
+- `./app/VEMCODE SKETCH_PATH` or `./app/VEMCODE SKETCH.cpp`
+- EX: `./app/VEMCODE OutputTest.cpp`
+Doing this you can run sketches without the UI and just see the serial output given by the sketch. There is no way to input values yet like clicking buttons and other types of inputs. You can stop the sketch by using the conventional `CTRL+C' hotkey to close it, 
 
 ---
 
