@@ -113,7 +113,7 @@ VEMCODE does not support standard Arduino libraries directly. Instead, each supp
 - **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
 - **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
 - **wire** — `wire_begin()`, `wire_write()`, `wire_end_transmission()`, `wire_request_from()`; TODO:
-- **spi** — TODO:
+- **spi** — `spi_begin()`, `spi_begin_transaction()`, `spi_end_transaction()`, `spi_transfer()`; TODO:
 
 
 ### Simulation
@@ -140,6 +140,7 @@ Displays a two column table where you can add values by typing in the name of th
 #### I2C
 Displays a virtual I2C device panel as a two column table:
 - 7-bit address | response byte sequence.
+
 When the sketch calls Wire.requestFrom(addr, n), the runtime looks up addr here and returns the configured bytes, can change durring runtime.
 
 #### SPI
@@ -215,6 +216,7 @@ On first launch VEMCODE will ask for your compiler path and project root. Point 
 VEMCODE can run headlessly in the terminal by typing either of these two forms of commands:
 - `./app/VEMCODE SKETCH_PATH` or `./app/VEMCODE SKETCH.cpp`
 - EX: `./app/VEMCODE OutputTest.cpp`
+
 Doing this you can run sketches without the UI and just see the serial output given by the sketch. There is no way to input values yet like clicking buttons and other types of inputs. You can stop the sketch by using the conventional `CTRL+C' hotkey to close it, 
 
 ---
