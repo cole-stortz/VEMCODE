@@ -99,10 +99,9 @@ Adds line numbers to the left of each line of code for error tracking and debugg
 The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
 
 #### Supported Components
-- Outputs: LED, Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
-- Inputs: Button (clean and bouncy variants), Switch, Potentiometer
-- Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Generic Analog Sensor
-- TODO:
+- Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
+- Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Generic Input
+- Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, IR Sensor, Generic Analog Sensor
 
 ### Supported Libraries
 VEMCODE does not support standard Arduino libraries directly. Instead, each supported library is a custom implementation injected at compile time by the preprocessor, replacing the original `#include`.
@@ -328,6 +327,8 @@ Contributions are welcome. VEMCODE is in early development, so feedback on rough
 - **Bug reports** — open an issue describing what happened and how to reproduce it
 - **Feature requests** — check [ROADMAP.md](docs/ROADMAP.md) first to see if it's already planned, then open an issue to discuss before submitting a PR
 - **Code contributions** — fork the repo, make your changes on a branch, and open a pull request; keep changes focused (one feature or fix per PR)
+
+If you find VEMCODE useful, a star on the repo is appreciated and helps others discover it.
 
 ## License
 
