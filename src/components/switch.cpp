@@ -34,6 +34,10 @@ public:
         update();
         emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, switch_ ? 1 : 0);
     }
+
+    void emitInitialValue() override {
+        emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, switch_ ? 1 : 0);
+    }
 };
 
 static bool reg_switch = []() {

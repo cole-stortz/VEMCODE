@@ -55,6 +55,10 @@ public:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent*) override {
         dragging_ = false;
     }
+
+    void emitInitialValue() override {
+        emit inputChanged(pin(), (int)ComponentEventType::AnalogValue, value_);
+    }
 };
 
 static bool reg_pot = []() {

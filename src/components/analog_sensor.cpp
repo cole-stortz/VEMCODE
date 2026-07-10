@@ -3,9 +3,11 @@
 #include <QPainter>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
+#include <qgraphicsitem.h>
 
 static const QColor LIGHT_SENSOR_FILL("#dccb74");
 static const QColor TEMPERATURE_SENSOR_FILL("#dc8674");
+static const QColor FORCE_SENSOR_FILL("#5a5a5a");
 static const QColor ANALOG_SENSOR_FILL("#8174dc");
 
 class AnalogSensorItemBase : public ComponentItem {
@@ -62,6 +64,12 @@ public:
         : AnalogSensorItemBase(p, parent, TEMPERATURE_SENSOR_FILL, "Temp") {}
 };
 
+class ForceSensorItem : public AnalogSensorItemBase {
+public:
+    ForceSensorItem(int p, QGraphicsItem* parent)
+        : AnalogSensorItemBase(p, parent, FORCE_SENSOR_FILL, "Force") {}
+};
+
 class AnalogSensorItem : public AnalogSensorItemBase {
 public:
     AnalogSensorItem(int p, QGraphicsItem* parent)
@@ -96,6 +104,20 @@ static bool reg_temperature_sensor = []() {
         }
     };
     def.wire_color = TEMPERATURE_SENSOR_FILL;
+    ComponentRegistry::instance().register_component(def);
+    return true;
+}();
+
+static bool reg_force_sensor = []() {
+    ComponentDefinition def{
+        "ForceSensor",
+        {"FORCE", "FORCESENSOR", "FORCE_SENSOR"},
+        {}, {}, false,
+        [](int pin, QGraphicsItem* parent) -> ComponentItem* {
+            return new ForceSensorItem(pin, parent);
+        }
+    };
+    def.wire_color = FORCE_SENSOR_FILL;
     ComponentRegistry::instance().register_component(def);
     return true;
 }();

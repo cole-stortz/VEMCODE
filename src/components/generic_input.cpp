@@ -35,6 +35,10 @@ public:
         update();
         emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, active_ ? 1 : 0);
     }
+
+    void emitInitialValue() override {
+        emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, active_ ? 1 : 0);
+    }
 };
 
 // Never matched through the registry's keyword/pattern tiers -- CircuitDetector

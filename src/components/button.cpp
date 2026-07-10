@@ -40,6 +40,10 @@ public:
         update();
         emit inputChanged(pin(), (int)ComponentEventType::BouncePress, 1);
     }
+
+    void emitInitialValue() override {
+        emit inputChanged(pin(), (int)ComponentEventType::BouncePress, 1);
+    }
 };
 
 class ButtonCleanItem : public ComponentItem {
@@ -74,6 +78,10 @@ public:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent*) override {
         pressed_ = false;
         update();
+        emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, 1);
+    }
+
+    void emitInitialValue() override {
         emit inputChanged(pin(), (int)ComponentEventType::DigitalPress, 1);
     }
 };
