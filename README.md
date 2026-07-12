@@ -100,7 +100,7 @@ The circuit canvas is a custom panel placed on the top right which will automati
 
 #### Supported Components
 - Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
-- Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Generic Input
+- Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Joystick, Generic Input
 - Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, IR Sensor, Generic Analog Sensor
 
 ### Supported Libraries
@@ -112,8 +112,9 @@ VEMCODE does not support standard Arduino libraries directly. Instead, each supp
 - **EEPROM** — `read()`, `write()`, `update()`; backed by a 1024-byte array in the runtime; does not persist between sessions
 - **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
 - **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
-- **wire** — `wire_begin()`, `wire_write()`, `wire_end_transmission()`, `wire_request_from()`; TODO:
-- **spi** — `spi_begin()`, `spi_begin_transaction()`, `spi_end_transaction()`, `spi_transfer()`; TODO:
+- **Wire (I2C)** — `Wire.begin()`, `Wire.beginTransmission()`, `Wire.write()`, `Wire.endTransmission()`, `Wire.requestFrom()`, `Wire.available()`, `Wire.read()`; backed by a virtual I2C device panel (the "I2C" debug tab) — configure an address and a response byte sequence, and `requestFrom()` returns those bytes
+- **SPI** — `SPI.begin()`, `SPI.beginTransaction()`, `SPI.endTransaction()`, `SPI.transfer()`; backed by a virtual SPI panel similar to I2C — a single configurable byte sequence that `transfer()` cycles through one byte per call; `SPISettings`/`MSBFIRST`/`LSBFIRST`/`SPI_MODE0..3` are accepted as no-ops
+- **AVR GPIO registers** — `DDRB`/`PORTB`/`PINB`, `DDRC`/`PORTC`/`PINC`, `DDRD`/`PORTD`/`PIND`; direct register access (no library call needed) — bit-mask writes to `DDRx`/`PORTx` route to the same `pinMode`/`digitalWrite` calls as the normal API, `PINx` reads route to `digitalRead`, and writing to `PINx` toggles the corresponding `PORTx` bit like real AVR hardware; ATmega328P (Uno/Nano) port layout only
 
 
 ### Simulation
@@ -135,13 +136,15 @@ Displays all `Serial.print()` and `Serial.println()` output from your sketch. Bo
 Displays a logic analyzer style view of digital pin activity. When a pin changes state it is automatically added to the timeline and shown as a scrollable square wave.
 
 #### Variable Watch
-Displays a two column table where you can add values by typing in the name of the variable to track which will start tracking the value in real time. There are two buttons on the bottom of the tab to add and remove values.
+Displays a three column table where you can add variables by typing in the name to start tracking the value and type in real time. 
+
+There are two buttons on the bottom of the tab to add and remove values. Importantly, it only supports global variables, not local.
 
 #### I2C
 Displays a virtual I2C device panel as a two column table:
 - 7-bit address | response byte sequence.
 
-When the sketch calls Wire.requestFrom(addr, n), the runtime looks up addr here and returns the configured bytes, can change durring runtime.
+When the sketch calls Wire.requestFrom(addr, n), the runtime looks up addr here and returns the configured bytes, can change during runtime.
 
 #### SPI
 Displays a virtual SPI device panel similar to I2C: SPI has no address field like I2C, so every transfer() just cycles through this one configurable byte sequence.
@@ -217,7 +220,7 @@ VEMCODE can run headlessly in the terminal by typing either of these two forms o
 - `./app/VEMCODE SKETCH_PATH` or `./app/VEMCODE SKETCH.cpp`
 - EX: `./app/VEMCODE OutputTest.cpp`
 
-Doing this you can run sketches without the UI and just see the serial output given by the sketch. There is no way to input values yet like clicking buttons and other types of inputs. You can stop the sketch by using the conventional `CTRL+C' hotkey to close it, 
+Doing this you can run sketches without the UI and just see the serial output given by the sketch. There is no way to input values yet like clicking buttons and other types of inputs. You can stop the sketch by using the conventional `CTRL+C` hotkey to close it.
 
 ---
 
