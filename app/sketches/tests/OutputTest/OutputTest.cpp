@@ -1,4 +1,4 @@
-// @board Arduino Uno
+// @board Teensy 4.1
 
 #include <LiquidCrystal.h>
 
@@ -19,8 +19,29 @@
 #define LCD_D7       A2
 #define MYSTERY_OUTPUT_PIN A3
 
+#define STEP_PIN     20
+#define DIR_PIN      21
+#define PHASE_IN1  22
+#define PHASE_IN2  23
+#define PHASE_IN3  24
+#define PHASE_IN4  25
+#define SEG_A        26
+#define SEG_B        27
+#define SEG_C        28
+#define SEG_D        29
+#define SEG_E        30
+#define SEG_F        31
+#define SEG_G        32
+
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 int loopCount = 0;
+
+int phaseSeq[4][4] = {
+    {1, 0, 0, 0},
+    {0, 1, 0, 0},
+    {0, 0, 1, 0},
+    {0, 0, 0, 1},
+};
 
 void setup() {
     Serial.begin(9600);
@@ -34,10 +55,47 @@ void setup() {
     pinMode(GREEN_PIN,  OUTPUT);
     pinMode(BLUE_PIN,   OUTPUT);
     pinMode(MYSTERY_OUTPUT_PIN, OUTPUT);
+    pinMode(STEP_PIN,   OUTPUT);
+    pinMode(DIR_PIN,    OUTPUT);
+    pinMode(PHASE_IN1, OUTPUT);
+    pinMode(PHASE_IN2, OUTPUT);
+    pinMode(PHASE_IN3, OUTPUT);
+    pinMode(PHASE_IN4, OUTPUT);
+    pinMode(SEG_A, OUTPUT);
+    pinMode(SEG_B, OUTPUT);
+    pinMode(SEG_C, OUTPUT);
+    pinMode(SEG_D, OUTPUT);
+    pinMode(SEG_E, OUTPUT);
+    pinMode(SEG_F, OUTPUT);
+    pinMode(SEG_G, OUTPUT);
     lcd.begin(16, 2);
     lcd.setCursor(0, 0);
     lcd.print("VEMCODE Output");
     Serial.println("OutputTest started");
+}
+
+void stepPulse() {
+    digitalWrite(STEP_PIN, HIGH);
+    delay(20);
+    digitalWrite(STEP_PIN, LOW);
+    delay(20);
+}
+
+void setPhase(int idx) {
+    digitalWrite(PHASE_IN1, phaseSeq[idx][0]);
+    digitalWrite(PHASE_IN2, phaseSeq[idx][1]);
+    digitalWrite(PHASE_IN3, phaseSeq[idx][2]);
+    digitalWrite(PHASE_IN4, phaseSeq[idx][3]);
+}
+
+void showDigit(bool a, bool b, bool c, bool d, bool e, bool f, bool g) {
+    digitalWrite(SEG_A, a);
+    digitalWrite(SEG_B, b);
+    digitalWrite(SEG_C, c);
+    digitalWrite(SEG_D, d);
+    digitalWrite(SEG_E, e);
+    digitalWrite(SEG_F, f);
+    digitalWrite(SEG_G, g);
 }
 
 void loop() {
@@ -93,5 +151,34 @@ void loop() {
     delay(500);
     analogWrite(RED_PIN, 0);   analogWrite(GREEN_PIN, 0);   analogWrite(BLUE_PIN, 0);
     Serial.println("RGB: off");
+    delay(500);
+
+    // Stepper (STEP/DIR style)
+    digitalWrite(DIR_PIN, HIGH); // CW
+    for (int i = 0; i < 5; i++) stepPulse();
+    Serial.println("Stepper: 5 CW steps");
+    delay(300);
+    digitalWrite(DIR_PIN, LOW); // CCW
+    for (int i = 0; i < 3; i++) stepPulse();
+    Serial.println("Stepper: 3 CCW steps");
+    delay(300);
+
+    // Stepper (IN1-IN4 phase style)
+    for (int i = 0; i < 4; i++) { setPhase(i); delay(50); }
+    Serial.println("Stepper phase: 4 CW steps");
+    delay(300);
+    for (int i = 3; i >= 0; i--) { setPhase(i); delay(50); }
+    Serial.println("Stepper phase: 4 CCW steps");
+    delay(300);
+
+    // Seven-segment display
+    showDigit(1, 1, 1, 0, 0, 0, 0); // "7"
+    Serial.println("SevenSeg: 7");
+    delay(500);
+    showDigit(1, 1, 1, 1, 1, 1, 1); // "8"
+    Serial.println("SevenSeg: 8");
+    delay(500);
+    showDigit(0, 0, 0, 0, 0, 0, 0); // blank
+    Serial.println("SevenSeg: blank");
     delay(500);
 }

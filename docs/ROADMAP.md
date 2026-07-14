@@ -261,12 +261,12 @@ Pull the component plugin architecture forward so that all new components added 
 
 **Step 5 — New complex components:**
 - [x] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; canvas shows dual sliders and a clickable button; emits `AnalogValue` per axis and `DigitalPress` for the button; keywords: `JOYSTICK`, `JOY`, `VRX`, `VRY`
-- [ ] Stepper motor — step count and direction tracked from STEP/DIR or IN1–IN4 pin patterns; canvas displays a position counter and rotation indicator; keywords: `STEP`, `DIR`, `STEPPER`
+- [x] Stepper motor — step count and direction tracked from STEP/DIR or IN1–IN4 pin patterns; canvas displays a position counter and rotation indicator; keywords: `STEP`, `DIR`, `STEPPER`
 - [ ] Keypad matrix — 4×4 or 3×4; detected from row/col define groups; clickable grid on canvas; keywords: `ROW`, `COL`, `KEYPAD`
 - [ ] DHT11 / DHT22 — temperature and humidity; `#include <DHT.h>` stripped and replaced with injected class; `dht.read()` returns canvas-injected values; canvas shows temperature + humidity input fields; detect pattern: `DHT(`; keywords: `DHT`, `DHTPIN`, `DHT_PIN`
 
 **Step 6 — New display components:**
-- [ ] 7-segment display — single and multi-digit, segment-accurate rendering
+- [x] 7-segment display — single and multi-digit, segment-accurate rendering
 - [ ] MAX7219 LED matrix — `LedControl.h` injection (`.inc` file); renders an 8×8 grid toggled by `setLed`/`setRow`/`setColumn`; `setIntensity` and `shutdown` stubbed; CS/CLK/DIN multi-pin role map
 - [ ] Basic OLED — text and simple graphics (SSD1306-compatible); `Adafruit_SSD1306.h` or `U8g2` injection
 - [ ] NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length; `Adafruit_NeoPixel.h` injection
