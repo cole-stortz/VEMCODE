@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/ARCHITECTURE.md",
+                "file": "README.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "ARCHITECTURE"
+              "title": "README"
             }
           }
         ]
@@ -53,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "TODO",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -74,13 +74,11 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "b79ac75f31a9250a",
@@ -187,6 +185,7 @@
   },
   "active": "822bc0aa27b628c9",
   "lastOpenFiles": [
+    "docs/ARCHITECTURE.md",
     "docs/SKETCH_GUIDE.md",
     "build/CMakeCache.txt.tmp4ac2c",
     "build/compile_commands.json.tmpb1f6d",
@@ -198,7 +197,6 @@
     "docs/SKETCH_GUIDE.md.tmp.1206867.327b8123dc2d",
     "docs/SKETCH_GUIDE.md.tmp.1206867.1f953512782a",
     "docs/SKETCH_GUIDE.md.tmp.1206867.80748fab9a65",
-    "docs/ARCHITECTURE.md",
     "docs/ROADMAP.md",
     "docs/ADDING_COMPONENTS.md",
     "docs/demo.gif",

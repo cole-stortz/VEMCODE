@@ -15,6 +15,18 @@
 #include <vector>
 #include <thread>
 
+struct AvrTimerState {
+    long long prescaler = 0; // 0 = stopped; decoded from TCCRxB's CS bits
+    long long modulus;       // 65536 for Timer1 (16-bit), 256 for Timer2 (8-bit)
+    long long ref_avr_us = 0;
+    long long ref_ticks  = 0;
+    long long last_check_raw = 0; // raw tick count as of the last background poll
+    uint8_t  tccra = 0, tccrb = 0, timsk = 0;
+    uint32_t ocra = 0, ocrb = 0;
+    int pinA, pinB; // Arduino pins whose PWM duty OCRxA/OCRxB drive
+    AvrTimerState(long long mod, int pa, int pb) : modulus(mod), pinA(pa), pinB(pb) {}
+};
+
 struct RuntimeState {
     int  pin_modes[80]    = {};
     int  pin_values[80]   = {};
@@ -67,6 +79,11 @@ struct RuntimeState {
     size_t spi_response_index_ = 0;
     std::mutex spi_mtx_; // guards the two fields above -- written from the GUI
                           // thread (inject_spi_bytes), read from the sketch thread (impl_spi_transfer)
+
+    std::mutex timer_mtx_; // guards timer1_/timer2_ -- written from the sketch
+                            // thread (register writes), read from the timer thread (poll_timer)
+    AvrTimerState timer1_{65536, 9, 10}; // Timer1: 16-bit, OC1A=pin9, OC1B=pin10
+    AvrTimerState timer2_{256, 11, 3};   // Timer2: 8-bit,  OC2A=pin11, OC2B=pin3
 };
 
 class ArduinoRuntime {
@@ -90,6 +107,10 @@ public:
     void inject_pin(int pin, int value);
     void inject_button_bounce(int pin, int finalValue);
     void set_analog_noise(bool enabled) { analog_noise_enabled_ = enabled; }
+
+    // Must be called before the sketch DLL is unloaded -- wdt_thread_/timer_thread_
+    // call function pointers into it (ISR handlers), so unloading first is a use-after-free.
+    void stop_threads() { stop_wdt_thread(); stop_timer_thread(); }
 
     void inject_analog(int pin, int value) {
         // A0=14, A1=15... → index 0,1...
@@ -126,7 +147,9 @@ public:
     void setProfile(BoardProfile p) { profile_ = p; }
 
     void reset_state() {
-        stop_wdt_thread(); // must fully join before destroying state_'s mutex/condvar
+        // must fully join before destroying state_'s mutex/condvar
+        stop_wdt_thread();
+        stop_timer_thread();
         state_.~RuntimeState();
         new (&state_) RuntimeState();
     }
@@ -219,11 +242,38 @@ private:
 
     static uint8_t       impl_spi_transfer             (uint8_t b);
 
+    static AvrTimerState& timer_state(ArduinoRuntime* rt, int timerId);
+    static long long      avr_scaled_micros(ArduinoRuntime* rt);
+
+    static uint8_t       impl_avr_timer_get_tccra(int timerId);
+    static void          impl_avr_timer_set_tccra(int timerId, uint8_t value);
+    static uint8_t       impl_avr_timer_get_tccrb(int timerId);
+    static void          impl_avr_timer_set_tccrb(int timerId, uint8_t value);
+    static uint8_t       impl_avr_timer_get_timsk(int timerId);
+    static void          impl_avr_timer_set_timsk(int timerId, uint8_t value);
+    static uint32_t      impl_avr_timer_get_tcnt (int timerId);
+    static void          impl_avr_timer_set_tcnt (int timerId, uint32_t value);
+    static uint32_t      impl_avr_timer_get_ocra  (int timerId);
+    static void          impl_avr_timer_set_ocra  (int timerId, uint32_t value);
+    static uint32_t      impl_avr_timer_get_ocrb  (int timerId);
+    static void          impl_avr_timer_set_ocrb  (int timerId, uint32_t value);
+
+    void poll_timer(AvrTimerState& st, long long avr_us,
+                     const char* ovf_vect, const char* compa_vect, const char* compb_vect,
+                     int toie_bit, int ociea_bit, int ocieb_bit);
+    void dispatch_isr(const char* vect_name);
+    void ensure_timer_thread_running();
+
     // Must be joined before state_'s mutex/condvar are destroyed, or
     // reset_state()/~ArduinoRuntime() can destroy them mid-use.
     void stop_wdt_thread();
     std::thread wdt_thread_;
     std::atomic<bool> wdt_thread_stop_{false};
+
+    void stop_timer_thread();
+    std::thread timer_thread_;
+    std::atomic<bool> timer_thread_stop_{false};
+    std::atomic<bool> timer_thread_started_{false};
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

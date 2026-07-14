@@ -26,15 +26,19 @@ set(CMAKE_AUTORCC ON)
 
 # Embed injected_header.h as a C string at configure time.
 # set_property tells the build system to re-run cmake when the file changes.
-# avr_registers.inc is concatenated in here (not treated as a conditional
-# library like Servo/Wire/SPI below) since it must be injected into every
-# sketch unconditionally -- see the comment at the top of that file for why.
+# avr_registers.inc / avr_timers.inc are concatenated in here (not treated as
+# conditional libraries like Servo/Wire/SPI below) since they must be
+# injected into every sketch unconditionally -- see the comment at the top
+# of avr_registers.inc for why.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc")
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_timers.inc")
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.inc" INJECTED_HEADER_CONTENT)
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc" AVR_REGISTERS_CONTENT)
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_timers.inc" AVR_TIMERS_CONTENT)
 string(APPEND INJECTED_HEADER_CONTENT "\n${AVR_REGISTERS_CONTENT}")
+string(APPEND INJECTED_HEADER_CONTENT "\n${AVR_TIMERS_CONTENT}")
 configure_file(
     "${CMAKE_SOURCE_DIR}/src/core/build/injected_header.cpp.in"
     "${CMAKE_BINARY_DIR}/generated/injected_header.cpp"

@@ -62,6 +62,7 @@ static const std::string TMP_SUFFIX = ".tmp.so";
 #endif
 
 SketchHost::~SketchHost() {
+    runtime_.stop_threads(); // before unloading the DLL those threads call into
     if (dll_.handle) lib_close(dll_.handle);
     if (!dll_path_.empty()) {
         std::error_code ec;

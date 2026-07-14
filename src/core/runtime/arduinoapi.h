@@ -100,6 +100,21 @@ struct ArduinoAPI {
 
     // SPI -- no per-device addressing; transfer() cycles through a configurable response sequence.
     uint8_t (*spi_transfer)(uint8_t b);
+
+    // AVR hardware timers (Timer1/Timer2) -- one dedicated accessor pair per
+    // register, timerId is 1 or 2
+    void     (*avr_timer_set_tccra)(int timerId, uint8_t value);
+    uint8_t  (*avr_timer_get_tccra)(int timerId);
+    void     (*avr_timer_set_tccrb)(int timerId, uint8_t value);
+    uint8_t  (*avr_timer_get_tccrb)(int timerId);
+    void     (*avr_timer_set_tcnt) (int timerId, uint32_t value);
+    uint32_t (*avr_timer_get_tcnt) (int timerId);
+    void     (*avr_timer_set_ocra) (int timerId, uint32_t value);
+    uint32_t (*avr_timer_get_ocra) (int timerId);
+    void     (*avr_timer_set_ocrb) (int timerId, uint32_t value);
+    uint32_t (*avr_timer_get_ocrb) (int timerId);
+    void     (*avr_timer_set_timsk)(int timerId, uint8_t value);
+    uint8_t  (*avr_timer_get_timsk)(int timerId);
 };
 
 // Namespaced to avoid clashing with windows.h's INPUT/HIGH/LOW macros.

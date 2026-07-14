@@ -286,9 +286,9 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 
 **Low-level AVR simulation:**
 - [x] AVR GPIO register simulation — `DDRB`, `PORTB`, `PINB`, `DDRC`, `PORTC`, `PINC`, `DDRD`, `PORTD`, `PIND` as overloaded-operator structs in injected header; ATmega328P (Uno/Nano) port layout only; reads/writes map to the same pin state as `digitalWrite`/`digitalRead`/`pinMode` by routing through those same `api->` calls per affected bit; bit-mask operations (`DDRB |= (1 << PB5)`, `PORTB |= (1 << PB5)`) work correctly; also supports the real AVR quirk of writing to `PINx` to toggle the corresponding `PORTx` bit
-- [ ] AVR hardware timer register simulation — `TCCR1A`, `TCCR1B`, `OCR1A`, `OCR1B`, `TIMSK1`, `TCNT1` etc. as overloaded-operator structs; writes to `OCR1A`/`OCR1B` update the corresponding pin's PWM duty cycle via the existing `analogWrite` path; `TIMSK1` overflow and compare-match interrupt enable bits register callbacks in `RuntimeState` that fire on the simulated timer tick; covers sketches that configure hardware PWM or use Timer1/Timer2 for precise timing without calling `analogWrite` directly
-  - [ ] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow; dispatched from the simulated timer tick when overflow interrupt enable bit is set in `TIMSK1`
-  - [ ] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B; dispatched when `TCNT1` reaches `OCR1A` / `OCR1B`
+- [x] AVR hardware timer register simulation — `TCCR1A`, `TCCR1B`, `OCR1A`, `OCR1B`, `TIMSK1`, `TCNT1` etc. as overloaded-operator structs; writes to `OCR1A`/`OCR1B` update the corresponding pin's PWM duty cycle via the existing `analogWrite` path; `TIMSK1` overflow and compare-match interrupt enable bits register callbacks in `RuntimeState` that fire on the simulated timer tick; covers sketches that configure hardware PWM or use Timer1/Timer2 for precise timing without calling `analogWrite` directly
+  - [x] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow; dispatched from the simulated timer tick when overflow interrupt enable bit is set in `TIMSK1`
+  - [x] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B; dispatched when `TCNT1` reaches `OCR1A` / `OCR1B`
 
 > **Milestone:** Sketches using I2C/SPI sensor libraries compile and run; direct GPIO register writes and hardware timer configuration work correctly.
 

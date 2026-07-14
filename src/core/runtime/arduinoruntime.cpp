@@ -9,6 +9,37 @@
 
 thread_local ArduinoRuntime* g_runtime = nullptr;
 
+namespace {
+    long long avr_floor_div(long long a, long long b) {
+        long long q = a / b, r = a % b;
+        return (r != 0 && ((r < 0) != (b < 0))) ? q - 1 : q;
+    }
+
+    // Number of times the free-running tick counter crosses a value congruent
+    // to `target` mod `modulus` while advancing from prevRaw to currRaw --
+    // i.e. how many overflow/compare-match events happened since the last poll.
+    long long avr_count_crossings(long long prevRaw, long long currRaw, long long target, long long modulus) {
+        if (currRaw <= prevRaw) return 0;
+        return avr_floor_div(currRaw - target, modulus) - avr_floor_div(prevRaw - target, modulus);
+    }
+
+    // CS12:10 / CS22:20 prescaler decode (bits 2:0 of TCCRxB); 0 = stopped.
+    long long avr_timer1_prescaler(uint8_t tccrb) {
+        static const long long table[8] = {0, 1, 8, 64, 256, 1024, 0, 0};
+        return table[tccrb & 0x07];
+    }
+    long long avr_timer2_prescaler(uint8_t tccrb) {
+        static const long long table[8] = {0, 1, 8, 32, 64, 128, 256, 1024};
+        return table[tccrb & 0x07];
+    }
+
+    long long avr_raw_ticks(const AvrTimerState& st, long long avr_us) {
+        if (st.prescaler <= 0) return st.ref_ticks;
+        long long delta_cycles = (avr_us - st.ref_avr_us) * 16; // F_CPU = 16MHz
+        return st.ref_ticks + delta_cycles / st.prescaler;
+    }
+}
+
 static std::string ts() {
     if (!g_runtime) return "[?ms] ";
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -25,6 +56,7 @@ ArduinoRuntime::ArduinoRuntime(BoardProfile profile) : profile_(profile) {
 
 ArduinoRuntime::~ArduinoRuntime() {
     stop_wdt_thread();
+    stop_timer_thread();
 }
 
 // Must run before state_'s mutex/condvar are destroyed -- an unjoined
@@ -91,6 +123,18 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.wire_available          = impl_wire_available;
     api.wire_read               = impl_wire_read;
     api.spi_transfer            = impl_spi_transfer;
+    api.avr_timer_get_tccra     = impl_avr_timer_get_tccra;
+    api.avr_timer_set_tccra     = impl_avr_timer_set_tccra;
+    api.avr_timer_get_tccrb     = impl_avr_timer_get_tccrb;
+    api.avr_timer_set_tccrb     = impl_avr_timer_set_tccrb;
+    api.avr_timer_get_timsk     = impl_avr_timer_get_timsk;
+    api.avr_timer_set_timsk     = impl_avr_timer_set_timsk;
+    api.avr_timer_get_tcnt      = impl_avr_timer_get_tcnt;
+    api.avr_timer_set_tcnt      = impl_avr_timer_set_tcnt;
+    api.avr_timer_get_ocra      = impl_avr_timer_get_ocra;
+    api.avr_timer_set_ocra      = impl_avr_timer_set_ocra;
+    api.avr_timer_get_ocrb      = impl_avr_timer_get_ocrb;
+    api.avr_timer_set_ocrb      = impl_avr_timer_set_ocrb;
     return api;
 }
 
@@ -646,4 +690,180 @@ uint8_t ArduinoRuntime::impl_spi_transfer(uint8_t /*tx*/) {
     uint8_t b = bytes[g_runtime->state_.spi_response_index_];
     g_runtime->state_.spi_response_index_ = (g_runtime->state_.spi_response_index_ + 1) % bytes.size();
     return b;
+}
+
+AvrTimerState& ArduinoRuntime::timer_state(ArduinoRuntime* rt, int timerId) {
+    return timerId == 1 ? rt->state_.timer1_ : rt->state_.timer2_;
+}
+
+long long ArduinoRuntime::avr_scaled_micros(ArduinoRuntime* rt) {
+    auto real_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - rt->state_.start_time).count();
+    return (long long)(real_us / rt->speed_multiplier_);
+}
+
+uint8_t ArduinoRuntime::impl_avr_timer_get_tccra(int timerId) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    return timer_state(g_runtime, timerId).tccra;
+}
+
+void ArduinoRuntime::impl_avr_timer_set_tccra(int timerId, uint8_t value) {
+    if (!g_runtime) return;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    timer_state(g_runtime, timerId).tccra = value;
+}
+
+uint8_t ArduinoRuntime::impl_avr_timer_get_tccrb(int timerId) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    return timer_state(g_runtime, timerId).tccrb;
+}
+
+void ArduinoRuntime::impl_avr_timer_set_tccrb(int timerId, uint8_t value) {
+    if (!g_runtime) return;
+    AvrTimerState& st = timer_state(g_runtime, timerId);
+    long long avr_us = avr_scaled_micros(g_runtime);
+    {
+        // Rebase so time elapsed at the old prescaler is preserved before
+        // switching to the new one.
+        std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+        long long raw = avr_raw_ticks(st, avr_us);
+        st.ref_ticks = raw;
+        st.ref_avr_us = avr_us;
+        st.last_check_raw = raw;
+        st.tccrb = value;
+        st.prescaler = (timerId == 1) ? avr_timer1_prescaler(value) : avr_timer2_prescaler(value);
+    }
+    g_runtime->ensure_timer_thread_running();
+}
+
+uint8_t ArduinoRuntime::impl_avr_timer_get_timsk(int timerId) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    return timer_state(g_runtime, timerId).timsk;
+}
+
+void ArduinoRuntime::impl_avr_timer_set_timsk(int timerId, uint8_t value) {
+    if (!g_runtime) return;
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+        timer_state(g_runtime, timerId).timsk = value;
+    }
+    g_runtime->ensure_timer_thread_running();
+}
+
+uint32_t ArduinoRuntime::impl_avr_timer_get_tcnt(int timerId) {
+    if (!g_runtime) return 0;
+    AvrTimerState& st = timer_state(g_runtime, timerId);
+    long long avr_us = avr_scaled_micros(g_runtime);
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    long long raw = avr_raw_ticks(st, avr_us);
+    return (uint32_t)(((raw % st.modulus) + st.modulus) % st.modulus);
+}
+
+void ArduinoRuntime::impl_avr_timer_set_tcnt(int timerId, uint32_t value) {
+    if (!g_runtime) return;
+    AvrTimerState& st = timer_state(g_runtime, timerId);
+    long long avr_us = avr_scaled_micros(g_runtime);
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    st.ref_ticks = (long long)(value % (uint32_t)st.modulus);
+    st.ref_avr_us = avr_us;
+    st.last_check_raw = st.ref_ticks;
+}
+
+uint32_t ArduinoRuntime::impl_avr_timer_get_ocra(int timerId) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    return timer_state(g_runtime, timerId).ocra;
+}
+
+void ArduinoRuntime::impl_avr_timer_set_ocra(int timerId, uint32_t value) {
+    if (!g_runtime) return;
+    AvrTimerState& st = timer_state(g_runtime, timerId);
+    int pin;
+    uint32_t duty;
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+        st.ocra = value % (uint32_t)st.modulus;
+        pin = st.pinA;
+        duty = std::min<uint32_t>(st.ocra, 255);
+    }
+    if (pin >= 0) impl_analogWrite(pin, (int)duty);
+}
+
+uint32_t ArduinoRuntime::impl_avr_timer_get_ocrb(int timerId) {
+    if (!g_runtime) return 0;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+    return timer_state(g_runtime, timerId).ocrb;
+}
+
+void ArduinoRuntime::impl_avr_timer_set_ocrb(int timerId, uint32_t value) {
+    if (!g_runtime) return;
+    AvrTimerState& st = timer_state(g_runtime, timerId);
+    int pin;
+    uint32_t duty;
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.timer_mtx_);
+        st.ocrb = value % (uint32_t)st.modulus;
+        pin = st.pinB;
+        duty = std::min<uint32_t>(st.ocrb, 255);
+    }
+    if (pin >= 0) impl_analogWrite(pin, (int)duty);
+}
+
+void ArduinoRuntime::dispatch_isr(const char* vect_name) {
+    if (!state_.interrupts_enabled_) return;
+    auto it = state_.isr_handlers_.find(vect_name);
+    if (it == state_.isr_handlers_.end() || !it->second) return;
+    state_.interrupts_enabled_ = false;
+    it->second();
+    state_.interrupts_enabled_ = true;
+}
+
+void ArduinoRuntime::poll_timer(AvrTimerState& st, long long avr_us,
+                                const char* ovf_vect, const char* compa_vect, const char* compb_vect,
+                                int toie_bit, int ociea_bit, int ocieb_bit) {
+    long long ovf_count, compa_count, compb_count;
+    bool ovf_en, compa_en, compb_en;
+    {
+        std::lock_guard<std::mutex> lock(state_.timer_mtx_);
+        if (st.prescaler <= 0) return;
+        long long raw = avr_raw_ticks(st, avr_us);
+        long long prev = st.last_check_raw;
+        st.last_check_raw = raw;
+        ovf_count   = avr_count_crossings(prev, raw, 0, st.modulus);
+        compa_count = avr_count_crossings(prev, raw, (long long)(st.ocra % (uint32_t)st.modulus), st.modulus);
+        compb_count = avr_count_crossings(prev, raw, (long long)(st.ocrb % (uint32_t)st.modulus), st.modulus);
+        ovf_en   = st.timsk & (1 << toie_bit);
+        compa_en = st.timsk & (1 << ociea_bit);
+        compb_en = st.timsk & (1 << ocieb_bit);
+    }
+    if (ovf_en)   for (long long i = 0; i < ovf_count; ++i)   dispatch_isr(ovf_vect);
+    if (compa_en) for (long long i = 0; i < compa_count; ++i) dispatch_isr(compa_vect);
+    if (compb_en) for (long long i = 0; i < compb_count; ++i) dispatch_isr(compb_vect);
+}
+
+void ArduinoRuntime::ensure_timer_thread_running() {
+    bool expected = false;
+    if (!timer_thread_started_.compare_exchange_strong(expected, true)) return;
+    ArduinoRuntime* rt = this;
+    timer_thread_stop_ = false;
+    timer_thread_ = std::thread([rt]() {
+        while (!rt->timer_thread_stop_ && !rt->stop_requested_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            long long avr_us = avr_scaled_micros(rt);
+            rt->poll_timer(rt->state_.timer1_, avr_us,
+                           "TIMER1_OVF_vect", "TIMER1_COMPA_vect", "TIMER1_COMPB_vect", 0, 1, 2);
+            rt->poll_timer(rt->state_.timer2_, avr_us,
+                           "TIMER2_OVF_vect", "TIMER2_COMPA_vect", "TIMER2_COMPB_vect", 0, 1, 2);
+        }
+    });
+}
+
+void ArduinoRuntime::stop_timer_thread() {
+    timer_thread_stop_ = true;
+    if (timer_thread_.joinable())
+        timer_thread_.join();
+    timer_thread_started_ = false;
 }
