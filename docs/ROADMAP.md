@@ -126,7 +126,7 @@ The preprocessor injects a replacement `LiquidCrystal` class in `strip_includes(
 
 ---
 
-### Phase 7 — Arduino API Completion: Simple Surface + Simulation Realism
+### Phase 7 — Arduino API Completion: Simple Surface + Simulation Realism ✓
 
 Fill out the remaining commonly-used Arduino API surface and add low-level simulation realism. All items are self-contained runtime or preprocessor changes with no inter-dependencies.
 
@@ -211,7 +211,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 - [x] Button bounce simulation — rapid toggles on click before settling (~10ms); `TACT`/`CLEAN`/`IDEAL` prefix gives a `ButtonClean` component with no bounce
 - [x] Optional gaussian noise on analog readings (off by default, toggle in Settings dialog)
 
-> **Milestone:** Simple sketches using timers, interrupts, EEPROM, and additional serial ports run correctly; the simulation behaves realistically on common hardware edge cases.
+> **Milestone:** Simple sketches using timers, interrupts, EEPROM, and additional serial ports run correctly; the simulation behaves realistically on common hardware edge cases. ✓
 
 ---
 
@@ -275,7 +275,7 @@ Pull the component plugin architecture forward so that all new components added 
 
 ---
 
-### Phase 9 — Protocol Libraries + Low-level AVR Simulation
+### Phase 9 — Protocol Libraries + Low-level AVR Simulation ✓
 
 Heavier runtime work requiring more architectural changes: bus protocol simulation, virtual device responses, and direct register access.
 
@@ -290,7 +290,7 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
   - [x] `TIMER1_OVF_vect` / `TIMER2_OVF_vect` → timer overflow; dispatched from the simulated timer tick when overflow interrupt enable bit is set in `TIMSK1`
   - [x] `TIMER1_COMPA_vect` / `TIMER1_COMPB_vect` → timer compare-match A/B; dispatched when `TCNT1` reaches `OCR1A` / `OCR1B`
 
-> **Milestone:** Sketches using I2C/SPI sensor libraries compile and run; direct GPIO register writes and hardware timer configuration work correctly.
+> **Milestone:** Sketches using I2C/SPI sensor libraries compile and run; direct GPIO register writes and hardware timer configuration work correctly. ✓
 
 ---
 
@@ -359,16 +359,18 @@ Replace placeholder colored rectangles with proper component graphics. Visual wo
 
 Give the user realistic flash and RAM usage figures without requiring a real AVR toolchain on the hot path.
 
-- [ ] `avr_gcc_path` setting in settings dialog; degrades gracefully if not configured — shows nothing rather than blocking Run
-- [ ] After successful compile, run `avr-gcc` for size analysis only (not execution)
-- [ ] Parse `avr-size` output for flash and SRAM usage
+Uses `arduino-cli` rather than raw `avr-gcc`: plain `avr-gcc`/`avr-libc` don't include the Arduino core (`Arduino.h`, `Servo.h`, `pins_arduino.h`, the real `digitalWrite`/`pinMode` implementations) at all, so a raw-avr-gcc approach would still need to locate an Arduino core installation itself; `arduino-cli` already manages core discovery, board flags, and produces both the size report and the `.hex` as normal parts of a compile.
+
+- [ ] `arduino_cli_path` setting in settings dialog; degrades gracefully if not configured — shows nothing rather than blocking Run
+- [ ] After successful compile, run `arduino-cli compile --fqbn <board> --format json` for size analysis only (not execution)
+- [ ] Parse `arduino-cli`'s JSON output for flash and SRAM usage (structured fields, not scraped text)
 - [ ] Flash → hard enforce: block Run if over board's flash limit
 - [ ] Static RAM → hard enforce: block Run if globals exceed board's SRAM limit
-- [ ] Dynamic RAM (String/malloc) → warn but don't block; track via `malloc`/`new` interception
+- [ ] Dynamic RAM (String/malloc) → warn but don't block; separate mechanism from the arduino-cli analysis above — hooks `operator new`/`malloc` in VEMCODE's own x86 runtime while the sketch actually runs, since static analysis has no way to see heap usage, only `.data`/`.bss`
 - [ ] Memory bar in UI: `████░░░░ 1234 / 32256 bytes (3%)`
 - [ ] Warn at >75% usage before hitting the limit
-- [ ] Auto-detect Arduino IDE `avr-gcc` path on first run
-- [ ] Export `.hex` — toolbar button generates a flashable `.hex` for real hardware once avr-gcc is configured; output placed in the sketch subfolder alongside the compiled DLL
+- [ ] Auto-detect `arduino-cli` on first run — check `PATH`, then common bundled locations inside an Arduino IDE 2.x install (it embeds `arduino-cli` internally)
+- [ ] Export `.hex` — toolbar button copies the `.hex` `arduino-cli` already produced during its last compile into the sketch subfolder alongside the compiled DLL; no separate `avr-objcopy` step needed
 
 > **Milestone:** Flash and RAM usage shown for every compile; over-limit sketches are blocked from running; `.hex` can be exported for flashing to real hardware.
 
@@ -376,30 +378,19 @@ Give the user realistic flash and RAM usage figures without requiring a real AVR
 
 ### Phase 13 — Multi-board Simulation
 
-Run two boards simultaneously in the same session.
+Run any number of sketches simultaneously in one window, each in its own tab, rather than one board per window or one board per app instance.
 
-- [ ] Two `SketchThread` instances running at the same time
-- [ ] Thread-safe state injection — replace `pin_values`, `analog_values`, and `pwm_values` arrays in `RuntimeState` with `std::atomic<int>` so UI inject calls and both sketch threads can't race on shared state
-- [ ] Virtual serial pipe — TX of one board feeds RX of the other
-- [ ] Both canvases visible simultaneously
+**One window, tab bar, thin toolbar:** a tab bar sits under the toolbar and above the three panels — `sketch1 | sketch2 | ... | sketchN`. Clicking a tab swaps the entire editor/canvas/debug/serial scene to that sketch. `+` opens any sketch file into a new tab, not just variations of the current one. Each tab keeps running in the background when not focused — switching tabs only changes what's rendered, it never pauses the non-focused sketch's thread, which is what makes "simultaneous" actually true rather than just "switchable."
+
+- [ ] **`SketchSession`** — new class bundling everything `MainWindow` currently owns directly for one sketch (`codeEditor_`, `highlighter_`, `canvasWidget_`, `sketchThread_`/`SketchHost`/`ArduinoRuntime`, debug panels, serial monitor). `MainWindow` shrinks to: toolbar + tab bar + a `QStackedWidget` of `SketchSession`s
+- [ ] Tab bar UI — `+` to open any sketch file into a new tab; closing a tab stops that session's thread (decide: does closing while running warn first, or just stop silently)
+- [ ] **Toolbar reflects the focused tab's own run state, not a single global flag** — each `SketchSession` tracks its own running/stopped state; switching tabs re-syncs the Run/Stop button to whichever session is now focused, independent of what any other tab is doing (e.g. stop sketch3, switch to still-running sketch2, button must say Stop for sketch2)
+- [ ] Background tabs keep their `SketchThread` running while not focused — hiding a widget in Qt doesn't pause its thread, so this should fall out of the `SketchSession` split rather than needing new scheduling logic
+- [ ] **Bridge component** — a small user-placed canvas component (configured like the Wire/SPI virtual device panels, not auto-detected from source) representing a connection to another open tab; drawn with real wires into it from the relevant pins (e.g. TX/RX), labeled "Bridge to sketchN"; data actually moves via the existing `inject_serial()` mechanism (board A's `on_serial_output` also calls board B's `inject_serial()`) — no new communication path, just a canvas-visible endpoint for a link that can't be drawn as one continuous wire since the two tabs are never on-screen at the same time
+- [ ] Thread-safe state injection — replace `pin_values`, `analog_values`, and `pwm_values` arrays in `RuntimeState` with `std::atomic<int>`. Note: each `SketchSession`'s `RuntimeState` is already independent (no cross-session race exists), so this isn't strictly required by multi-board support itself — it's hardening the pre-existing GUI-thread-vs-sketch-thread race that already exists in the single-sketch case today, just worth doing now since there's more thread surface area to get right
 - [ ] Enables master/slave, sensor node + controller, and I2C peripheral sketches
 
-> **Milestone:** Two sketches communicate over virtual Serial and both canvases update correctly.
-
----
-
-### Phase 14 — Step-through Debugger
-
-Pause execution at any line and step statement by statement.
-
-- [ ] Clickable gutter breakpoints in the editor — clicking a line number sets or clears a breakpoint marker
-- [ ] Preprocessor injects `api->vb_breakpoint(line)` calls before each statement when debug mode is active
-- [ ] `impl_vb_breakpoint` blocks the sketch thread on a condition variable when the line matches an active breakpoint — execution suspends, thread is paused but not stopped
-- [ ] Step / Resume toolbar buttons — Step advances to the next `vb_breakpoint` call; Resume runs freely until the next breakpoint
-- [ ] Variable watch panel updates live while paused — shows current state of all watched variables at the breakpoint line
-- [ ] Canvas state reflects the paused moment — pin states, component positions, and signal timeline are all frozen at the breakpoint
-
-> **Milestone:** A sketch can be paused at any line, stepped through statement by statement, and variable values inspected at each step.
+> **Milestone:** Three sketches open in three tabs, all running simultaneously (confirmed by each tab's Run/Stop button independently reflecting its own state); two of them communicate over a bridge component and virtual Serial with both canvases updating correctly when focused.
 
 ---
 
@@ -410,10 +401,11 @@ Pause execution at any line and step statement by statement.
 
 ### Later
 
+- Step-through debugger — pause execution at any line, step statement by statement; clickable gutter breakpoints, `impl_vb_breakpoint` blocks the sketch thread on a condition variable (same pattern as `impl_sleep_cpu`), Step/Resume toolbar buttons; variable watch (already dlsym-polling-based) and canvas (already just reflects the last fired pin-change callback) should show the paused state for free. Hardest part by far: the preprocessor needs a real line-boundary scanner (brace/paren-depth tracking, skipping string/comment contents) to safely inject breakpoint calls between statements without splicing into a `for(;;)` header or similar — nothing else in the preprocessor today does real parsing, it's all narrow fixed-pattern regex transforms
 - Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows; package for common Linux distros
 - macOS support
 - Additional board profiles (STM32, etc.) — add one `BoardProfile` entry each
 - Hardware Bridge — run a sketch inside VEMCODE while reading from physical sensors and driving physical hardware over USB serial; no code changes between virtual and hybrid operation
 - MicroPython / CircuitPython support — Python execution path on Pico and compatible boards using the same runtime, canvas, and signal timeline
-- ESP32 + Network Simulation — WiFi stubs and a mock HTTP server; deterministic, offline, and repeatable responses for firmware testing
+- ESP32 + Network Simulation — WiFi stubs and a mock HTTP server; deterministic, offline, and repeatable responses for firmware testing. Must avoid real sockets entirely (no actual `bind`/`connect`/`listen` to a real port) to preserve VEMCODE's "no network code" trust claim — same virtual-panel pattern as Wire/SPI: a configurable fake response the sketch reads, not an actual HTTP client/server
 - Automated regression test suite — a set of reference sketches with known expected serial output; compile + run each sketch headlessly, capture serial output, assert it matches; run as a CI step to catch preprocessor or runtime regressions before they ship. Headless single-sketch execution itself is done (`vemcode <sketch.cpp>` — see `main.cpp`'s `run_headless`, no `QT_QPA_PLATFORM=offscreen` needed since it uses `QCoreApplication` and never touches a display); still open: fixture files with expected output, an assertion/diff pass, and `ctest`/CI wiring (none of which exist yet)
