@@ -387,6 +387,31 @@ QWidget* MainWindow::buildEditorPanel() {
             this, &MainWindow::insertCompletion);
     completer_->popup()->installEventFilter(this);
 
+    // Auto-popup: after typing >= 3 characters of a word, wait 5s idle then
+    // show the same completion popup Ctrl+Shift+Space triggers manually.
+    idleCompletionTimer_ = new QTimer(this);
+    idleCompletionTimer_->setSingleShot(true);
+    idleCompletionTimer_->setInterval(1500);
+    connect(idleCompletionTimer_, &QTimer::timeout, this, [this]() {
+        if (!codeEditor_->hasFocus() || completer_->popup()->isVisible()) return;
+        QTextCursor tc = codeEditor_->textCursor();
+        tc.select(QTextCursor::WordUnderCursor);
+        if (tc.selectedText().length() >= 3)
+            showCompletionPopup();
+    });
+    connect(codeEditor_, &QPlainTextEdit::textChanged, this, [this]() {
+        if (!codeEditor_->hasFocus() || completer_->popup()->isVisible()) {
+            idleCompletionTimer_->stop();
+            return;
+        }
+        QTextCursor tc = codeEditor_->textCursor();
+        tc.select(QTextCursor::WordUnderCursor);
+        if (tc.selectedText().length() >= 3)
+            idleCompletionTimer_->start();
+        else
+            idleCompletionTimer_->stop();
+    });
+
     lineNumbers_ = new LineNumberArea(codeEditor_);
     lineNumbers_->show();
 
@@ -966,50 +991,85 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         if (key->key() == Qt::Key_Space &&
             key->modifiers().testFlag(Qt::ControlModifier) &&
             key->modifiers().testFlag(Qt::ShiftModifier)) {
-
-            static const QStringList kArduinoApi = {
-                // GPIO / timing / interrupts
-                "pinMode", "digitalWrite", "digitalRead", "analogWrite", "analogRead",
-                "delay", "delayMicroseconds", "millis", "micros", "tone", "noTone",
-                "attachInterrupt", "detachInterrupt", "noInterrupts", "interrupts",
-                // Serial
-                "Serial.begin", "Serial.print", "Serial.println", "Serial.available", "Serial.read",
-                "Serial1.begin", "Serial1.print", "Serial1.println",
-                "Serial2.begin", "Serial2.print", "Serial2.println",
-                // EEPROM
-                "EEPROM.write", "EEPROM.read", "EEPROM.update",
-                // Watchdog / sleep
-                "wdt_enable", "wdt_disable", "wdt_reset",
-                "set_sleep_mode", "sleep_enable", "sleep_disable", "sleep_cpu",
-                // Pure computation (no hardware I/O, not rewritten by the preprocessor)
-                "map", "constrain", "abs", "min", "max", "random", "randomSeed",
-                "pulseIn", "shiftIn", "shiftOut",
-                // Constants
-                "HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP",
-                "LED_BUILTIN", "A0", "A1", "A2", "A3", "A4", "A5",
-                "CHANGE", "RISING", "FALLING",
-                "PI", "TWO_PI", "HALF_PI"
-            };
-
-            QStringList symbols = scanSketchSymbols();
-            symbols += kArduinoApi;
-
-            completer_->setModel(new QStringListModel(symbols, completer_));
-
-            QTextCursor tc = codeEditor_->textCursor();
-            tc.select(QTextCursor::WordUnderCursor);
-            completer_->setCompletionPrefix(tc.selectedText());
-            completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
-
-            QRect cr = codeEditor_->cursorRect();
-            cr.setWidth(completer_->popup()->sizeHintForColumn(0)
-                        + completer_->popup()->verticalScrollBar()->sizeHint().width());
-            completer_->complete(cr);
-
+            showCompletionPopup();
             return true;
         }
     }
     return QMainWindow::eventFilter(obj, event);
+}
+
+void MainWindow::showCompletionPopup() {
+    static const QStringList kCompletionWords = {
+        // GPIO / timing / interrupts
+        "pinMode", "digitalWrite", "digitalRead", "analogWrite", "analogRead",
+        "delay", "delayMicroseconds", "millis", "micros", "tone", "noTone",
+        "attachInterrupt", "detachInterrupt", "noInterrupts", "interrupts",
+        "digitalPinToInterrupt",
+        // Serial
+        "Serial.begin", "Serial.print", "Serial.println", "Serial.available", "Serial.read",
+        "Serial1.begin", "Serial1.print", "Serial1.println",
+        "Serial2.begin", "Serial2.print", "Serial2.println",
+        // EEPROM
+        "EEPROM.write", "EEPROM.read", "EEPROM.update",
+        // Watchdog / sleep
+        "wdt_enable", "wdt_disable", "wdt_reset",
+        "set_sleep_mode", "sleep_enable", "sleep_disable", "sleep_cpu", "sleep_mode",
+        "WDTO_15MS", "WDTO_30MS", "WDTO_60MS", "WDTO_120MS", "WDTO_250MS", "WDTO_500MS",
+        "WDTO_1S", "WDTO_2S", "WDTO_4S", "WDTO_8S",
+        "SLEEP_MODE_IDLE", "SLEEP_MODE_ADC", "SLEEP_MODE_PWR_DOWN",
+        "SLEEP_MODE_PWR_SAVE", "SLEEP_MODE_STANDBY", "SLEEP_MODE_EXT_STANDBY",
+        // Wire (I2C)
+        "Wire.begin", "Wire.beginTransmission", "Wire.write", "Wire.endTransmission",
+        "Wire.requestFrom", "Wire.available", "Wire.read",
+        // SPI
+        "SPI.begin", "SPI.transfer", "SPI.beginTransaction", "SPI.endTransaction",
+        "SPISettings", "MSBFIRST", "LSBFIRST", "SPI_MODE0", "SPI_MODE1", "SPI_MODE2", "SPI_MODE3",
+        // Servo
+        "Servo", "attach", "write", "writeMicroseconds", "read", "detach", "attached",
+        // LiquidCrystal
+        "LiquidCrystal", "lcd.begin", "lcd.print", "lcd.setCursor", "lcd.clear",
+        // SoftwareSerial
+        "SoftwareSerial",
+        // AVR direct registers
+        "DDRB", "DDRC", "DDRD", "PORTB", "PORTC", "PORTD", "PINB", "PINC", "PIND",
+        "TCCR1A", "TCCR1B", "TCNT1", "OCR1A", "OCR1B", "TIMSK1",
+        "TCCR2A", "TCCR2B", "TCNT2", "OCR2A", "OCR2B", "TIMSK2",
+        "ISR",
+        // Pure computation (no hardware I/O, not rewritten by the preprocessor)
+        "map", "constrain", "abs", "min", "max", "random", "randomSeed",
+        "pulseIn", "shiftIn", "shiftOut",
+        // Constants
+        "HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP",
+        "LED_BUILTIN", "A0", "A1", "A2", "A3", "A4", "A5",
+        "CHANGE", "RISING", "FALLING",
+        "PI", "TWO_PI", "HALF_PI",
+        "true", "false",
+        // Types / declarations
+        "void", "int", "unsigned int", "long", "unsigned long", "float", "double",
+        "char", "byte", "bool", "boolean", "String", "const", "static", "volatile",
+        // Sketch skeleton
+        "setup", "loop",
+        // Control flow
+        "if", "else", "for", "while", "do", "switch", "case", "break", "continue", "return",
+        // Preprocessor directives -- WordUnderCursor doesn't include the '#',
+        // so these match against the text typed after it (e.g. "def" -> "define")
+        "define", "include", "ifdef", "ifndef", "endif", "pragma",
+    };
+
+    QStringList symbols = scanSketchSymbols();
+    symbols += kCompletionWords;
+
+    completer_->setModel(new QStringListModel(symbols, completer_));
+
+    QTextCursor tc = codeEditor_->textCursor();
+    tc.select(QTextCursor::WordUnderCursor);
+    completer_->setCompletionPrefix(tc.selectedText());
+    completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
+
+    QRect cr = codeEditor_->cursorRect();
+    cr.setWidth(completer_->popup()->sizeHintForColumn(0)
+                + completer_->popup()->verticalScrollBar()->sizeHint().width());
+    completer_->complete(cr);
 }
 
 void MainWindow::clearCompileErrors() {

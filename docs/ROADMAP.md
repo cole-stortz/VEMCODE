@@ -299,7 +299,8 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 Polish the editor into a first-class coding environment, consolidate settings, add a serial plotter, and give the canvas a proper layout system.
 
 **Editor:**
-- [x] **Code completion** — Ctrl+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
+- [x] **Code completion** — Ctrl+Sift+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
+- [ ] **Member-aware dot completion** — typing `.` right after a known object immediately pops up just that object's member names (no idle wait); covers the fixed globals (`Serial`/`Serial1`/`Serial2`, `Wire`, `SPI`, `EEPROM`) directly by name, plus user-declared `LiquidCrystal`/`Servo`/`SoftwareSerial` variables via a declaration scan (extends `scanSketchSymbols()`) that maps variable name → type before matching against a per-type member list
 - [ ] **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
 - [ ] **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
 - [ ] **Autosave / crash recovery** — editor content written to a `.autosave` file in the sketch folder every 30 seconds; on next open, if an `.autosave` file is newer than the `.cpp` file, offer to restore it; file is deleted on a clean save or close

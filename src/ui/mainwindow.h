@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QCompleter>
 #include <QStringListModel>
+#include <QTimer>
 #include <QScrollBar>
 #include <qcombobox.h>
 #include "src/core/host/sketchhostthread.h"
@@ -75,6 +76,7 @@ private:
     void clearCompileErrors();
     QStringList runStaticChecks(const QString& source);
     QStringList scanSketchSymbols();
+    void showCompletionPopup();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -92,6 +94,7 @@ private:
     CodeHighlighter* highlighter_ = nullptr;
     LineNumberArea* lineNumbers_  = nullptr;
     QCompleter* completer_        = nullptr;
+    QTimer*     idleCompletionTimer_ = nullptr;
     
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;
