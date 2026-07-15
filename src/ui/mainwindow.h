@@ -60,6 +60,7 @@ private slots:
     void onOpenClicked();
     void onSettingsClicked();
     void onSaveClicked();
+    void onSaveAsClicked();
     void onNewSketch();
     void onRecentSketches();
     void addToRecentSketches(const QString& path);
@@ -77,6 +78,10 @@ private:
     QStringList runStaticChecks(const QString& source);
     QStringList scanSketchSymbols();
     void showCompletionPopup();
+    void updateWindowTitle();
+    void adjustEditorZoom(int steps);
+    void resetEditorZoom();
+    void promptAndSaveAsNewSketch();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -108,6 +113,10 @@ private:
     // Simulation
     SketchThread*      sketchThread_  = nullptr;
     QString            currentSketchPath_;
+
+    // Window title base (sans "unsaved changes" marker) and editor zoom level
+    QString windowTitleBase_ = "VEMCODE";
+    int     editorZoomLevel_ = 0;
 
     // Circuit detection
     CircuitDetector    detector_;

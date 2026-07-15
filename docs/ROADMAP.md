@@ -302,15 +302,15 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] **Code completion** — Ctrl+Sift+Space shows a filtered popup of Arduino API functions plus all functions, variables, and `#define` constants declared in the current sketch
 - [ ] **Member-aware dot completion** — typing `.` right after a known object immediately pops up just that object's member names (no idle wait); covers the fixed globals (`Serial`/`Serial1`/`Serial2`, `Wire`, `SPI`, `EEPROM`) directly by name, plus user-declared `LiquidCrystal`/`Servo`/`SoftwareSerial` variables via a declaration scan (extends `scanSketchSymbols()`) that maps variable name → type before matching against a per-type member list
 - [ ] **Find & Replace** — Ctrl+F opens an inline find bar; Ctrl+H adds a replace field; Enter steps through matches, Escape dismisses
-- [ ] **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
+- [x] **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
 - [ ] **Autosave / crash recovery** — editor content written to a `.autosave` file in the sketch folder every 30 seconds; on next open, if an `.autosave` file is newer than the `.cpp` file, offer to restore it; file is deleted on a clean save or close
-- [ ] **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
+- [x] **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
 - [ ] **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
 - [ ] **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
 - [ ] **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
-- [ ] **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
+- [x] **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
 - [ ] **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
-- [ ] **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
+- [x] **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
 - [ ] **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, etc.); selected template copied into the new sketch folder
 - [ ] **Example sketch library** — a browsable panel of complete working sketches organized by component type (LED, Servo, LCD, Distance Sensor, etc.); selecting one opens it as a new sketch ready to run
 - [ ] **In-app Arduino API reference** — a collapsible panel or right-click lookup showing the signature, parameter descriptions, and return value for any Arduino function; covers all functions VEMCODE supports
@@ -320,8 +320,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 
 **Settings panel:**
 - [ ] **Compiler path** — auto-detect common g++ install locations on first run (MinGW on Windows, `/usr/bin/g++` on Linux); show a validation indicator (green tick / red cross) next to the path field. Detection logic itself exists (`auto_detect_compiler_config` in `main.cpp`, via `QStandardPaths::findExecutable`) but is only wired into headless mode so far — still open: call it from `SettingsDialog` on first run too, and add the validation tick/cross UI
-- [ ] **Component configuration** — right-click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
-- [ ] **Syntax highlight colors** — let the user customize the editor color scheme; a small set of built-in themes (default dark, light, high contrast) plus manual overrides; saved to `settings.ini`
+- [ ] **Component configuration** — CTRL+click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
 - [ ] **Canvas theme** — dark/light canvas background toggle; component colors adapt automatically
 - [ ] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run
 - [ ] **Default sketch location** — configurable root folder for new sketches
@@ -401,6 +400,7 @@ Run any number of sketches simultaneously in one window, each in its own tab, ra
 
 ### Later
 
+- Add/Remove component button — detached window to add/remove components from the sketch: dropdown of supported components, pin picker, customizable define name, then inject the `#define` and `pinMode()` call into the existing code. The dropdown/pin-picker UI is easy since `componentregistry.cpp` already has the component metadata to drive it. Hardest part: safely injecting into a sketch the user has already hand-written and keeps editing — finding the right insertion point without duplicating an existing `#define`, adding to `void setup()` without disturbing other `pinMode` calls, and handling remove/re-edit after the user has since touched that code by hand. v1 should probably be one-shot insert-only (anchored by a generated comment marker per component, e.g. `// VEMCODE:BTN1`), not full bidirectional sync between canvas state and arbitrary edited text.
 - Step-through debugger — pause execution at any line, step statement by statement; clickable gutter breakpoints, `impl_vb_breakpoint` blocks the sketch thread on a condition variable (same pattern as `impl_sleep_cpu`), Step/Resume toolbar buttons; variable watch (already dlsym-polling-based) and canvas (already just reflects the last fired pin-change callback) should show the paused state for free. Hardest part by far: the preprocessor needs a real line-boundary scanner (brace/paren-depth tracking, skipping string/comment contents) to safely inject breakpoint calls between statements without splicing into a `for(;;)` header or similar — nothing else in the preprocessor today does real parsing, it's all narrow fixed-pattern regex transforms
 - Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows; package for common Linux distros
 - macOS support

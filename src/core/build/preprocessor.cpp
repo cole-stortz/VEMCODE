@@ -31,7 +31,7 @@ std::string Preprocessor::process(const std::string& source) {
 
     int header_lines = (int)std::count(g_injected_header,
                                         g_injected_header + strlen(g_injected_header), '\n');
-    injected_lines_ = header_lines + fwd_lines;
+    injected_lines_ = header_lines + fwd_lines + 1;
     return result;
 }
 

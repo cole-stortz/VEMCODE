@@ -19,6 +19,7 @@
 #include <QAction>
 #include <QToolTip>
 #include <QIcon>
+#include <QWheelEvent>
 
 // Returns true if a define/const name looks like a pin definition
 static bool is_pin_name(const std::string& name) {
@@ -121,9 +122,15 @@ static const QString STYLE_PANEL_HEADER =
     "font-weight: bold; border-bottom: 1px solid #333;";
 
 // Code editor
+// Font size intentionally left out of the stylesheet -- it's set via
+// setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
+// widget's QFont directly) aren't fought by a QSS-cascaded font-size.
 static const QString STYLE_EDITOR =
     "QPlainTextEdit { background: #1e1e1e; color: #d4d4d4;"
-    "border: none; font-family: 'Courier New', monospace; font-size: 13px; }";
+    "border: none; font-family: 'Courier New', monospace; }";
+// Was "font-size: 13px" in the old stylesheet -- points render larger than the
+// same numeric pixel value, so this is 13px converted to points (13 * 0.75).
+static const int DEFAULT_EDITOR_FONT_SIZE = 10;
 
 // Serial monitor
 static const QString STYLE_SERIAL =
@@ -139,13 +146,14 @@ static const QString STYLE_TABS =
     "QTabBar::tab:hover { background: #2a2a2a; color: #aaaaaa; }";
 
 
-// Error highlight
+// Compile error/warning line highlight
 static const QColor COLOR_ERROR_BG("#3a0000");
+static const QColor COLOR_WARNING_BG("#3a3400");
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("VEMCODE");
+    updateWindowTitle();
     resize(1280, 720);
     setMinimumSize(900, 600);
 
@@ -238,6 +246,24 @@ MainWindow::MainWindow(QWidget* parent)
 
     QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
+    QShortcut* save_as_shortcut = new QShortcut(QKeySequence::SaveAs, this);
+    connect(save_as_shortcut, &QShortcut::activated, this, &MainWindow::onSaveAsClicked);
+
+    // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- the platform
+    // standard key for ZoomIn resolves to the same sequence as literal "Ctrl+=" on this
+    // setup, and two QShortcuts sharing one sequence make Qt treat it as ambiguous
+    // (neither fires). Bind both the unshifted "=" and shifted "+" explicitly instead.
+    QShortcut* zoom_in_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Equal), this);
+    connect(zoom_in_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
+    QShortcut* zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Equal), this);
+    connect(zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
+    QShortcut* zoom_out_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Minus), this);
+    connect(zoom_out_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(-1); });
+    QShortcut* zoom_reset_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0), this);
+    connect(zoom_reset_shortcut, &QShortcut::activated, this, &MainWindow::resetEditorZoom);
+
+    connect(codeEditor_->document(), &QTextDocument::modificationChanged,
+            this, [this](bool) { updateWindowTitle(); });
 
     statusBar()->showMessage("Ready");
 }
@@ -315,11 +341,17 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
     toolbarLayout->addWidget(recentButton);
 
-    QPushButton* saveButton = new QPushButton("Save Sketch", toolbar);
+    QPushButton* saveButton = new QPushButton("Save", toolbar);
     saveButton->setFixedHeight(26);
     saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
+
+    QPushButton* saveAsButton = new QPushButton("Save As", toolbar);
+    saveAsButton->setFixedHeight(26);
+    saveAsButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(saveAsButton, &QPushButton::clicked, this, &MainWindow::onSaveAsClicked);
+    toolbarLayout->addWidget(saveAsButton);
 
     QPushButton* settingsButton = new QPushButton("Settings", toolbar);
     settingsButton->setFixedHeight(26);
@@ -372,6 +404,10 @@ QWidget* MainWindow::buildEditorPanel() {
     highlighter_ = new CodeHighlighter(codeEditor_->document());
     codeEditor_->setStyleSheet(STYLE_EDITOR);
     codeEditor_->setLineWrapMode(QPlainTextEdit::NoWrap);
+
+    QFont editorFont("Courier New", DEFAULT_EDITOR_FONT_SIZE);
+    editorFont.setStyleHint(QFont::Monospace);
+    codeEditor_->setFont(editorFont);
 
     // Tab width = 4 spaces
     QFontMetrics metrics(codeEditor_->font());
@@ -679,7 +715,8 @@ void MainWindow::onRunClicked() {
             temp_file.close();
         }
         currentSketchPath_ = temp_path;
-        setWindowTitle("VEMCODE — unsaved sketch");
+        windowTitleBase_ = "VEMCODE — unsaved sketch";
+        updateWindowTitle();
     }
 
     serialMonitor_->clear();
@@ -801,7 +838,7 @@ void MainWindow::onRunClicked() {
         return;
     }
 
-    clearCompileErrors();
+    showCompileErrors(result); // paints warning lines only -- no errors on this path
     signalTimeline_->clear();
     variableWatch_->clearValues();
     simTimer_.start();
@@ -882,15 +919,45 @@ void MainWindow::onOpenClicked() {
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
+        codeEditor_->document()->setModified(false);
         file.close();
     }
 
-    setWindowTitle("VEMCODE — " + QFileInfo(path).fileName());
+    windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
+    updateWindowTitle();
     statusBar()->showMessage("Opened: " + path);
     addToRecentSketches(path);
 }
 
 void MainWindow::onSaveClicked() {
+    // Silently overwrite the already-open sketch -- but a path under the OS temp
+    // dir (see onRunClicked's unsaved-scratch-file fallback) doesn't count as
+    // "already open", so that case still prompts for a real name below.
+    bool has_real_path = !currentSketchPath_.isEmpty()
+        && !currentSketchPath_.startsWith(QDir::tempPath());
+    if (!has_real_path) {
+        promptAndSaveAsNewSketch();
+        return;
+    }
+
+    QFile file(currentSketchPath_);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to save: " + currentSketchPath_);
+        return;
+    }
+    file.write(codeEditor_->toPlainText().toUtf8());
+    file.close();
+    codeEditor_->document()->setModified(false);
+    statusBar()->showMessage("Saved: " + currentSketchPath_);
+    addToRecentSketches(currentSketchPath_);
+}
+
+// Always prompts for a name and creates a new sketch, even if one is already open
+void MainWindow::onSaveAsClicked() {
+    promptAndSaveAsNewSketch();
+}
+
+void MainWindow::promptAndSaveAsNewSketch() {
     bool ok;
     QString name = QInputDialog::getText(
         this, "Save sketch", "Sketch name:",
@@ -915,9 +982,31 @@ void MainWindow::onSaveClicked() {
 
     // Update current path so Run compiles this file going forward
     currentSketchPath_ = file_path;
-    setWindowTitle("VEMCODE — " + name + ".cpp");
+    codeEditor_->document()->setModified(false);
+    windowTitleBase_ = "VEMCODE — " + name + ".cpp";
+    updateWindowTitle();
     statusBar()->showMessage("Saved: " + file_path);
     addToRecentSketches(file_path);
+}
+
+// Window title reflects windowTitleBase_ plus a "*" while the editor has unsaved changes
+void MainWindow::updateWindowTitle() {
+    bool modified = codeEditor_ && codeEditor_->document()->isModified();
+    setWindowTitle(windowTitleBase_ + (modified ? " *" : ""));
+}
+
+void MainWindow::adjustEditorZoom(int steps) {
+    editorZoomLevel_ = qBound(-8, editorZoomLevel_ + steps, 20);
+    QFont f = codeEditor_->font();
+    f.setPointSize(qMax(6, DEFAULT_EDITOR_FONT_SIZE + editorZoomLevel_));
+    codeEditor_->setFont(f);
+}
+
+void MainWindow::resetEditorZoom() {
+    editorZoomLevel_ = 0;
+    QFont f = codeEditor_->font();
+    f.setPointSize(DEFAULT_EDITOR_FONT_SIZE);
+    codeEditor_->setFont(f);
 }
 
 // Editor helpers
@@ -939,6 +1028,14 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         default:
             break;
+        }
+    }
+
+    if (obj == codeEditor_ && event->type() == QEvent::Wheel) {
+        QWheelEvent* wheel = static_cast<QWheelEvent*>(event);
+        if (wheel->modifiers() & Qt::ControlModifier) {
+            adjustEditorZoom(wheel->angleDelta().y() > 0 ? 1 : -1);
+            return true;
         }
     }
 
@@ -1082,8 +1179,6 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
     QList<QTextEdit::ExtraSelection> selections;
 
     for (const auto& err : result.errors) {
-        if (!err.is_error) continue;
-
         int adjusted_line = err.line - result.header_lines;
         if (adjusted_line < 1) continue;
         QTextBlock block = codeEditor_->document()->findBlockByLineNumber(
@@ -1091,7 +1186,7 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
         if (!block.isValid()) continue;
 
         QTextEdit::ExtraSelection sel;
-        sel.format.setBackground(COLOR_ERROR_BG);
+        sel.format.setBackground(err.is_error ? COLOR_ERROR_BG : COLOR_WARNING_BG);
         sel.format.setProperty(QTextFormat::FullWidthSelection, true);
         sel.format.setToolTip(QString::fromStdString(err.message));
         sel.cursor = QTextCursor(block);
@@ -1179,8 +1274,10 @@ void MainWindow::onNewSketch() {
     file.close();
 
     codeEditor_->setPlainText(default_sketch);
+    codeEditor_->document()->setModified(false);
     currentSketchPath_ = file_path;
-    setWindowTitle("VEMCODE — " + name + ".cpp");
+    windowTitleBase_ = "VEMCODE — " + name + ".cpp";
+    updateWindowTitle();
     statusBar()->showMessage("Created: " + file_path);
     addToRecentSketches(file_path);
 }
@@ -1209,9 +1306,11 @@ void MainWindow::onRecentSketches() {
             QFile file(path);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
+                codeEditor_->document()->setModified(false);
                 file.close();
             }
-            setWindowTitle("VEMCODE — " + QFileInfo(path).fileName());
+            windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
+            updateWindowTitle();
             statusBar()->showMessage("Opened: " + path);
             addToRecentSketches(path);
         });

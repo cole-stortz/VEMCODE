@@ -91,6 +91,7 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     cmd << "\"" << compiler_path_ << "\""
         << " -shared"
         << " -fPIC"
+        << " -Wall"
 #ifdef _WIN32
         << " -static-libgcc"
         << " -static-libstdc++"
