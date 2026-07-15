@@ -20,6 +20,7 @@
 #include <QToolTip>
 #include <QIcon>
 #include <QWheelEvent>
+#include <QMessageBox>
 
 // Returns true if a define/const name looks like a pin definition
 static bool is_pin_name(const std::string& name) {
@@ -279,12 +280,38 @@ MainWindow::MainWindow(QWidget* parent)
     QShortcut* find_shortcut = new QShortcut(QKeySequence::Find, this);
     connect(find_shortcut, &QShortcut::activated, this, &MainWindow::showFindBar);
 
+    // Autosave every 30s, but only for a sketch with a real (non-scratch) path
+    // and only if there are actually unsaved changes to write
+    autosaveTimer_ = new QTimer(this);
+    autosaveTimer_->setInterval(30000);
+    connect(autosaveTimer_, &QTimer::timeout, this, [this]() {
+        bool has_real_path = !currentSketchPath_.isEmpty()
+            && !currentSketchPath_.startsWith(QDir::tempPath());
+        if (!has_real_path || !codeEditor_->document()->isModified()) return;
+
+        QFile file(currentSketchPath_ + ".autosave");
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            file.write(codeEditor_->toPlainText().toUtf8());
+            file.close();
+        }
+    });
+    autosaveTimer_->start();
+
     statusBar()->showMessage("Ready");
 }
 
 MainWindow::~MainWindow() {
     if (sketchThread_)
         sketchThread_->stopSketch();
+}
+
+// A clean exit means nothing to recover -- drop any pending autosave
+void MainWindow::closeEvent(QCloseEvent* event) {
+    bool has_real_path = !currentSketchPath_.isEmpty()
+        && !currentSketchPath_.startsWith(QDir::tempPath());
+    if (has_real_path)
+        QFile::remove(currentSketchPath_ + ".autosave");
+    QMainWindow::closeEvent(event);
 }
 
 // Toolbar -- Run, Stop, Open, Save, board label
@@ -1015,6 +1042,7 @@ void MainWindow::onOpenClicked() {
 
     windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
     updateWindowTitle();
+    checkForAutosaveRecovery(path);
     statusBar()->showMessage("Opened: " + path);
     addToRecentSketches(path);
 }
@@ -1038,6 +1066,7 @@ void MainWindow::onSaveClicked() {
     file.write(codeEditor_->toPlainText().toUtf8());
     file.close();
     codeEditor_->document()->setModified(false);
+    QFile::remove(currentSketchPath_ + ".autosave");
     statusBar()->showMessage("Saved: " + currentSketchPath_);
     addToRecentSketches(currentSketchPath_);
 }
@@ -1073,10 +1102,37 @@ void MainWindow::promptAndSaveAsNewSketch() {
     // Update current path so Run compiles this file going forward
     currentSketchPath_ = file_path;
     codeEditor_->document()->setModified(false);
+    QFile::remove(file_path + ".autosave");
     windowTitleBase_ = "VEMCODE — " + name + ".cpp";
     updateWindowTitle();
     statusBar()->showMessage("Saved: " + file_path);
     addToRecentSketches(file_path);
+}
+
+// If sketchPath has a newer .autosave file sitting next to it (crash recovery),
+// offer to load that instead of what was just read from disk
+void MainWindow::checkForAutosaveRecovery(const QString& sketchPath) {
+    QFileInfo autosaveInfo(sketchPath + ".autosave");
+    if (!autosaveInfo.exists()) return;
+
+    QFileInfo sketchInfo(sketchPath);
+    if (autosaveInfo.lastModified() <= sketchInfo.lastModified()) return;
+
+    auto reply = QMessageBox::question(this, "Restore autosave?",
+        "An autosave from " + autosaveInfo.lastModified().toString("yyyy-MM-dd hh:mm:ss") +
+        " is newer than the saved file. Restore it?",
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QFile file(autosaveInfo.filePath());
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
+            file.close();
+            codeEditor_->document()->setModified(true);
+        }
+    } else {
+        QFile::remove(autosaveInfo.filePath());
+    }
 }
 
 // Window title reflects windowTitleBase_ plus a "*" while the editor has unsaved changes
@@ -1688,6 +1744,7 @@ void MainWindow::onRecentSketches() {
             }
             windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
             updateWindowTitle();
+            checkForAutosaveRecovery(path);
             statusBar()->showMessage("Opened: " + path);
             addToRecentSketches(path);
         });

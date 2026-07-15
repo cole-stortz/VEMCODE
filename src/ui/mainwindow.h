@@ -19,6 +19,7 @@
 #include <QStringListModel>
 #include <QTimer>
 #include <QScrollBar>
+#include <QCloseEvent>
 #include <qcombobox.h>
 #include "src/core/host/sketchhostthread.h"
 #include "src/core/build/compiler.h"
@@ -72,6 +73,7 @@ private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
     void setupMainArea(QWidget* parent, QVBoxLayout* layout);
     bool eventFilter(QObject* obj, QEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
     
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
@@ -94,6 +96,7 @@ private:
     void onFindPrev();
     void onReplaceClicked();
     void onReplaceAllClicked();
+    void checkForAutosaveRecovery(const QString& sketchPath);
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -112,6 +115,7 @@ private:
     LineNumberArea* lineNumbers_  = nullptr;
     QCompleter* completer_        = nullptr;
     QTimer*     idleCompletionTimer_ = nullptr;
+    QTimer*     autosaveTimer_       = nullptr;
 
     // Editor extra-selection layers -- merged together in refreshExtraSelections()
     // since QPlainTextEdit::setExtraSelections() replaces the whole list each call
