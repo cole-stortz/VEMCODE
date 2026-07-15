@@ -31,7 +31,9 @@ std::string Preprocessor::process(const std::string& source) {
 
     int header_lines = (int)std::count(g_injected_header,
                                         g_injected_header + strlen(g_injected_header), '\n');
-    injected_lines_ = header_lines + fwd_lines + 1;
+    // +1 corrects a boundary miscount verified empirically; +3 accounts for the
+    // #pragma push/ignored/pop lines inject_header() now wraps around the header.
+    injected_lines_ = header_lines + fwd_lines + 1 + 3;
     return result;
 }
 
@@ -201,7 +203,17 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
 }
 
 std::string Preprocessor::inject_header(const std::string& source) {
-    return std::string(g_injected_header) + source;
+    // The header declares the full AVR register/API surface unconditionally for every
+    // sketch (e.g. every timer register, whether or not this sketch uses that timer),
+    // so with -Wall most of it reads as unused. It's boilerplate the user didn't write
+    // and can't fix, so silence unused-variable warnings for just this block --
+    // warnings from the user's own code (appended after the pop) are unaffected.
+    return std::string(
+        "#pragma GCC diagnostic push\n"
+        "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n")
+        + g_injected_header
+        + "#pragma GCC diagnostic pop\n"
+        + source;
 }
 
 std::string Preprocessor::replace_token(const std::string& source,

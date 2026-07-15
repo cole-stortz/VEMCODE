@@ -307,9 +307,9 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
 - [ ] **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
 - [ ] **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
-- [ ] **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
+- [x] **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
 - [x] **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
-- [ ] **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
+- [x] **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
 - [x] **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
 - [ ] **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, etc.); selected template copied into the new sketch folder
 - [ ] **Example sketch library** — a browsable panel of complete working sketches organized by component type (LED, Servo, LCD, Distance Sensor, etc.); selecting one opens it as a new sketch ready to run

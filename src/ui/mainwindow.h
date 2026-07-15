@@ -82,6 +82,7 @@ private:
     void adjustEditorZoom(int steps);
     void resetEditorZoom();
     void promptAndSaveAsNewSketch();
+    void toggleCommentSelection();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();

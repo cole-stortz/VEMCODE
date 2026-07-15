@@ -706,9 +706,14 @@ void MainWindow::onLoadFailed(QString reason) {
 
 // Button handlers
 void MainWindow::onRunClicked() {
-    // If no file is open, save editor content to a temp file and run that
+    // If no file is open, save editor content to a temp file and run that.
+    // Uses its own subfolder rather than tempPath() directly -- the compiler scans
+    // the sketch's folder for extra .cpp files to link in (multi-file sketch
+    // support), and raw /tmp can contain unrelated .cpp files from other processes.
     if (currentSketchPath_.isEmpty()) {
-        QString temp_path = QDir::tempPath() + "/vb_sketch.cpp";
+        QString temp_dir = QDir::tempPath() + "/vemcode_unsaved_sketch";
+        QDir().mkpath(temp_dir);
+        QString temp_path = temp_dir + "/vb_sketch.cpp";
         QFile temp_file(temp_path);
         if (temp_file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             temp_file.write(codeEditor_->toPlainText().toUtf8());
@@ -1009,6 +1014,46 @@ void MainWindow::resetEditorZoom() {
     codeEditor_->setFont(f);
 }
 
+// Toggles "// " on every line touched by the selection (or just the current line
+// with no selection). Uncomments if every non-blank line in range already starts
+// with "//", otherwise comments every non-blank line.
+void MainWindow::toggleCommentSelection() {
+    QTextCursor cursor = codeEditor_->textCursor();
+    QTextBlock startBlock = codeEditor_->document()->findBlock(cursor.selectionStart());
+    QTextBlock endBlock   = codeEditor_->document()->findBlock(cursor.selectionEnd());
+    if (endBlock != startBlock && cursor.selectionEnd() == endBlock.position())
+        endBlock = endBlock.previous();
+
+    bool allCommented = true;
+    for (QTextBlock b = startBlock; b.isValid(); b = b.next()) {
+        QString trimmed = b.text().trimmed();
+        if (!trimmed.isEmpty() && !trimmed.startsWith("//")) allCommented = false;
+        if (b == endBlock) break;
+    }
+
+    cursor.beginEditBlock();
+    for (QTextBlock b = startBlock; b.isValid(); b = b.next()) {
+        QString text = b.text();
+        int firstNonSpace = 0;
+        while (firstNonSpace < text.length() && text[firstNonSpace] == ' ') firstNonSpace++;
+
+        QTextCursor lineCursor(b);
+        if (allCommented) {
+            if (text.mid(firstNonSpace, 2) == "//") {
+                int len = (text.mid(firstNonSpace, 3) == "// ") ? 3 : 2;
+                lineCursor.setPosition(b.position() + firstNonSpace);
+                lineCursor.setPosition(b.position() + firstNonSpace + len, QTextCursor::KeepAnchor);
+                lineCursor.removeSelectedText();
+            }
+        } else if (!text.trimmed().isEmpty()) {
+            lineCursor.setPosition(b.position() + firstNonSpace);
+            lineCursor.insertText("// ");
+        }
+        if (b == endBlock) break;
+    }
+    cursor.endEditBlock();
+}
+
 // Editor helpers
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (completer_ && obj == completer_->popup() && event->type() == QEvent::KeyPress) {
@@ -1089,6 +1134,28 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             key->modifiers().testFlag(Qt::ControlModifier) &&
             key->modifiers().testFlag(Qt::ShiftModifier)) {
             showCompletionPopup();
+            return true;
+        }
+
+        if (key->key() == Qt::Key_D && key->modifiers() == Qt::ControlModifier) {
+            QTextCursor cursor = codeEditor_->textCursor();
+            int col = cursor.positionInBlock();
+
+            QTextCursor lineCursor = cursor;
+            lineCursor.movePosition(QTextCursor::StartOfLine);
+            lineCursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+            QString line = lineCursor.selectedText();
+
+            cursor.movePosition(QTextCursor::EndOfLine);
+            cursor.insertText("\n" + line);
+            cursor.movePosition(QTextCursor::StartOfLine);
+            cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, col);
+            codeEditor_->setTextCursor(cursor);
+            return true;
+        }
+
+        if (key->key() == Qt::Key_Slash && key->modifiers() == Qt::ControlModifier) {
+            toggleCommentSelection();
             return true;
         }
     }
