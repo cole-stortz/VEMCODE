@@ -85,6 +85,15 @@ private:
     void toggleCommentSelection();
     void refreshExtraSelections();
     void updateBracketMatch();
+    void showFindBar();
+    void hideFindBar();
+    void runFindSearch();
+    void selectMatch(int index);
+    void updateFindStatusLabel();
+    void onFindNext();
+    void onFindPrev();
+    void onReplaceClicked();
+    void onReplaceAllClicked();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -108,6 +117,16 @@ private:
     // since QPlainTextEdit::setExtraSelections() replaces the whole list each call
     QList<QTextEdit::ExtraSelection> compileSelections_;
     QList<QTextEdit::ExtraSelection> bracketSelections_;
+    QList<QTextEdit::ExtraSelection> findSelections_;
+
+    // Find & Replace bar
+    QWidget*    findBar_          = nullptr;
+    QWidget*    replaceRow_       = nullptr;
+    QLineEdit*  findInput_        = nullptr;
+    QLineEdit*  replaceInput_     = nullptr;
+    QLabel*     findStatusLabel_  = nullptr;
+    QList<int>  findMatches_; // start position of each match in the document
+    int         currentMatchIndex_ = -1;
     
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;

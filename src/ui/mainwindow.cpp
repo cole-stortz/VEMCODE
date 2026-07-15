@@ -151,6 +151,15 @@ static const QColor COLOR_ERROR_BG("#3a0000");
 static const QColor COLOR_WARNING_BG("#3a3400");
 // Matching bracket highlight
 static const QColor COLOR_BRACKET_MATCH_BG("#264f78");
+// Find & Replace match highlight
+static const QColor COLOR_FIND_MATCH_BG("#5a4a00");
+
+// Find & Replace bar
+static const QString STYLE_FIND_BAR =
+    "background: #252526; border-bottom: 1px solid #333;";
+static const QString STYLE_FIND_INPUT =
+    "QLineEdit { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444;"
+    "border-radius: 3px; padding: 3px 6px; font-size: 12px; }";
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -266,6 +275,9 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(codeEditor_->document(), &QTextDocument::modificationChanged,
             this, [this](bool) { updateWindowTitle(); });
+
+    QShortcut* find_shortcut = new QShortcut(QKeySequence::Find, this);
+    connect(find_shortcut, &QShortcut::activated, this, &MainWindow::showFindBar);
 
     statusBar()->showMessage("Ready");
 }
@@ -401,6 +413,75 @@ QWidget* MainWindow::buildEditorPanel() {
     header->setFixedHeight(24);
     header->setStyleSheet(STYLE_PANEL_HEADER);
     layout->addWidget(header);
+
+    // Find & Replace bar -- hidden until Ctrl+F/Ctrl+H
+    findBar_ = new QWidget();
+    findBar_->setStyleSheet(STYLE_FIND_BAR);
+    QVBoxLayout* findBarLayout = new QVBoxLayout(findBar_);
+    findBarLayout->setContentsMargins(8, 6, 8, 6);
+    findBarLayout->setSpacing(4);
+
+    QHBoxLayout* findRowLayout = new QHBoxLayout();
+    findRowLayout->setSpacing(6);
+    findInput_ = new QLineEdit(findBar_);
+    findInput_->setPlaceholderText("Find");
+    findInput_->setStyleSheet(STYLE_FIND_INPUT);
+    findRowLayout->addWidget(findInput_);
+
+    findStatusLabel_ = new QLabel(findBar_);
+    findStatusLabel_->setStyleSheet("color: #888; font-size: 11px; border: none; background: transparent;");
+    findStatusLabel_->setFixedWidth(60);
+    findRowLayout->addWidget(findStatusLabel_);
+
+    QPushButton* findPrevButton = new QPushButton("Prev", findBar_);
+    findPrevButton->setFixedHeight(24);
+    findPrevButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(findPrevButton, &QPushButton::clicked, this, &MainWindow::onFindPrev);
+    findRowLayout->addWidget(findPrevButton);
+
+    QPushButton* findNextButton = new QPushButton("Next", findBar_);
+    findNextButton->setFixedHeight(24);
+    findNextButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(findNextButton, &QPushButton::clicked, this, &MainWindow::onFindNext);
+    findRowLayout->addWidget(findNextButton);
+
+    QPushButton* findCloseButton = new QPushButton("✕", findBar_);
+    findCloseButton->setFixedSize(24, 24);
+    findCloseButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(findCloseButton, &QPushButton::clicked, this, &MainWindow::hideFindBar);
+    findRowLayout->addWidget(findCloseButton);
+
+    findBarLayout->addLayout(findRowLayout);
+
+    replaceRow_ = new QWidget(findBar_);
+    QHBoxLayout* replaceRowLayout = new QHBoxLayout(replaceRow_);
+    replaceRowLayout->setContentsMargins(0, 0, 0, 0);
+    replaceRowLayout->setSpacing(6);
+    replaceInput_ = new QLineEdit(replaceRow_);
+    replaceInput_->setPlaceholderText("Replace");
+    replaceInput_->setStyleSheet(STYLE_FIND_INPUT);
+    replaceRowLayout->addWidget(replaceInput_);
+
+    QPushButton* replaceButton = new QPushButton("Replace", replaceRow_);
+    replaceButton->setFixedHeight(24);
+    replaceButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(replaceButton, &QPushButton::clicked, this, &MainWindow::onReplaceClicked);
+    replaceRowLayout->addWidget(replaceButton);
+
+    QPushButton* replaceAllButton = new QPushButton("Replace All", replaceRow_);
+    replaceAllButton->setFixedHeight(24);
+    replaceAllButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    connect(replaceAllButton, &QPushButton::clicked, this, &MainWindow::onReplaceAllClicked);
+    replaceRowLayout->addWidget(replaceAllButton);
+
+    findBarLayout->addWidget(replaceRow_);
+
+    connect(findInput_, &QLineEdit::textChanged, this, [this](const QString&) { runFindSearch(); });
+    findInput_->installEventFilter(this);
+    replaceInput_->installEventFilter(this);
+
+    findBar_->hide();
+    layout->addWidget(findBar_);
 
     codeEditor_ = new EditorWithLines();
     highlighter_ = new CodeHighlighter(codeEditor_->document());
@@ -1059,7 +1140,7 @@ void MainWindow::toggleCommentSelection() {
 }
 
 void MainWindow::refreshExtraSelections() {
-    codeEditor_->setExtraSelections(compileSelections_ + bracketSelections_);
+    codeEditor_->setExtraSelections(compileSelections_ + bracketSelections_ + findSelections_);
 }
 
 // Highlights the bracket pair adjacent to the cursor, if any. Checks the character
@@ -1119,6 +1200,128 @@ void MainWindow::updateBracketMatch() {
     refreshExtraSelections();
 }
 
+void MainWindow::showFindBar() {
+    findBar_->show();
+
+    QString selected = codeEditor_->textCursor().selectedText();
+    if (!selected.isEmpty() && !selected.contains(QChar::ParagraphSeparator))
+        findInput_->setText(selected);
+
+    findInput_->setFocus();
+    findInput_->selectAll();
+    runFindSearch();
+}
+
+void MainWindow::hideFindBar() {
+    findBar_->hide();
+    findSelections_.clear();
+    findMatches_.clear();
+    currentMatchIndex_ = -1;
+    refreshExtraSelections();
+    codeEditor_->setFocus();
+}
+
+// Re-scans the whole document for findInput_'s text, highlights every match, and
+// jumps to whichever match is nearest the current cursor position.
+void MainWindow::runFindSearch() {
+    QString needle = findInput_->text();
+    findMatches_.clear();
+    findSelections_.clear();
+
+    if (!needle.isEmpty()) {
+        QTextDocument* doc = codeEditor_->document();
+        QTextCursor cursor(doc);
+        while (true) {
+            cursor = doc->find(needle, cursor);
+            if (cursor.isNull()) break;
+            findMatches_.append(cursor.selectionStart());
+
+            QTextEdit::ExtraSelection sel;
+            sel.format.setBackground(COLOR_FIND_MATCH_BG);
+            sel.cursor = cursor;
+            findSelections_.append(sel);
+        }
+    }
+
+    if (findMatches_.isEmpty()) {
+        currentMatchIndex_ = -1;
+    } else {
+        int cursorPos = codeEditor_->textCursor().selectionStart();
+        currentMatchIndex_ = 0;
+        for (int i = 0; i < findMatches_.size(); i++) {
+            if (findMatches_[i] >= cursorPos) { currentMatchIndex_ = i; break; }
+        }
+        selectMatch(currentMatchIndex_);
+    }
+
+    updateFindStatusLabel();
+    refreshExtraSelections();
+}
+
+void MainWindow::selectMatch(int index) {
+    if (index < 0 || index >= findMatches_.size()) return;
+    QTextCursor cursor(codeEditor_->document());
+    cursor.setPosition(findMatches_[index]);
+    cursor.setPosition(findMatches_[index] + findInput_->text().length(), QTextCursor::KeepAnchor);
+    codeEditor_->setTextCursor(cursor);
+    codeEditor_->centerCursor();
+}
+
+void MainWindow::updateFindStatusLabel() {
+    if (findMatches_.isEmpty())
+        findStatusLabel_->setText(findInput_->text().isEmpty() ? "" : "No results");
+    else
+        findStatusLabel_->setText(QString("%1 of %2").arg(currentMatchIndex_ + 1).arg(findMatches_.size()));
+}
+
+void MainWindow::onFindNext() {
+    if (findMatches_.isEmpty()) return;
+    currentMatchIndex_ = (currentMatchIndex_ + 1) % findMatches_.size();
+    selectMatch(currentMatchIndex_);
+    updateFindStatusLabel();
+}
+
+void MainWindow::onFindPrev() {
+    if (findMatches_.isEmpty()) return;
+    currentMatchIndex_ = (currentMatchIndex_ - 1 + findMatches_.size()) % findMatches_.size();
+    selectMatch(currentMatchIndex_);
+    updateFindStatusLabel();
+}
+
+void MainWindow::onReplaceClicked() {
+    if (findMatches_.isEmpty() || currentMatchIndex_ < 0) return;
+
+    QTextCursor cursor(codeEditor_->document());
+    cursor.setPosition(findMatches_[currentMatchIndex_]);
+    cursor.setPosition(findMatches_[currentMatchIndex_] + findInput_->text().length(),
+                        QTextCursor::KeepAnchor);
+    cursor.insertText(replaceInput_->text());
+
+    runFindSearch(); // positions shifted -- recompute and land on the next match
+}
+
+void MainWindow::onReplaceAllClicked() {
+    QString needle = findInput_->text();
+    if (needle.isEmpty()) return;
+    QString replacement = replaceInput_->text();
+
+    QTextDocument* doc = codeEditor_->document();
+    QTextCursor editCursor(doc);
+    editCursor.beginEditBlock();
+
+    int count = 0;
+    QTextCursor found = doc->find(needle);
+    while (!found.isNull()) {
+        found.insertText(replacement);
+        count++;
+        found = doc->find(needle, found.position());
+    }
+    editCursor.endEditBlock();
+
+    runFindSearch();
+    statusBar()->showMessage(QString("Replaced %1 occurrence(s)").arg(count));
+}
+
 // Editor helpers
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (completer_ && obj == completer_->popup() && event->type() == QEvent::KeyPress) {
@@ -1138,6 +1341,19 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         default:
             break;
+        }
+    }
+
+    if ((obj == findInput_ || obj == replaceInput_) && event->type() == QEvent::KeyPress) {
+        QKeyEvent* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Escape) {
+            hideFindBar();
+            return true;
+        }
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+            if (key->modifiers() & Qt::ShiftModifier) onFindPrev();
+            else onFindNext();
+            return true;
         }
     }
 
