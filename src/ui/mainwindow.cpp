@@ -149,6 +149,8 @@ static const QString STYLE_TABS =
 // Compile error/warning line highlight
 static const QColor COLOR_ERROR_BG("#3a0000");
 static const QColor COLOR_WARNING_BG("#3a3400");
+// Matching bracket highlight
+static const QColor COLOR_BRACKET_MATCH_BG("#264f78");
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -413,7 +415,9 @@ QWidget* MainWindow::buildEditorPanel() {
     QFontMetrics metrics(codeEditor_->font());
     codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
     codeEditor_->installEventFilter(this);
-    
+    connect(codeEditor_, &QPlainTextEdit::cursorPositionChanged,
+            this, &MainWindow::updateBracketMatch);
+
     // Auto Complete
     completer_ = new QCompleter(this);
     completer_->setWidget(codeEditor_);
@@ -1054,6 +1058,67 @@ void MainWindow::toggleCommentSelection() {
     cursor.endEditBlock();
 }
 
+void MainWindow::refreshExtraSelections() {
+    codeEditor_->setExtraSelections(compileSelections_ + bracketSelections_);
+}
+
+// Highlights the bracket pair adjacent to the cursor, if any. Checks the character
+// just after the cursor first, then just before, matching common editor convention.
+void MainWindow::updateBracketMatch() {
+    bracketSelections_.clear();
+
+    static const QString kOpeners = "({[";
+    static const QString kClosers = ")}]";
+
+    QTextDocument* doc = codeEditor_->document();
+    int pos = codeEditor_->textCursor().position();
+
+    int bracketPos = -1;
+    QChar c;
+    if (!doc->characterAt(pos).isNull() &&
+        (kOpeners.contains(doc->characterAt(pos)) || kClosers.contains(doc->characterAt(pos)))) {
+        bracketPos = pos;
+        c = doc->characterAt(pos);
+    } else if (pos > 0 &&
+               (kOpeners.contains(doc->characterAt(pos - 1)) || kClosers.contains(doc->characterAt(pos - 1)))) {
+        bracketPos = pos - 1;
+        c = doc->characterAt(pos - 1);
+    }
+
+    if (bracketPos >= 0) {
+        bool isOpen = kOpeners.contains(c);
+        QChar match = isOpen ? kClosers[kOpeners.indexOf(c)] : kOpeners[kClosers.indexOf(c)];
+        int direction = isOpen ? 1 : -1;
+
+        int depth = 0;
+        int i = bracketPos;
+        int matchPos = -1;
+        while (true) {
+            QChar ch = doc->characterAt(i);
+            if (ch.isNull()) break;
+            if (ch == c) depth++;
+            else if (ch == match) {
+                depth--;
+                if (depth == 0) { matchPos = i; break; }
+            }
+            i += direction;
+        }
+
+        if (matchPos >= 0) {
+            for (int p : {bracketPos, matchPos}) {
+                QTextEdit::ExtraSelection sel;
+                sel.format.setBackground(COLOR_BRACKET_MATCH_BG);
+                sel.cursor = QTextCursor(doc);
+                sel.cursor.setPosition(p);
+                sel.cursor.setPosition(p + 1, QTextCursor::KeepAnchor);
+                bracketSelections_.append(sel);
+            }
+        }
+    }
+
+    refreshExtraSelections();
+}
+
 // Editor helpers
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (completer_ && obj == completer_->popup() && event->type() == QEvent::KeyPress) {
@@ -1112,6 +1177,36 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             cursor.insertText("\n" + QString(spaces, ' '));
             codeEditor_->setTextCursor(cursor);
             return true;
+        }
+
+        // Auto-close (, [, {, " and skip over an already-present closer instead of
+        // doubling it. Checked ahead of the Key_BraceRight dedent handler below so a
+        // skip-over "}" takes priority over that block's plain-text-insert fallback.
+        {
+            QString typedText = key->text();
+            if (typedText.size() == 1) {
+                QChar tc = typedText.at(0);
+                static const QString kOpen  = "([{\"";
+                static const QString kClose = ")]}\"";
+
+                if (kClose.contains(tc)) {
+                    QTextCursor cursor = codeEditor_->textCursor();
+                    if (!cursor.hasSelection() &&
+                        codeEditor_->document()->characterAt(cursor.position()) == tc) {
+                        cursor.movePosition(QTextCursor::NextCharacter);
+                        codeEditor_->setTextCursor(cursor);
+                        return true;
+                    }
+                }
+                if (kOpen.contains(tc) && !codeEditor_->textCursor().hasSelection()) {
+                    QChar closer = kClose.at(kOpen.indexOf(tc));
+                    codeEditor_->insertPlainText(QString(tc) + QString(closer));
+                    QTextCursor cursor = codeEditor_->textCursor();
+                    cursor.movePosition(QTextCursor::PreviousCharacter);
+                    codeEditor_->setTextCursor(cursor);
+                    return true;
+                }
+            }
         }
 
         if (key->key() == Qt::Key_BraceRight) {
@@ -1237,13 +1332,12 @@ void MainWindow::showCompletionPopup() {
 }
 
 void MainWindow::clearCompileErrors() {
-    codeEditor_->setExtraSelections({});
+    compileSelections_.clear();
+    refreshExtraSelections();
 }
 
 void MainWindow::showCompileErrors(const CompileResult& result) {
-    clearCompileErrors();
-
-    QList<QTextEdit::ExtraSelection> selections;
+    compileSelections_.clear();
 
     for (const auto& err : result.errors) {
         int adjusted_line = err.line - result.header_lines;
@@ -1258,10 +1352,10 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
         sel.format.setToolTip(QString::fromStdString(err.message));
         sel.cursor = QTextCursor(block);
         sel.cursor.select(QTextCursor::LineUnderCursor);
-        selections.append(sel);
+        compileSelections_.append(sel);
     }
 
-    codeEditor_->setExtraSelections(selections);
+    refreshExtraSelections();
 
     for (const auto& err : result.errors) {
         if (err.is_error) {

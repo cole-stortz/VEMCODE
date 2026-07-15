@@ -83,6 +83,8 @@ private:
     void resetEditorZoom();
     void promptAndSaveAsNewSketch();
     void toggleCommentSelection();
+    void refreshExtraSelections();
+    void updateBracketMatch();
 
     QWidget* buildEditorPanel();
     QWidget* buildCanvasPanel();
@@ -101,6 +103,11 @@ private:
     LineNumberArea* lineNumbers_  = nullptr;
     QCompleter* completer_        = nullptr;
     QTimer*     idleCompletionTimer_ = nullptr;
+
+    // Editor extra-selection layers -- merged together in refreshExtraSelections()
+    // since QPlainTextEdit::setExtraSelections() replaces the whole list each call
+    QList<QTextEdit::ExtraSelection> compileSelections_;
+    QList<QTextEdit::ExtraSelection> bracketSelections_;
     
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;

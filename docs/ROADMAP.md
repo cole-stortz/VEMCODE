@@ -305,8 +305,8 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] **Save in-place** — Ctrl+S saves silently to the current file path when a sketch is already open; only prompts for a name on first save of a new unsaved sketch
 - [ ] **Autosave / crash recovery** — editor content written to a `.autosave` file in the sketch folder every 30 seconds; on next open, if an `.autosave` file is newer than the `.cpp` file, offer to restore it; file is deleted on a clean save or close
 - [x] **Unsaved changes indicator** — append `*` to the window title when the editor content differs from the saved file; clear it on save
-- [ ] **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
-- [ ] **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
+- [x] **Auto-close brackets** — typing `(`, `[`, `{`, or `"` inserts the matching closer and positions the cursor inside; typing the closer when it is the next character skips over it instead of doubling
+- [x] **Bracket matching** — when the cursor sits adjacent to `(`, `)`, `{`, `}`, `[`, or `]`, highlight the matching bracket
 - [x] **Comment toggle** — Ctrl+/ adds `// ` to the current line or selected lines; pressing again removes it
 - [x] **Font size zoom** — Ctrl+`+` / Ctrl+`-` / Ctrl+scroll adjusts the editor font size; resets to default with Ctrl+`0`
 - [x] **Duplicate line** — Ctrl+D copies the current line and inserts it on the line below
