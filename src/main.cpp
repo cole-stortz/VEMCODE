@@ -1,7 +1,6 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QSettings>
-#include <QStandardPaths>
 #include <QIcon>
 #include "src/ui/mainwindow.h"
 #include "src/core/build/compiler.h"
@@ -55,26 +54,6 @@ static bool resolve_sketch_path(const std::string& given, std::string& resolved)
     return false;
 }
 
-// Repo root is always the parent of the app/ dir the binary runs from --
-// no need to search for it, unlike the compiler.
-static bool auto_detect_compiler_config(std::string& compilerPath, std::string& projectRoot) {
-    QString found = QStandardPaths::findExecutable("g++");
-#ifndef _WIN32
-    if (found.isEmpty() && std::filesystem::exists("/usr/bin/g++"))
-        found = "/usr/bin/g++";
-#endif
-    if (found.isEmpty()) return false;
-
-    std::filesystem::path root =
-        std::filesystem::path(QCoreApplication::applicationDirPath().toStdString()).parent_path();
-    if (!std::filesystem::exists(root / "src" / "core" / "runtime" / "arduinoapi.h"))
-        return false;
-
-    compilerPath = found.toStdString();
-    projectRoot  = root.string();
-    return true;
-}
-
 // Compiles and runs a single sketch on the current thread with no GUI,
 // streaming Serial output to stdout until Ctrl+C. Mirrors the compile/detect/
 // run sequence MainWindow::onRunClicked drives interactively.
@@ -89,15 +68,18 @@ static int run_headless(const std::string& given_path) {
     std::string compilerPath = settings.value("compiler/path", "").toString().toStdString();
     std::string projectRoot  = settings.value("compiler/project_root", "").toString().toStdString();
     if (compilerPath.empty() || projectRoot.empty()) {
-        if (!auto_detect_compiler_config(compilerPath, projectRoot)) {
+        QString detectedPath, detectedRoot;
+        if (!SettingsDialog::autoDetectCompiler(detectedPath, detectedRoot)) {
             std::cerr << "No compiler configured, and couldn't auto-detect one -- "
                           "run VEMCODE with no arguments once to set it up manually.\n";
             return 1;
         }
+        compilerPath = detectedPath.toStdString();
+        projectRoot  = detectedRoot.toStdString();
         std::cout << "Auto-detected compiler: " << compilerPath
                    << " (project root: " << projectRoot << ")\n";
-        settings.setValue("compiler/path", QString::fromStdString(compilerPath));
-        settings.setValue("compiler/project_root", QString::fromStdString(projectRoot));
+        settings.setValue("compiler/path", detectedPath);
+        settings.setValue("compiler/project_root", detectedRoot);
     }
 
     std::string boardName = settings.value("board/name", "Arduino Uno").toString().toStdString();

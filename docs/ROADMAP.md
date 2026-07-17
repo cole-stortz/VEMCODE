@@ -319,17 +319,17 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [ ] Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
 
 **Settings panel:**
-- [ ] **Compiler path** — auto-detect common g++ install locations on first run (MinGW on Windows, `/usr/bin/g++` on Linux); show a validation indicator (green tick / red cross) next to the path field. Detection logic itself exists (`auto_detect_compiler_config` in `main.cpp`, via `QStandardPaths::findExecutable`) but is only wired into headless mode so far — still open: call it from `SettingsDialog` on first run too, and add the validation tick/cross UI
+- [x] **Compiler path** — auto-detect common g++ install locations on first run (MinGW on Windows, `/usr/bin/g++` on Linux); show a validation indicator (green tick / red cross) next to the path field
 - [ ] **Component configuration** — CTRL+click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
 - [ ] **Canvas theme** — dark/light canvas background toggle; component colors adapt automatically
 - [ ] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run
 - [ ] **Default sketch location** — configurable root folder for new sketches
+- [ ] **Change Keybinds** — section to change default keybinds for hotkeys
 
 **Canvas improvements:**
-- [ ] Canvas layout mode — "Layout" toolbar button, components become draggable
-- [ ] Positions saved to `sketch_name.vblayout` next to `.cpp` file; use saved positions on load, auto-generate otherwise
-- [ ] Wire visualization improvements — color-coded by signal type (digital, analog, PWM)
-- [ ] Canvas zoom — Ctrl+scroll or pinch to zoom in/out; zoom level saved per sketch in the `.vblayout` file
+- [x] Canvas layout mode — "Layout" toolbar button, components become draggable
+- [x] Positions saved to `sketch_name.vblayout` next to `.cpp` file; use saved positions on load, auto-generate otherwise
+- [x] Canvas zoom — Alt+= / Alt+- to zoom in/out; zoom level saved per sketch in the `.vblayout` file
 
 **Signal timeline protocol decoder:**
 The signal timeline already records every `(timestamp_µs, pin, level)` transition — the same data a logic analyzer captures. Add a decoder layer that runs over this stream:
