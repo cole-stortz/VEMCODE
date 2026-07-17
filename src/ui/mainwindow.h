@@ -159,6 +159,7 @@ private:
     QString projectRoot_;
     BoardProfile activeProfile_ = BOARD_UNO;
     bool analogNoise_ = false;
+    bool autoCompileOnSave_ = false;
 
     QSlider*   speedSlider_  = nullptr;
     QLineEdit* serialInput_  = nullptr;

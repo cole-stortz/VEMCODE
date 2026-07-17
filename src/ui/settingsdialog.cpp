@@ -60,6 +60,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     analogNoiseCheck_ = new QCheckBox("Analog noise (gaussian ±2 ADC counts on analogRead)");
     layout->addWidget(analogNoiseCheck_);
 
+    // Editor options
+    autoCompileCheck_ = new QCheckBox("Auto-compile on save (Ctrl+R still runs manually)");
+    layout->addWidget(autoCompileCheck_);
+
     // Save/Cancel buttons
     QDialogButtonBox* buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Cancel);
@@ -106,6 +110,14 @@ bool SettingsDialog::analogNoise() const {
 
 void SettingsDialog::setAnalogNoise(bool enabled) {
     analogNoiseCheck_->setChecked(enabled);
+}
+
+bool SettingsDialog::autoCompileOnSave() const {
+    return autoCompileCheck_->isChecked();
+}
+
+void SettingsDialog::setAutoCompileOnSave(bool enabled) {
+    autoCompileCheck_->setChecked(enabled);
 }
 
 void SettingsDialog::onBrowseCompiler() {

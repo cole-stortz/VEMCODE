@@ -17,11 +17,13 @@ public:
     QString projectRoot() const;
     BoardProfile selectedBoard() const;
     bool analogNoise() const;
+    bool autoCompileOnSave() const;
 
     void setCompilerPath(const QString& path);
     void setProjectRoot(const QString& path);
     void setSelectedBoard(const QString& name);
     void setAnalogNoise(bool enabled);
+    void setAutoCompileOnSave(bool enabled);
 
     // Best-effort g++ + project-root detection, shared by GUI first-run and
     // headless mode. False if g++ isn't on PATH (or /usr/bin/g++) or
@@ -39,4 +41,5 @@ private:
     QLineEdit* rootEdit_;
     QComboBox* boardCombo_;
     QCheckBox* analogNoiseCheck_;
+    QCheckBox* autoCompileCheck_;
 };

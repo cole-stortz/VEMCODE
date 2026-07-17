@@ -218,6 +218,7 @@ MainWindow::MainWindow(QWidget* parent)
     sketchThread_->setProfile(activeProfile_);
     analogNoise_ = settings.value("simulation/analog_noise", false).toBool();
     sketchThread_->setAnalogNoise(analogNoise_);
+    autoCompileOnSave_ = settings.value("editor/auto_compile_on_save", false).toBool();
     connect(sketchThread_, &SketchThread::serialOutput,
             this, &MainWindow::onSerialOutput);
     connect(sketchThread_, &SketchThread::serial1Output,
@@ -270,6 +271,13 @@ MainWindow::MainWindow(QWidget* parent)
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
     QShortcut* save_as_shortcut = new QShortcut(QKeySequence::SaveAs, this);
     connect(save_as_shortcut, &QShortcut::activated, this, &MainWindow::onSaveAsClicked);
+
+    // Mirrors runButton_'s own disabled-while-running guard -- a shortcut has
+    // no disabled state of its own to stop it firing mid-run.
+    QShortcut* run_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R), this);
+    connect(run_shortcut, &QShortcut::activated, this, [this]() {
+        if (runButton_->isEnabled()) onRunClicked();
+    });
 
     // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- the platform
     // standard key for ZoomIn resolves to the same sequence as literal "Ctrl+=" on this
@@ -1123,6 +1131,8 @@ void MainWindow::onSaveClicked() {
     canvasWidget_->saveLayout(currentSketchPath_);
     statusBar()->showMessage("Saved: " + currentSketchPath_);
     addToRecentSketches(currentSketchPath_);
+
+    if (autoCompileOnSave_ && runButton_->isEnabled()) onRunClicked();
 }
 
 // Always prompts for a name and creates a new sketch, even if one is already open
@@ -1162,6 +1172,8 @@ void MainWindow::promptAndSaveAsNewSketch() {
     updateWindowTitle();
     statusBar()->showMessage("Saved: " + file_path);
     addToRecentSketches(file_path);
+
+    if (autoCompileOnSave_ && runButton_->isEnabled()) onRunClicked();
 }
 
 // If sketchPath has a newer .autosave file sitting next to it (crash recovery),
@@ -1709,6 +1721,7 @@ void MainWindow::onSettingsClicked() {
     dialog.setProjectRoot(projectRoot_);
     dialog.setSelectedBoard(QString(activeProfile_.name));
     dialog.setAnalogNoise(analogNoise_);
+    dialog.setAutoCompileOnSave(autoCompileOnSave_);
 
     if (dialog.exec() == QDialog::Accepted) {
         compilerPath_      = dialog.compilerPath();
@@ -1716,10 +1729,12 @@ void MainWindow::onSettingsClicked() {
         int oldSerialCount = activeProfile_.serial_count;
         activeProfile_     = dialog.selectedBoard();
         analogNoise_       = dialog.analogNoise();
+        autoCompileOnSave_ = dialog.autoCompileOnSave();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
         settings.setValue("board/name", QString(activeProfile_.name));
         settings.setValue("simulation/analog_noise", analogNoise_);
+        settings.setValue("editor/auto_compile_on_save", autoCompileOnSave_);
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);

@@ -322,7 +322,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] **Compiler path** — auto-detect common g++ install locations on first run (MinGW on Windows, `/usr/bin/g++` on Linux); show a validation indicator (green tick / red cross) next to the path field
 - [ ] **Component configuration** — CTRL+click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
 - [ ] **Canvas theme** — dark/light canvas background toggle; component colors adapt automatically
-- [ ] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run
+- [x] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run (Ctrl+R)
 - [ ] **Default sketch location** — configurable root folder for new sketches
 - [ ] **Change Keybinds** — section to change default keybinds for hotkeys
 
