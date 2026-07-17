@@ -84,6 +84,17 @@ QWidget* SettingsDialog::buildGeneralTab() {
     rootRow->addWidget(browseRoot);
     layout->addLayout(rootRow);
 
+    // Default sketch location row
+    QHBoxLayout* sketchLocationRow = new QHBoxLayout();
+    sketchLocationRow->addWidget(new QLabel("Default sketch location:"));
+    sketchLocationEdit_ = new QLineEdit();
+    sketchLocationEdit_->setPlaceholderText("Where New Sketch / Save create sketch folders");
+    sketchLocationRow->addWidget(sketchLocationEdit_);
+    QPushButton* browseSketchLocation = new QPushButton("Browse");
+    connect(browseSketchLocation, &QPushButton::clicked, this, &SettingsDialog::onBrowseSketchLocation);
+    sketchLocationRow->addWidget(browseSketchLocation);
+    layout->addLayout(sketchLocationRow);
+
     // Board selector row
     QHBoxLayout* boardRow = new QHBoxLayout();
     boardRow->addWidget(new QLabel("Board:"));
@@ -156,6 +167,14 @@ void SettingsDialog::setCompilerPath(const QString& path) {
 
 void SettingsDialog::setProjectRoot(const QString& path) {
     rootEdit_->setText(path);
+}
+
+QString SettingsDialog::defaultSketchLocation() const {
+    return sketchLocationEdit_->text();
+}
+
+void SettingsDialog::setDefaultSketchLocation(const QString& path) {
+    sketchLocationEdit_->setText(path);
 }
 
 BoardProfile SettingsDialog::selectedBoard() const {
@@ -252,6 +271,12 @@ void SettingsDialog::onBrowseRoot() {
     QString path = QFileDialog::getExistingDirectory(
         this, "Select VEMCODE project root");
     if (!path.isEmpty()) rootEdit_->setText(path);
+}
+
+void SettingsDialog::onBrowseSketchLocation() {
+    QString path = QFileDialog::getExistingDirectory(
+        this, "Select default sketch location");
+    if (!path.isEmpty()) sketchLocationEdit_->setText(path);
 }
 
 void SettingsDialog::updateCompilerValidation() {

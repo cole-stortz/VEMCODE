@@ -33,6 +33,7 @@ public:
     bool analogNoise() const;
     bool autoCompileOnSave() const;
     bool darkTheme() const;
+    QString defaultSketchLocation() const;
 
     void setCompilerPath(const QString& path);
     void setProjectRoot(const QString& path);
@@ -40,6 +41,7 @@ public:
     void setAnalogNoise(bool enabled);
     void setAutoCompileOnSave(bool enabled);
     void setDarkTheme(bool enabled);
+    void setDefaultSketchLocation(const QString& path);
 
     // Overrides the Keybinds tab's rows (initialized to defaults in the
     // constructor) with the caller's actually-current sequences.
@@ -54,6 +56,7 @@ public:
 private slots:
     void onBrowseCompiler();
     void onBrowseRoot();
+    void onBrowseSketchLocation();
     void updateCompilerValidation();
     void onResetKeybinds();
     void onAcceptClicked();
@@ -69,6 +72,7 @@ private:
     QCheckBox* analogNoiseCheck_;
     QCheckBox* autoCompileCheck_;
     QCheckBox* darkThemeCheck_;
+    QLineEdit* sketchLocationEdit_;
 
     QMap<QString, QKeySequenceEdit*> keybindEdits_;
 };

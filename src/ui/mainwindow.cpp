@@ -112,6 +112,8 @@ MainWindow::MainWindow(QWidget* parent)
         QSettings::IniFormat);
     compilerPath_ = settings.value("compiler/path", "").toString();
     projectRoot_  = settings.value("compiler/project_root", "").toString();
+    defaultSketchLocation_ = settings.value("sketches/default_location",
+        QCoreApplication::applicationDirPath() + "/sketches").toString();
 
     QString boardName = settings.value("board/name", "Arduino Uno").toString();
     if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
@@ -1011,7 +1013,7 @@ void MainWindow::onLayoutToggled(bool on) {
 }
 
 void MainWindow::onOpenClicked() {
-    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketches_root = defaultSketchLocation_;
     QString path = QFileDialog::getOpenFileName(
         this, "Open sketch", sketches_root, "C++ files (*.cpp *.ino)"
     );
@@ -1076,7 +1078,7 @@ void MainWindow::promptAndSaveAsNewSketch() {
 
     name = name.trimmed().replace(" ", "_");
 
-    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketches_root = defaultSketchLocation_;
     QString sketch_dir    = sketches_root + "/" + name;
     QDir().mkpath(sketch_dir);
 
@@ -1685,6 +1687,7 @@ void MainWindow::onSettingsClicked() {
     dialog.setAnalogNoise(analogNoise_);
     dialog.setAutoCompileOnSave(autoCompileOnSave_);
     dialog.setDarkTheme(darkTheme_);
+    dialog.setDefaultSketchLocation(defaultSketchLocation_);
     dialog.setKeybinds(keybindSeq_);
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -1694,8 +1697,10 @@ void MainWindow::onSettingsClicked() {
         activeProfile_     = dialog.selectedBoard();
         analogNoise_       = dialog.analogNoise();
         autoCompileOnSave_ = dialog.autoCompileOnSave();
+        defaultSketchLocation_ = dialog.defaultSketchLocation();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
+        settings.setValue("sketches/default_location", defaultSketchLocation_);
         settings.setValue("board/name", QString(activeProfile_.name));
         settings.setValue("simulation/analog_noise", analogNoise_);
         settings.setValue("editor/auto_compile_on_save", autoCompileOnSave_);
@@ -1723,7 +1728,7 @@ void MainWindow::onNewSketch() {
 
     name = name.trimmed().replace(" ", "_");
 
-    QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
+    QString sketches_root = defaultSketchLocation_;
     QString sketch_dir    = sketches_root + "/" + name;
     QDir().mkpath(sketch_dir);
 

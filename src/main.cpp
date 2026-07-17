@@ -23,15 +23,21 @@ static void handle_sigint(int) {
     if (g_headless_runtime) g_headless_runtime->request_stop();
 }
 
-// If `given` doesn't exist as-is, search app/sketches/ recursively for a file
-// with that basename so `vemcode InputTest.cpp` works without a full path.
+// If `given` doesn't exist as-is, search the configured sketch location
+// recursively for a file with that basename so `vemcode InputTest.cpp` works
+// without a full path.
 static bool resolve_sketch_path(const std::string& given, std::string& resolved) {
     if (std::filesystem::exists(given)) {
         resolved = given;
         return true;
     }
 
-    std::string search_root = (QCoreApplication::applicationDirPath() + "/sketches").toStdString();
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+    QString default_location = settings.value("sketches/default_location",
+        QCoreApplication::applicationDirPath() + "/sketches").toString();
+    std::string search_root = default_location.toStdString();
     std::string wanted_name = std::filesystem::path(given).filename().string();
     std::vector<std::string> matches;
 

@@ -323,7 +323,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [ ] **Component configuration** — CTRL+click any canvas component to open a config dialog for that component's parameters (NeoPixel strip length, 7-segment digit count, keypad matrix size, etc.); values saved to the `.vblayout` file alongside position
 - [x] **App theme** — "Dark theme" toggle in Settings; one `qApp`-wide stylesheet re-themes the toolbar, panels, editor (incl. syntax highlighting), tables, and signal timeline live. Canvas board/chip/pin chrome and every component's own colors are fixed in both themes on purpose (matches wires/component identity colors)
 - [x] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run (Ctrl+R)
-- [ ] **Default sketch location** — configurable root folder for new sketches
+- [x] **Default sketch location** — configurable root folder for new sketches; New Sketch, Open, and Save As all use it; GUI and headless CLI share the same `sketches/default_location` setting, defaulting to the old `<app>/sketches` path
 - [x] **Change Keybinds** — Keybinds tab in Settings; remap Save, Save As, Run, editor/canvas zoom, Find, code completion, duplicate line, and comment toggle; conflicts blocked on save, changes apply live
 
 **Canvas improvements:**

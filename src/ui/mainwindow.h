@@ -158,6 +158,7 @@ private:
     // Settings
     QString compilerPath_;
     QString projectRoot_;
+    QString defaultSketchLocation_;
     BoardProfile activeProfile_ = BOARD_UNO;
     bool analogNoise_ = false;
     bool autoCompileOnSave_ = false;
