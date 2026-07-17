@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QSettings>
 #include <QIcon>
+#include <QStyleFactory>
 #include "src/ui/mainwindow.h"
 #include "src/core/build/compiler.h"
 #include "src/core/circuit/circuitdetector.h"
@@ -176,6 +177,11 @@ int main(int argc, char* argv[]) {
     }
 
     QApplication app(argc, argv);
+    // The Fusion style fully honors QPalette/QSS everywhere; native platform
+    // styles (GTK/Breeze/Adwaita integration) partially ignore both for some
+    // native-rendered elements (checkbox labels, header sections, tab bar
+    // fill), which is what caused patches of the light theme to stay dark.
+    app.setStyle(QStyleFactory::create("Fusion"));
     app.setApplicationName("VEMCODE");
     app.setApplicationVersion("0.1");
     app.setWindowIcon(QIcon(":/logo.svg"));

@@ -29,6 +29,10 @@ public:
     // Set the visible time window in milliseconds (default 5000ms)
     void setTimeWindow(qint64 ms) { time_window_ms_ = ms; update(); }
 
+    // Background/grid/label chrome only -- per-pin trace colors (trackColor)
+    // stay fixed in both themes, same as every other component's identity color.
+    void setDarkTheme(bool dark) { dark_ = dark; update(); }
+
 protected:
     void paintEvent(QPaintEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
@@ -46,6 +50,8 @@ private:
     static constexpr int TRACK_HEIGHT  = 36;
     static constexpr int TRACK_PADDING = 8;
     static constexpr int LABEL_WIDTH   = 60;
+
+    bool dark_ = true;
 
     QColor trackColor(int pin);
 };

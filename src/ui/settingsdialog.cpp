@@ -104,6 +104,11 @@ QWidget* SettingsDialog::buildGeneralTab() {
     autoCompileCheck_ = new QCheckBox("Auto-compile on save (Ctrl+R still runs manually)");
     layout->addWidget(autoCompileCheck_);
 
+    // Canvas options
+    darkThemeCheck_ = new QCheckBox("Dark theme");
+    darkThemeCheck_->setChecked(true);
+    layout->addWidget(darkThemeCheck_);
+
     layout->addStretch();
     return tab;
 }
@@ -127,7 +132,7 @@ QWidget* SettingsDialog::buildKeybindsTab() {
     outer->addWidget(scroll);
 
     QLabel* hint = new QLabel("Click a field and press a key combination. Backspace clears it.");
-    hint->setStyleSheet("color: #888; font-size: 11px;");
+    hint->setProperty("role", "muted-label");
     outer->addWidget(hint);
 
     QPushButton* resetButton = new QPushButton("Reset to Defaults");
@@ -181,6 +186,14 @@ bool SettingsDialog::autoCompileOnSave() const {
 
 void SettingsDialog::setAutoCompileOnSave(bool enabled) {
     autoCompileCheck_->setChecked(enabled);
+}
+
+bool SettingsDialog::darkTheme() const {
+    return darkThemeCheck_->isChecked();
+}
+
+void SettingsDialog::setDarkTheme(bool enabled) {
+    darkThemeCheck_->setChecked(enabled);
 }
 
 void SettingsDialog::setKeybinds(const QMap<QString, QKeySequence>& current) {

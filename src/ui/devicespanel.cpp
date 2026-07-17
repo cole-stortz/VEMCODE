@@ -32,18 +32,14 @@ DevicesPanel::DevicesPanel(QWidget* parent)
     table_->setHorizontalHeaderLabels({"Address", "Response bytes"});
     table_->horizontalHeader()->setStretchLastSection(true);
     table_->verticalHeader()->setVisible(false);
-    table_->setStyleSheet(
-        "QTableWidget { background: #1e1e1e; color: #d4d4d4;"
-        "border: none; font-family: 'Courier New'; font-size: 12px; }"
-        "QHeaderView::section { background: #252526; color: #888;"
-        "border: none; padding: 4px; }"
-    );
     connect(table_, &QTableWidget::cellChanged, this, &DevicesPanel::onCellChanged);
     layout->addWidget(table_);
 
     QHBoxLayout* buttonRow = new QHBoxLayout();
     QPushButton* addButton = new QPushButton("+ Add device", this);
     QPushButton* removeButton = new QPushButton("- Remove selected", this);
+    addButton->setProperty("role", "outline");
+    removeButton->setProperty("role", "outline");
     connect(addButton, &QPushButton::clicked, this, &DevicesPanel::onAddClicked);
     connect(removeButton, &QPushButton::clicked, this, &DevicesPanel::onRemoveClicked);
     buttonRow->addWidget(addButton);

@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QFrame>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QTextEdit>
 #include <QInputDialog>
 #include <QDir>
@@ -86,86 +87,12 @@ static QString humanizeErrors(const QString& raw) {
     return result;
 }
 
-// UI color palette
-
-// Toolbar
-static const QString STYLE_TOOLBAR =
-    "QWidget { background: #1e1e1e; border-bottom: 1px solid #333; }";
-static const QString STYLE_TITLE =
-    "color: #cccccc; font-size: 13px; font-weight: bold;"
-    "border: none; background: transparent;";
-static const QString STYLE_BOARD_LABEL =
-    "color: #666; font-size: 11px; border: none; background: transparent;";
-
-// Buttons
-static const QString STYLE_BTN_RUN =
-    "QPushButton { background: #2d7a2d; color: #ffffff; border: none;"
-    "border-radius: 4px; font-size: 12px; font-weight: bold; }"
-    "QPushButton:hover { background: #3a9a3a; }"
-    "QPushButton:disabled { background: #2a2a2a; color: #555; }";
-static const QString STYLE_BTN_STOP =
-    "QPushButton { background: #7a2d2d; color: #ffffff; border: none;"
-    "border-radius: 4px; font-size: 12px; font-weight: bold; }"
-    "QPushButton:hover { background: #9a3a3a; }"
-    "QPushButton:disabled { background: #2a2a2a; color: #555; }";
-static const QString STYLE_BTN_OUTLINE =
-    "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
-    "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
-    "QPushButton:hover { background: #2a2a2a; color: #ffffff; }";
-static const QString STYLE_BTN_TOGGLE =
-    "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
-    "border-radius: 4px; font-size: 11px; padding: 0 8px; }"
-    "QPushButton:hover { background: #2a2a2a; color: #ffffff; }"
-    "QPushButton:checked { background: #3a5a8c; color: #ffffff; border-color: #4a7abc; }";
-
-// Splitter
-static const QString STYLE_SPLITTER =
-    "QSplitter::handle { background: #333; }";
-
-// Panel headers
-static const QString STYLE_PANEL_HEADER =
-    "background: #252526; color: #888; font-size: 10px;"
-    "font-weight: bold; border-bottom: 1px solid #333;";
-
-// Code editor
-// Font size intentionally left out of the stylesheet -- it's set via
+// Font size intentionally left out of the editor's styling -- it's set via
 // setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
 // widget's QFont directly) aren't fought by a QSS-cascaded font-size.
-static const QString STYLE_EDITOR =
-    "QPlainTextEdit { background: #1e1e1e; color: #d4d4d4;"
-    "border: none; font-family: 'Courier New', monospace; }";
 // Was "font-size: 13px" in the old stylesheet -- points render larger than the
 // same numeric pixel value, so this is 13px converted to points (13 * 0.75).
 static const int DEFAULT_EDITOR_FONT_SIZE = 10;
-
-// Serial monitor
-static const QString STYLE_SERIAL =
-    "QPlainTextEdit { background: #1e1e1e; color: #4ec94e;"
-    "border: none; font-family: 'Courier New', monospace; font-size: 12px; }";
-
-// Debug tab bar
-static const QString STYLE_TABS =
-    "QTabWidget::pane { border: none; background: #1e1e1e; }"
-    "QTabBar::tab { background: #252526; color: #888; padding: 4px 14px;"
-    "font-size: 11px; border: none; border-right: 1px solid #333; }"
-    "QTabBar::tab:selected { background: #1e1e1e; color: #cccccc; }"
-    "QTabBar::tab:hover { background: #2a2a2a; color: #aaaaaa; }";
-
-
-// Compile error/warning line highlight
-static const QColor COLOR_ERROR_BG("#3a0000");
-static const QColor COLOR_WARNING_BG("#3a3400");
-// Matching bracket highlight
-static const QColor COLOR_BRACKET_MATCH_BG("#264f78");
-// Find & Replace match highlight
-static const QColor COLOR_FIND_MATCH_BG("#5a4a00");
-
-// Find & Replace bar
-static const QString STYLE_FIND_BAR =
-    "background: #252526; border-bottom: 1px solid #333;";
-static const QString STYLE_FIND_INPUT =
-    "QLineEdit { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444;"
-    "border-radius: 3px; padding: 3px 6px; font-size: 12px; }";
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -214,6 +141,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     setupMainArea(central, layout);  // variableWatch_ must exist before the connect below
     canvasWidget_->setProfile(activeProfile_);
+    darkTheme_ = settings.value("canvas/dark_theme", true).toBool();
+    setAppTheme(darkTheme_);
 
     sketchThread_ = new SketchThread(this);
     sketchThread_->setProfile(activeProfile_);
@@ -366,7 +295,7 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     QHBoxLayout* toolbarLayout = new QHBoxLayout(toolbar);
     toolbarLayout->setContentsMargins(8, 6, 8, 6);
     toolbarLayout->setSpacing(6);
-    toolbar->setStyleSheet(STYLE_TOOLBAR);
+    toolbar->setObjectName("toolbar");
     toolbar->setFixedHeight(42);
 
     QLabel* logo = new QLabel(toolbar);
@@ -375,25 +304,25 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     toolbarLayout->addSpacing(6);
 
     QLabel* title = new QLabel("VEMCODE", toolbar);
-    title->setStyleSheet(STYLE_TITLE);
+    title->setObjectName("appTitle");
     toolbarLayout->addWidget(title);
     toolbarLayout->addSpacing(8);
 
     runButton_ = new QPushButton("Run", toolbar);
     runButton_->setFixedSize(64, 26);
-    runButton_->setStyleSheet(STYLE_BTN_RUN);
+    runButton_->setObjectName("btnRun");
     connect(runButton_, &QPushButton::clicked, this, &MainWindow::onRunClicked);
     toolbarLayout->addWidget(runButton_);
 
     stopButton_ = new QPushButton("Stop", toolbar);
     stopButton_->setFixedSize(64, 26);
     stopButton_->setEnabled(false);
-    stopButton_->setStyleSheet(STYLE_BTN_STOP);
+    stopButton_->setObjectName("btnStop");
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
 
     QLabel* speedLabel = new QLabel("Speed:", toolbar);
-    speedLabel->setStyleSheet("color: #888; font-size: 11px; border: none; background: transparent;");
+    speedLabel->setProperty("role", "muted-label");
     toolbarLayout->addWidget(speedLabel);
 
     speedSlider_ = new QSlider(Qt::Horizontal, toolbar);
@@ -401,55 +330,49 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     speedSlider_->setValue(10);
     speedSlider_->setFixedWidth(80);
     speedSlider_->setToolTip("Simulation speed (5 = normal)");
-    speedSlider_->setStyleSheet(
-        "QSlider::groove:horizontal { background: #333; height: 4px; border-radius: 2px; }"
-        "QSlider::handle:horizontal { background: #888; width: 12px; height: 12px;"
-        "margin: -4px 0; border-radius: 6px; }"
-        "QSlider::handle:horizontal:hover { background: #aaa; }"
-    );
     connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
     toolbarLayout->addWidget(speedSlider_);
 
     QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
     newsketchButton->setFixedHeight(26);
-    newsketchButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    newsketchButton->setProperty("role", "outline");
     connect(newsketchButton, &QPushButton::clicked, this, &MainWindow::onNewSketch);
     toolbarLayout->addWidget(newsketchButton);
 
     QPushButton* openButton = new QPushButton("Open Sketch", toolbar);
     openButton->setFixedHeight(26);
-    openButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    openButton->setProperty("role", "outline");
     connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
     toolbarLayout->addWidget(openButton);
 
     QPushButton* recentButton = new QPushButton("Recent", toolbar);
     recentButton->setFixedHeight(26);
-    recentButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    recentButton->setProperty("role", "outline");
     connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
     toolbarLayout->addWidget(recentButton);
 
     QPushButton* saveButton = new QPushButton("Save", toolbar);
     saveButton->setFixedHeight(26);
-    saveButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    saveButton->setProperty("role", "outline");
     connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
     toolbarLayout->addWidget(saveButton);
 
     QPushButton* saveAsButton = new QPushButton("Save As", toolbar);
     saveAsButton->setFixedHeight(26);
-    saveAsButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    saveAsButton->setProperty("role", "outline");
     connect(saveAsButton, &QPushButton::clicked, this, &MainWindow::onSaveAsClicked);
     toolbarLayout->addWidget(saveAsButton);
 
     QPushButton* settingsButton = new QPushButton("Settings", toolbar);
     settingsButton->setFixedHeight(26);
-    settingsButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    settingsButton->setProperty("role", "outline");
     connect(settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
     toolbarLayout->addWidget(settingsButton);
 
     toolbarLayout->addStretch();
 
     boardLabel_ = new QLabel("", toolbar);
-    boardLabel_->setStyleSheet(STYLE_BOARD_LABEL);
+    boardLabel_->setObjectName("boardLabel");
     toolbarLayout->addWidget(boardLabel_);
 
     layout->addWidget(toolbar);
@@ -459,12 +382,10 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, parent);
     mainSplitter->setHandleWidth(1);
-    mainSplitter->setStyleSheet(STYLE_SPLITTER);
     mainSplitter->addWidget(buildEditorPanel());
 
     QSplitter* rightSplitter = new QSplitter(Qt::Vertical, mainSplitter);
     rightSplitter->setHandleWidth(1);
-    rightSplitter->setStyleSheet(STYLE_SPLITTER);
     rightSplitter->addWidget(buildCanvasPanel());
     rightSplitter->addWidget(buildDebugPanel());
     rightSplitter->setSizes({300, 220});
@@ -484,12 +405,13 @@ QWidget* MainWindow::buildEditorPanel() {
 
     QLabel* header = new QLabel("  SKETCH EDITOR");
     header->setFixedHeight(24);
-    header->setStyleSheet(STYLE_PANEL_HEADER);
+    header->setProperty("role", "panel-header");
     layout->addWidget(header);
 
     // Find & Replace bar -- hidden until Ctrl+F/Ctrl+H
     findBar_ = new QWidget();
-    findBar_->setStyleSheet(STYLE_FIND_BAR);
+    findBar_->setObjectName("findBar");
+    findBar_->setProperty("role", "panel-header"); // same bg/border look as panel headers
     QVBoxLayout* findBarLayout = new QVBoxLayout(findBar_);
     findBarLayout->setContentsMargins(8, 6, 8, 6);
     findBarLayout->setSpacing(4);
@@ -498,29 +420,28 @@ QWidget* MainWindow::buildEditorPanel() {
     findRowLayout->setSpacing(6);
     findInput_ = new QLineEdit(findBar_);
     findInput_->setPlaceholderText("Find");
-    findInput_->setStyleSheet(STYLE_FIND_INPUT);
     findRowLayout->addWidget(findInput_);
 
     findStatusLabel_ = new QLabel(findBar_);
-    findStatusLabel_->setStyleSheet("color: #888; font-size: 11px; border: none; background: transparent;");
+    findStatusLabel_->setProperty("role", "muted-label");
     findStatusLabel_->setFixedWidth(60);
     findRowLayout->addWidget(findStatusLabel_);
 
     QPushButton* findPrevButton = new QPushButton("Prev", findBar_);
     findPrevButton->setFixedHeight(24);
-    findPrevButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    findPrevButton->setProperty("role", "outline");
     connect(findPrevButton, &QPushButton::clicked, this, &MainWindow::onFindPrev);
     findRowLayout->addWidget(findPrevButton);
 
     QPushButton* findNextButton = new QPushButton("Next", findBar_);
     findNextButton->setFixedHeight(24);
-    findNextButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    findNextButton->setProperty("role", "outline");
     connect(findNextButton, &QPushButton::clicked, this, &MainWindow::onFindNext);
     findRowLayout->addWidget(findNextButton);
 
     QPushButton* findCloseButton = new QPushButton("✕", findBar_);
     findCloseButton->setFixedSize(24, 24);
-    findCloseButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    findCloseButton->setProperty("role", "outline");
     connect(findCloseButton, &QPushButton::clicked, this, &MainWindow::hideFindBar);
     findRowLayout->addWidget(findCloseButton);
 
@@ -532,18 +453,17 @@ QWidget* MainWindow::buildEditorPanel() {
     replaceRowLayout->setSpacing(6);
     replaceInput_ = new QLineEdit(replaceRow_);
     replaceInput_->setPlaceholderText("Replace");
-    replaceInput_->setStyleSheet(STYLE_FIND_INPUT);
     replaceRowLayout->addWidget(replaceInput_);
 
     QPushButton* replaceButton = new QPushButton("Replace", replaceRow_);
     replaceButton->setFixedHeight(24);
-    replaceButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    replaceButton->setProperty("role", "outline");
     connect(replaceButton, &QPushButton::clicked, this, &MainWindow::onReplaceClicked);
     replaceRowLayout->addWidget(replaceButton);
 
     QPushButton* replaceAllButton = new QPushButton("Replace All", replaceRow_);
     replaceAllButton->setFixedHeight(24);
-    replaceAllButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    replaceAllButton->setProperty("role", "outline");
     connect(replaceAllButton, &QPushButton::clicked, this, &MainWindow::onReplaceAllClicked);
     replaceRowLayout->addWidget(replaceAllButton);
 
@@ -558,7 +478,7 @@ QWidget* MainWindow::buildEditorPanel() {
 
     codeEditor_ = new EditorWithLines();
     highlighter_ = new CodeHighlighter(codeEditor_->document());
-    codeEditor_->setStyleSheet(STYLE_EDITOR);
+    codeEditor_->setObjectName("codeEditor");
     codeEditor_->setLineWrapMode(QPlainTextEdit::NoWrap);
 
     QFont editorFont("Courier New", DEFAULT_EDITOR_FONT_SIZE);
@@ -639,7 +559,7 @@ QWidget* MainWindow::buildCanvasPanel() {
     QWidget*     header       = new QWidget();
     QHBoxLayout* headerLayout = new QHBoxLayout(header);
     header->setFixedHeight(24);
-    header->setStyleSheet(STYLE_PANEL_HEADER);
+    header->setProperty("role", "panel-header");
     headerLayout->setContentsMargins(8, 0, 6, 0);
     headerLayout->setSpacing(0);
 
@@ -651,7 +571,7 @@ QWidget* MainWindow::buildCanvasPanel() {
     layoutButton_ = new QPushButton("Layout", header);
     layoutButton_->setCheckable(true);
     layoutButton_->setFixedSize(56, 18);
-    layoutButton_->setStyleSheet(STYLE_BTN_TOGGLE);
+    layoutButton_->setProperty("role", "toggle");
     layoutButton_->setToolTip("Toggle layout mode to drag components to new positions");
     connect(layoutButton_, &QPushButton::toggled, this, &MainWindow::onLayoutToggled);
     headerLayout->addWidget(layoutButton_);
@@ -660,7 +580,7 @@ QWidget* MainWindow::buildCanvasPanel() {
 
     QPushButton* resetLayoutButton = new QPushButton("Reset", header);
     resetLayoutButton->setFixedSize(48, 18);
-    resetLayoutButton->setStyleSheet(STYLE_BTN_TOGGLE);
+    resetLayoutButton->setProperty("role", "toggle");
     resetLayoutButton->setToolTip("Reset components to their auto-arranged positions");
     connect(resetLayoutButton, &QPushButton::clicked, this, [this]() {
         canvasWidget_->resetLayout();
@@ -690,21 +610,13 @@ QWidget* MainWindow::buildSerialPanel() {
     serialMonitor2_ = nullptr;
     serialMonitor_->setReadOnly(true);
     serialMonitor_->setMaximumBlockCount(2000);
-    serialMonitor_->setStyleSheet(STYLE_SERIAL);
+    serialMonitor_->setProperty("role", "serial");
 
     int serialCount = activeProfile_.serial_count;
 
     if (serialCount >= 2) {
         QSplitter* serialSplitter = new QSplitter(Qt::Horizontal, serialPanel);
         serialSplitter->setHandleWidth(1);
-        serialSplitter->setStyleSheet(STYLE_SPLITTER);
-
-        static const QString STYLE_PORT_LABEL =
-            "background: #252526; color: #666; font-size: 10px;"
-            "padding-left: 4px; border-bottom: 1px solid #333;";
-        static const QString STYLE_PORT_LABEL_BORDERED =
-            "background: #252526; color: #666; font-size: 10px;"
-            "padding-left: 4px; border-left: 1px solid #333; border-bottom: 1px solid #333;";
 
         auto makePane = [&](QPlainTextEdit* mon, const QString& label, bool bordered) {
             QWidget*     pane   = new QWidget();
@@ -713,7 +625,7 @@ QWidget* MainWindow::buildSerialPanel() {
             layout->setSpacing(0);
             QLabel* lbl = new QLabel(label, pane);
             lbl->setFixedHeight(18);
-            lbl->setStyleSheet(bordered ? STYLE_PORT_LABEL_BORDERED : STYLE_PORT_LABEL);
+            lbl->setProperty("role", bordered ? "port-label-bordered" : "port-label");
             layout->addWidget(lbl);
             layout->addWidget(mon);
             return pane;
@@ -724,14 +636,14 @@ QWidget* MainWindow::buildSerialPanel() {
         serialMonitor1_ = new QPlainTextEdit();
         serialMonitor1_->setReadOnly(true);
         serialMonitor1_->setMaximumBlockCount(2000);
-        serialMonitor1_->setStyleSheet(STYLE_SERIAL);
+        serialMonitor1_->setProperty("role", "serial");
         serialSplitter->addWidget(makePane(serialMonitor1_, "  Serial1", true));
 
         if (serialCount >= 3) {
             serialMonitor2_ = new QPlainTextEdit();
             serialMonitor2_->setReadOnly(true);
             serialMonitor2_->setMaximumBlockCount(2000);
-            serialMonitor2_->setStyleSheet(STYLE_SERIAL);
+            serialMonitor2_->setProperty("role", "serial");
             serialSplitter->addWidget(makePane(serialMonitor2_, "  Serial2", true));
         }
 
@@ -744,20 +656,16 @@ QWidget* MainWindow::buildSerialPanel() {
     QHBoxLayout* inputLayout = new QHBoxLayout(inputRow);
     inputLayout->setContentsMargins(4, 4, 4, 4);
     inputLayout->setSpacing(4);
-    inputRow->setStyleSheet("background: #252526; border-top: 1px solid #333;");
+    inputRow->setProperty("role", "input-row");
     inputRow->setFixedHeight(36);
 
     serialInput_ = new QLineEdit();
     serialInput_->setPlaceholderText("Send serial input...");
-    serialInput_->setStyleSheet(
-        "QLineEdit { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444;"
-        "border-radius: 3px; padding: 3px 6px; font-family: 'Courier New'; font-size: 12px; }"
-    );
     inputLayout->addWidget(serialInput_);
 
     QPushButton* sendButton = new QPushButton("Send", inputRow);
     sendButton->setFixedWidth(50);
-    sendButton->setStyleSheet(STYLE_BTN_OUTLINE);
+    sendButton->setProperty("role", "outline");
     connect(sendButton, &QPushButton::clicked, this, &MainWindow::onSerialSend);
     connect(serialInput_, &QLineEdit::returnPressed, this, &MainWindow::onSerialSend);
     inputLayout->addWidget(sendButton);
@@ -782,7 +690,6 @@ QWidget* MainWindow::buildDebugPanel() {
 
     debugTabs_ = new QTabWidget();
     debugTabs_->setMinimumHeight(100);
-    debugTabs_->setStyleSheet(STYLE_TABS);
 
     debugTabs_->addTab(buildSerialPanel(), "Serial monitor");
     signalTimeline_ = new SignalTimeline();
@@ -1330,7 +1237,7 @@ void MainWindow::updateBracketMatch() {
         if (matchPos >= 0) {
             for (int p : {bracketPos, matchPos}) {
                 QTextEdit::ExtraSelection sel;
-                sel.format.setBackground(COLOR_BRACKET_MATCH_BG);
+                sel.format.setBackground(highlightColors_.bracket_match_bg);
                 sel.cursor = QTextCursor(doc);
                 sel.cursor.setPosition(p);
                 sel.cursor.setPosition(p + 1, QTextCursor::KeepAnchor);
@@ -1379,7 +1286,7 @@ void MainWindow::runFindSearch() {
             findMatches_.append(cursor.selectionStart());
 
             QTextEdit::ExtraSelection sel;
-            sel.format.setBackground(COLOR_FIND_MATCH_BG);
+            sel.format.setBackground(highlightColors_.find_match_bg);
             sel.cursor = cursor;
             findSelections_.append(sel);
         }
@@ -1708,7 +1615,7 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
         if (!block.isValid()) continue;
 
         QTextEdit::ExtraSelection sel;
-        sel.format.setBackground(err.is_error ? COLOR_ERROR_BG : COLOR_WARNING_BG);
+        sel.format.setBackground(err.is_error ? highlightColors_.error_bg : highlightColors_.warning_bg);
         sel.format.setProperty(QTextFormat::FullWidthSelection, true);
         sel.format.setToolTip(QString::fromStdString(err.message));
         sel.cursor = QTextCursor(block);
@@ -1731,6 +1638,17 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
             }
         }
     }
+}
+
+void MainWindow::setAppTheme(bool dark) {
+    darkTheme_ = dark;
+    qApp->setPalette(appQPalette(dark));
+    qApp->setStyleSheet(appStylesheet(dark));
+    highlightColors_ = editorHighlightColors(dark);
+    canvasWidget_->setDarkTheme(dark);
+    if (highlighter_) highlighter_->setTheme(dark);
+    if (signalTimeline_) signalTimeline_->setDarkTheme(dark);
+    if (lineNumbers_) lineNumbers_->setDarkTheme(dark);
 }
 
 QKeySequence MainWindow::loadKeybind(QSettings& settings, const QString& id, QKeySequence def) {
@@ -1766,6 +1684,7 @@ void MainWindow::onSettingsClicked() {
     dialog.setSelectedBoard(QString(activeProfile_.name));
     dialog.setAnalogNoise(analogNoise_);
     dialog.setAutoCompileOnSave(autoCompileOnSave_);
+    dialog.setDarkTheme(darkTheme_);
     dialog.setKeybinds(keybindSeq_);
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -1780,6 +1699,9 @@ void MainWindow::onSettingsClicked() {
         settings.setValue("board/name", QString(activeProfile_.name));
         settings.setValue("simulation/analog_noise", analogNoise_);
         settings.setValue("editor/auto_compile_on_save", autoCompileOnSave_);
+        darkTheme_ = dialog.darkTheme();
+        settings.setValue("canvas/dark_theme", darkTheme_);
+        setAppTheme(darkTheme_);
         applyKeybinds(dialog.keybinds());
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);

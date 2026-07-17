@@ -13,6 +13,8 @@ class CodeHighlighter : public QSyntaxHighlighter {
 public:
     explicit CodeHighlighter(QTextDocument* parent = nullptr);
 
+    void setTheme(bool dark);
+
 protected:
     void highlightBlock(const QString& text) override;
 
@@ -22,10 +24,14 @@ private:
         QTextCharFormat    format;
     };
 
+    void buildRules(bool dark);
+
     QVector<HighlightRule> rules_;
 
     // Multi-line comment state
     QTextCharFormat  comment_format_;
     QRegularExpression comment_start_;
     QRegularExpression comment_end_;
+
+    bool dark_ = true;
 };

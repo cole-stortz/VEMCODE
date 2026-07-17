@@ -7,7 +7,6 @@
 SignalTimeline::SignalTimeline(QWidget* parent)
     : QWidget(parent)
 {
-    setStyleSheet("background: #1a1a1a;");
     setMinimumHeight(80);
 }
 
@@ -40,15 +39,22 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
     int w = width();
     int h = height();
 
-    p.fillRect(rect(), QColor("#1a1a1a"));
+    QColor bg           = dark_ ? QColor("#1a1a1a") : QColor("#eeeef2");
+    QColor no_data_text  = dark_ ? QColor("#444")    : QColor("#999999");
+    QColor grid_color    = dark_ ? QColor("#2a2a2a") : QColor("#d8d8de");
+    QColor track_bg      = dark_ ? QColor("#1e1e1e") : QColor("#f5f5f8");
+    QColor track_sep     = dark_ ? QColor("#333")    : QColor("#ccccd2");
+    QColor time_label    = dark_ ? QColor("#555")    : QColor("#888888");
+
+    p.fillRect(rect(), bg);
 
     if (pin_order_.isEmpty()) {
-        p.setPen(QColor("#444"));
+        p.setPen(no_data_text);
         p.drawText(rect(), Qt::AlignCenter, "No signal data yet — run a sketch");
         return;
     }
 
-    p.setPen(QPen(QColor("#2a2a2a"), 1));
+    p.setPen(QPen(grid_color, 1));
     int grid_steps = 10;
     for (int i = 0; i <= grid_steps; i++) {
         int x = LABEL_WIDTH + (w - LABEL_WIDTH) * i / grid_steps;
@@ -62,7 +68,7 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
 
         QColor color = trackColor(pin);
 
-        p.fillRect(0, track_y, w, TRACK_HEIGHT, QColor("#1e1e1e"));
+        p.fillRect(0, track_y, w, TRACK_HEIGHT, track_bg);
 
         p.setPen(color);
         p.setFont(QFont("Courier New", 8));
@@ -110,13 +116,13 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
 
         p.drawLine(prev_x, prev_y, w, prev_y);
 
-        p.setPen(QPen(QColor("#333"), 1));
+        p.setPen(QPen(track_sep, 1));
         p.drawLine(0, track_y + TRACK_HEIGHT, w, track_y + TRACK_HEIGHT);
 
         track_index++;
     }
 
-    p.setPen(QColor("#555"));
+    p.setPen(time_label);
     p.setFont(QFont("Courier New", 7));
     for (int i = 0; i <= grid_steps; i++) {
         int x = LABEL_WIDTH + (w - LABEL_WIDTH) * i / grid_steps;

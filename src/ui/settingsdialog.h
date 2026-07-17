@@ -32,12 +32,14 @@ public:
     BoardProfile selectedBoard() const;
     bool analogNoise() const;
     bool autoCompileOnSave() const;
+    bool darkTheme() const;
 
     void setCompilerPath(const QString& path);
     void setProjectRoot(const QString& path);
     void setSelectedBoard(const QString& name);
     void setAnalogNoise(bool enabled);
     void setAutoCompileOnSave(bool enabled);
+    void setDarkTheme(bool enabled);
 
     // Overrides the Keybinds tab's rows (initialized to defaults in the
     // constructor) with the caller's actually-current sequences.
@@ -66,6 +68,7 @@ private:
     QComboBox* boardCombo_;
     QCheckBox* analogNoiseCheck_;
     QCheckBox* autoCompileCheck_;
+    QCheckBox* darkThemeCheck_;
 
     QMap<QString, QKeySequenceEdit*> keybindEdits_;
 };

@@ -15,20 +15,31 @@
 #include <algorithm>
 #include <map>
 
-// Canvas color palette
-static const QColor COLOR_BOARD_BG       ("#1a1a2e");
-static const QColor COLOR_BOARD_BORDER   ("#3a3a5c");
-static const QColor COLOR_CHIP_BG        ("#0d1117");
-static const QColor COLOR_CHIP_BORDER    ("#2a2a4c");
-static const QColor COLOR_BOARD_LABEL    ("#555577");
-static const QColor COLOR_CHIP_LABEL     ("#333355");
+// Chip/pin/component chrome -- static regardless of app theme, same as every
+// component's own body/fill colors (LED_ACTIVE, wire_color, etc. in
+// src/components/*.cpp). The board itself is the one exception (below) --
+// its dark navy doesn't read against a light canvas viewport.
+static const QColor COLOR_CHIP_BG        ("#3c3c62");
+static const QColor COLOR_CHIP_BORDER    ("#5a5a89");
+static const QColor COLOR_CHIP_LABEL     ("#9595d2");
 static const QColor COLOR_PIN_DOT_BG     ("#2a2a3a");
 static const QColor COLOR_PIN_DOT_BORDER ("#444466");
 static const QColor COLOR_PIN_LABEL      ("#333355");
+static const QColor COLOR_COMPONENT_SUBLABEL ("#888888");
 
+// Board rectangle + label -- follows the app-wide theme.
+static const QColor BOARD_BG_DARK      ("#1a1a2e");
+static const QColor BOARD_BORDER_DARK  ("#3a3a5c");
+static const QColor BOARD_LABEL_DARK   ("#555577");
+static const QColor BOARD_BG_LIGHT     ("#d8d8e8");
+static const QColor BOARD_BORDER_LIGHT ("#9898b8");
+static const QColor BOARD_LABEL_LIGHT  ("#5c5c86");
 
-static const QColor COLOR_COMPONENT_LABEL     ("#cccccc");
-static const QColor COLOR_COMPONENT_SUBLABEL  ("#888888");
+// Viewport background (the empty area outside the board) is the one thing
+// here that follows the app-wide theme -- everything else on the canvas
+// stays fixed.
+static const QColor VIEWPORT_BG_DARK  ("#1a1a1a");
+static const QColor VIEWPORT_BG_LIGHT ("#dcdce2");
 
 CanvasWidget::CanvasWidget(QWidget* parent)
     : QGraphicsView(parent)
@@ -36,11 +47,23 @@ CanvasWidget::CanvasWidget(QWidget* parent)
     scene_ = new QGraphicsScene(this);
     setScene(scene_);
     setRenderHint(QPainter::Antialiasing);
-    setStyleSheet("background: #1a1a1a; border: none;");
     setDragMode(QGraphicsView::NoDrag);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
+    applyThemeStyle();
     drawBoard();
+}
+
+void CanvasWidget::applyThemeStyle() {
+    const QColor& bg = darkTheme_ ? VIEWPORT_BG_DARK : VIEWPORT_BG_LIGHT;
+    setStyleSheet(QString("background: %1; border: none;").arg(bg.name()));
+}
+
+void CanvasWidget::setDarkTheme(bool dark) {
+    if (darkTheme_ == dark) return;
+    darkTheme_ = dark;
+    applyThemeStyle();
+    refresh(lastComponents_); // redraws the board with the new theme's colors
 }
 
 void CanvasWidget::setLayoutMode(bool on) {
@@ -249,14 +272,18 @@ void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {
 }
 
 void CanvasWidget::drawBoard() {
+    const QColor& board_bg     = darkTheme_ ? BOARD_BG_DARK     : BOARD_BG_LIGHT;
+    const QColor& board_border = darkTheme_ ? BOARD_BORDER_DARK : BOARD_BORDER_LIGHT;
+    const QColor& board_label  = darkTheme_ ? BOARD_LABEL_DARK  : BOARD_LABEL_LIGHT;
+
     scene_->addRect(
         BOARD_X, BOARD_Y, BOARD_W, BOARD_H,
-        QPen(COLOR_BOARD_BORDER, 2),
-        QBrush(COLOR_BOARD_BG)
+        QPen(board_border, 2),
+        QBrush(board_bg)
     );
 
     QGraphicsTextItem* label = scene_->addText(profile_.name);
-    label->setDefaultTextColor(COLOR_BOARD_LABEL);
+    label->setDefaultTextColor(board_label);
     label->setFont(QFont("Courier New", 9));
     label->setPos(BOARD_X + BOARD_W / 2.0 - 40, BOARD_Y + 10);
 

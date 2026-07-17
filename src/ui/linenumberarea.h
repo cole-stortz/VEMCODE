@@ -39,10 +39,12 @@ public:
         return 12 + digits * QFontMetrics(editor_->font()).horizontalAdvance('9');
     }
 
+    void setDarkTheme(bool dark) { dark_ = dark; update(); }
+
 protected:
     void paintEvent(QPaintEvent* event) override {
         QPainter p(this);
-        p.fillRect(event->rect(), QColor("#252526"));
+        p.fillRect(event->rect(), dark_ ? QColor("#252526") : QColor("#e8e8ec"));
 
         QTextBlock block  = editor_->firstBlock();
         int block_number  = block.blockNumber();
@@ -52,7 +54,7 @@ protected:
 
         while (block.isValid() && top <= event->rect().bottom()) {
             if (block.isVisible() && bottom >= event->rect().top()) {
-                p.setPen(QColor("#555"));
+                p.setPen(dark_ ? QColor("#555") : QColor("#8a8a92"));
                 p.setFont(editor_->font());
                 p.drawText(0, (int)top, width() - 4,
                            (int)editor_->fontMetrics().height(),
@@ -80,4 +82,5 @@ private slots:
 
 private:
     EditorWithLines* editor_;
+    bool dark_ = true;
 };

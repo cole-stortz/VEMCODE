@@ -42,6 +42,12 @@ public:
     void zoomIn();
     void zoomOut();
 
+    // Only affects the viewport background (the empty area outside the
+    // board) so the canvas matches the app-wide theme -- board/chip/pin
+    // chrome and every component's own colors are fixed regardless.
+    void setDarkTheme(bool dark);
+    bool isDarkTheme() const { return darkTheme_; }
+
 signals:
     void inputChanged(int pin, int eventType, QVariant value);
 
@@ -61,6 +67,7 @@ private:
     void updateWires(ComponentItem* item); // re-route a component's wires from its current position
     QPointF pinLocation(int pin);
     void setZoom(qreal zoom);
+    void applyThemeStyle(); // pushes viewport background for the current theme
 
     // "Digital" = outside the analog range, above or below it -- Teensy 4.1's
     // analog block doesn't cover the whole pin_count, leaving digital pins past it.
@@ -94,6 +101,8 @@ private:
     qreal zoomLevel_ = 1.0;
     static constexpr qreal ZOOM_MIN = 0.25;
     static constexpr qreal ZOOM_MAX = 3.0;
+
+    bool darkTheme_ = true;
 
     static constexpr int BOARD_X = 300;
     static constexpr int BOARD_Y = 150;

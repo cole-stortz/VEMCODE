@@ -16,18 +16,14 @@ VariableWatch::VariableWatch(QWidget* parent)
     table_->setHorizontalHeaderLabels({"Variable", "Type", "Value"});
     table_->horizontalHeader()->setStretchLastSection(true);
     table_->verticalHeader()->setVisible(false);
-    table_->setStyleSheet(
-        "QTableWidget { background: #1e1e1e; color: #d4d4d4;"
-        "border: none; font-family: 'Courier New'; font-size: 12px; }"
-        "QHeaderView::section { background: #252526; color: #888;"
-        "border: none; padding: 4px; }"
-    );
     connect(table_, &QTableWidget::cellChanged, this, &VariableWatch::onCellChanged);
     layout->addWidget(table_);
 
     QHBoxLayout* buttonRow = new QHBoxLayout();
     QPushButton* addButton = new QPushButton("+ Add variable", this);
     QPushButton* removeButton = new QPushButton("- Remove selected", this);
+    addButton->setProperty("role", "outline");
+    removeButton->setProperty("role", "outline");
     connect(addButton, &QPushButton::clicked, this, &VariableWatch::onAddClicked);
     connect(removeButton, &QPushButton::clicked, this, &VariableWatch::onRemoveClicked);
     buttonRow->addWidget(addButton);

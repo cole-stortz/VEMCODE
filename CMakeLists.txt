@@ -106,6 +106,7 @@ set(SOURCES
     src/ui/devicespanel.cpp
     src/ui/spipanel.cpp
     src/ui/settingsdialog.cpp
+    src/ui/apptheme.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
@@ -135,6 +136,7 @@ set(HEADERS
     src/ui/devicespanel.h
     src/ui/spipanel.h
     src/ui/settingsdialog.h
+    src/ui/apptheme.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h

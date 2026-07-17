@@ -33,6 +33,7 @@
 #include "src/ui/devicespanel.h"
 #include "src/ui/spipanel.h"
 #include "src/ui/settingsdialog.h"
+#include "src/ui/apptheme.h"
 #include "src/core/runtime/boardprofile.h"
 
 class MainWindow : public QMainWindow {
@@ -160,6 +161,9 @@ private:
     BoardProfile activeProfile_ = BOARD_UNO;
     bool analogNoise_ = false;
     bool autoCompileOnSave_ = false;
+    bool darkTheme_ = true;
+    EditorHighlightColors highlightColors_ = editorHighlightColors(true);
+    void setAppTheme(bool dark); // qApp stylesheet + canvas + syntax highlighter + signal timeline
 
     // Current sequence per keybind id (source of truth for both QShortcut-backed
     // actions and the raw key comparisons in eventFilter). Loaded from

@@ -22,16 +22,11 @@ SpiPanel::SpiPanel(QWidget* parent)
 
     QLabel* label = new QLabel(
         "Response bytes (comma-separated; SPI.transfer() cycles through these)", this);
-    label->setStyleSheet("color: #888;");
+    label->setProperty("role", "muted-label");
     layout->addWidget(label);
 
     bytesEdit_ = new QLineEdit(this);
     bytesEdit_->setPlaceholderText("e.g. 0x00, 0x12, 0x34");
-    bytesEdit_->setStyleSheet(
-        "QLineEdit { background: #1e1e1e; color: #d4d4d4;"
-        "border: 1px solid #3c3c3c; font-family: 'Courier New'; font-size: 12px;"
-        "padding: 4px; }"
-    );
     connect(bytesEdit_, &QLineEdit::textChanged, this, &SpiPanel::onTextChanged);
     layout->addWidget(bytesEdit_);
     layout->addStretch();
