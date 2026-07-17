@@ -68,6 +68,7 @@ private slots:
     void onSpeedChanged(int value);
     void onSerialSend();
     void insertCompletion(const QString& completion);
+    void onLayoutToggled(bool on);
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -108,6 +109,7 @@ private:
     QPushButton*    runButton_      = nullptr;
     QPushButton*    stopButton_     = nullptr;
     QLabel*         boardLabel_     = nullptr;
+    QPushButton*    layoutButton_   = nullptr;
 
     // Editor panel (left)
     EditorWithLines* codeEditor_  = nullptr;

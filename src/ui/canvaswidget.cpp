@@ -7,6 +7,11 @@
 #include <QPen>
 #include <QBrush>
 #include <QFont>
+#include <QMouseEvent>
+#include <QTransform>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <algorithm>
 #include <map>
 
@@ -38,9 +43,117 @@ CanvasWidget::CanvasWidget(QWidget* parent)
     drawBoard();
 }
 
+void CanvasWidget::setLayoutMode(bool on) {
+    layoutMode_ = on;
+    setCursor(on ? Qt::OpenHandCursor : Qt::ArrowCursor);
+}
+
+void CanvasWidget::mousePressEvent(QMouseEvent* event) {
+    if (layoutMode_ && event->button() == Qt::LeftButton) {
+        QGraphicsItem* hit = itemAt(event->pos());
+        ComponentItem* comp = nullptr;
+        while (hit) {
+            comp = dynamic_cast<ComponentItem*>(hit);
+            if (comp) break;
+            hit = hit->parentItem();
+        }
+        if (comp) {
+            draggedItem_ = comp;
+            dragOffset_ = comp->pos() - mapToScene(event->pos());
+            setCursor(Qt::ClosedHandCursor);
+            event->accept();
+            return;
+        }
+    }
+    QGraphicsView::mousePressEvent(event);
+}
+
+void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
+    if (draggedItem_) {
+        draggedItem_->setPos(mapToScene(event->pos()) + dragOffset_);
+        updateWires(draggedItem_);
+        event->accept();
+        return;
+    }
+    QGraphicsView::mouseMoveEvent(event);
+}
+
+void CanvasWidget::mouseReleaseEvent(QMouseEvent* event) {
+    if (draggedItem_) {
+        auto it = componentInfo_.find(draggedItem_);
+        if (it != componentInfo_.end())
+            manualPositions_[it->primary_pin] = draggedItem_->pos();
+        draggedItem_ = nullptr;
+        setCursor(layoutMode_ ? Qt::OpenHandCursor : Qt::ArrowCursor);
+        event->accept();
+        return;
+    }
+    QGraphicsView::mouseReleaseEvent(event);
+}
+
+void CanvasWidget::setZoom(qreal zoom) {
+    zoomLevel_ = std::clamp(zoom, ZOOM_MIN, ZOOM_MAX);
+    setTransform(QTransform::fromScale(zoomLevel_, zoomLevel_));
+}
+
+void CanvasWidget::zoomIn()  { setZoom(zoomLevel_ * 1.15); }
+void CanvasWidget::zoomOut() { setZoom(zoomLevel_ / 1.15); }
+
+void CanvasWidget::resetLayout() {
+    manualPositions_.clear();
+    refresh(lastComponents_);
+}
+
+void CanvasWidget::saveLayout(const QString& sketchPath) const {
+    if (sketchPath.isEmpty()) return;
+
+    QJsonObject positions;
+    for (auto it = manualPositions_.constBegin(); it != manualPositions_.constEnd(); ++it) {
+        QJsonObject pos;
+        pos["x"] = it.value().x();
+        pos["y"] = it.value().y();
+        positions[QString::number(it.key())] = pos;
+    }
+
+    QJsonObject root;
+    root["zoom"] = zoomLevel_;
+    root["positions"] = positions;
+
+    QFile file(sketchPath + ".vblayout");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+}
+
+void CanvasWidget::loadLayout(const QString& sketchPath) {
+    manualPositions_.clear();
+    setZoom(1.0);
+    if (sketchPath.isEmpty()) return;
+
+    QFile file(sketchPath + ".vblayout");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (!doc.isObject()) return;
+    QJsonObject root = doc.object();
+
+    setZoom(root.value("zoom").toDouble(1.0));
+
+    QJsonObject positions = root.value("positions").toObject();
+    for (auto it = positions.constBegin(); it != positions.constEnd(); ++it) {
+        bool ok = false;
+        int pin = it.key().toInt(&ok);
+        if (!ok) continue;
+        QJsonObject pos = it.value().toObject();
+        manualPositions_[pin] = QPointF(pos.value("x").toDouble(), pos.value("y").toDouble());
+    }
+}
+
 void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
+    lastComponents_ = components;
     scene_->clear();
     pinItems_.clear();
+    componentInfo_.clear();
+    draggedItem_ = nullptr; // about to be deleted by scene_->clear()
 
     drawBoard();
 
@@ -61,6 +174,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     static constexpr float H_GAP = 12.0f;
 
     std::vector<Placement> placements;
+    std::vector<Placement> manualPlacements; // user-dragged -- placed as-is, no auto-stacking
     for (const auto& comp : components) {
         if (comp.pin < 0) continue;
         const ComponentDefinition* def = ComponentRegistry::instance().find_by_type(comp.type_name);
@@ -70,6 +184,12 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         QRectF box = item->boundingRect();
         int comp_w = (int)box.width();
         int comp_h = (int)box.height();
+
+        auto manual = manualPositions_.find(comp.pin);
+        if (manual != manualPositions_.end()) {
+            manualPlacements.push_back({&comp, def, item, (float)manual->x(), comp_w, comp_h, (float)manual->y()});
+            continue;
+        }
 
         QPointF pin_pos = pinLocation(comp.pin);
         bool is_output = def->is_output;
@@ -107,6 +227,9 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
 
         placeComponent(*p.comp, p.def, p.item, p.comp_x, comp_y, p.comp_w, p.comp_h);
     }
+
+    for (auto& p : manualPlacements)
+        placeComponent(*p.comp, p.def, p.item, p.comp_x, p.target_y, p.comp_w, p.comp_h);
 }
 
 void CanvasWidget::updatePin(int pin, int value) {
@@ -209,6 +332,7 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     typeText->setFont(QFont("Courier New", 8));
     typeText->setPos(6, -16);
 
+    // Removed temporarily to remove bloat on the canvas
     // if (!comp.pin_name.empty()) {
     //     QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
     //     nameText->setPlainText(QString::fromStdString(comp.pin_name));
@@ -223,10 +347,35 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     else
         wire_pins = { comp.pin };
 
-    const QColor& wireColor = def->wire_color;
+    componentInfo_[item] = ComponentInfo{ comp.pin, is_output, wire_pins, def->wire_color, {} };
+    updateWires(item);
+}
+
+QGraphicsLineItem* CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color) {
+    return scene_->addLine(
+        from.x(), from.y(), to.x(), to.y(),
+        QPen(color, 1, Qt::SolidLine, Qt::RoundCap)
+    );
+}
+
+// Re-derives every wire segment for one component from its current scene
+// position -- used both for the initial placement and to keep wires attached
+// while the component is being dragged in layout mode.
+void CanvasWidget::updateWires(ComponentItem* item) {
+    auto it = componentInfo_.find(item);
+    if (it == componentInfo_.end()) return;
+    ComponentInfo& info = it.value();
+
+    for (QGraphicsLineItem* line : info.wire_lines)
+        delete line;
+    info.wire_lines.clear();
+
+    float comp_x = item->x();
+    float comp_y = item->y();
+    int comp_w = (int)item->boundingRect().width();
 
     int i = 0;
-    for (int wpin : wire_pins) {
+    for (int wpin : info.wire_pins) {
         if (wpin < 0) { i++; continue; }
 
         QPointF target = pinLocation(wpin);
@@ -234,49 +383,32 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
         // Each wire attaches at a different y so they don't stack
         float attach_y = comp_y + 15.0f + i * WIRE_SPACING;
 
-        QPointF comp_edge = is_output
+        QPointF comp_edge = info.is_output
             ? QPointF(comp_x, attach_y)
             : QPointF(comp_x + comp_w, attach_y);
 
-        bool pin_is_analog = isAnalogPin(wpin);
-        if (pin_is_analog) {
+        float inter_x;
+        if (isAnalogPin(wpin)) {
             // Turn near the pin (in the gap before the digital column), not
             // near the destination -- otherwise the vertical segment cuts
             // through whatever got stacked between the pin and its component.
-            float inter_x = BOARD_X - 20.0f - i * WIRE_SPACING;
-            QPointF mid1(inter_x, target.y());
-            QPointF mid2(inter_x, attach_y);
-            drawWire(target, mid1, wireColor);
-            drawWire(mid1, mid2, wireColor);
-            drawWire(mid2, comp_edge, wireColor);
-        } else if (is_output) {
+            inter_x = BOARD_X - 20.0f - i * WIRE_SPACING;
+        } else if (info.is_output) {
             // Digital output: component sits on the same side as the pin, so
             // there's no column to cross -- turning near the component is fine.
-            float inter_x = comp_x - 10.0f - i * WIRE_SPACING;
-            QPointF mid1(inter_x, target.y());
-            QPointF mid2(inter_x, attach_y);
-            drawWire(target, mid1, wireColor);
-            drawWire(mid1, mid2, wireColor);
-            drawWire(mid2, comp_edge, wireColor);
+            inter_x = comp_x - 10.0f - i * WIRE_SPACING;
         } else {
             // Digital input: same fix as analog, mirrored -- turn right next
             // to the pin (board's right edge) instead of next to the component.
-            float inter_x = target.x() + 10.0f + i * WIRE_SPACING;
-            QPointF mid1(inter_x, target.y());
-            QPointF mid2(inter_x, attach_y);
-            drawWire(target, mid1, wireColor);
-            drawWire(mid1, mid2, wireColor);
-            drawWire(mid2, comp_edge, wireColor);
+            inter_x = target.x() + 10.0f + i * WIRE_SPACING;
         }
+        QPointF mid1(inter_x, target.y());
+        QPointF mid2(inter_x, attach_y);
+        info.wire_lines.push_back(drawWire(target, mid1, info.wire_color));
+        info.wire_lines.push_back(drawWire(mid1, mid2, info.wire_color));
+        info.wire_lines.push_back(drawWire(mid2, comp_edge, info.wire_color));
         i++;
     }
-}
-
-void CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color) {
-    scene_->addLine(
-        from.x(), from.y(), to.x(), to.y(),
-        QPen(color, 1, Qt::SolidLine, Qt::RoundCap)
-    );
 }
 
 bool CanvasWidget::isAnalogPin(int pin) const {

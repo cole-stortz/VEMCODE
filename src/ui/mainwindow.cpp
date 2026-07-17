@@ -112,6 +112,11 @@ static const QString STYLE_BTN_OUTLINE =
     "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
     "border-radius: 4px; font-size: 12px; padding: 0 10px; }"
     "QPushButton:hover { background: #2a2a2a; color: #ffffff; }";
+static const QString STYLE_BTN_TOGGLE =
+    "QPushButton { background: transparent; color: #aaaaaa; border: 1px solid #444;"
+    "border-radius: 4px; font-size: 11px; padding: 0 8px; }"
+    "QPushButton:hover { background: #2a2a2a; color: #ffffff; }"
+    "QPushButton:checked { background: #3a5a8c; color: #ffffff; border-color: #4a7abc; }";
 
 // Splitter
 static const QString STYLE_SPLITTER =
@@ -190,6 +195,11 @@ MainWindow::MainWindow(QWidget* parent)
 
     if (compilerPath_.isEmpty() || projectRoot_.isEmpty()) {
         SettingsDialog dialog(this);
+        QString detectedPath, detectedRoot;
+        if (SettingsDialog::autoDetectCompiler(detectedPath, detectedRoot)) {
+            dialog.setCompilerPath(detectedPath);
+            dialog.setProjectRoot(detectedRoot);
+        }
         if (dialog.exec() == QDialog::Accepted) {
             compilerPath_ = dialog.compilerPath();
             projectRoot_  = dialog.projectRoot();
@@ -273,6 +283,15 @@ MainWindow::MainWindow(QWidget* parent)
     connect(zoom_out_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(-1); });
     QShortcut* zoom_reset_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0), this);
     connect(zoom_reset_shortcut, &QShortcut::activated, this, &MainWindow::resetEditorZoom);
+
+    // Same unshifted/shifted pairing as the editor zoom shortcuts above, on Alt
+    // instead of Ctrl so it doesn't collide with editor font zoom.
+    QShortcut* canvas_zoom_in_shortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Equal), this);
+    connect(canvas_zoom_in_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
+    QShortcut* canvas_zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::ALT | Qt::SHIFT | Qt::Key_Equal), this);
+    connect(canvas_zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
+    QShortcut* canvas_zoom_out_shortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Minus), this);
+    connect(canvas_zoom_out_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomOut(); });
 
     connect(codeEditor_->document(), &QTextDocument::modificationChanged,
             this, [this](bool) { updateWindowTitle(); });
@@ -590,9 +609,37 @@ QWidget* MainWindow::buildCanvasPanel() {
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    QLabel* header = new QLabel("  CIRCUIT CANVAS");
+    QWidget*     header       = new QWidget();
+    QHBoxLayout* headerLayout = new QHBoxLayout(header);
     header->setFixedHeight(24);
     header->setStyleSheet(STYLE_PANEL_HEADER);
+    headerLayout->setContentsMargins(8, 0, 6, 0);
+    headerLayout->setSpacing(0);
+
+    QLabel* headerLabel = new QLabel("CIRCUIT CANVAS");
+    headerLabel->setStyleSheet("border: none; background: transparent;");
+    headerLayout->addWidget(headerLabel);
+    headerLayout->addStretch();
+
+    layoutButton_ = new QPushButton("Layout", header);
+    layoutButton_->setCheckable(true);
+    layoutButton_->setFixedSize(56, 18);
+    layoutButton_->setStyleSheet(STYLE_BTN_TOGGLE);
+    layoutButton_->setToolTip("Toggle layout mode to drag components to new positions");
+    connect(layoutButton_, &QPushButton::toggled, this, &MainWindow::onLayoutToggled);
+    headerLayout->addWidget(layoutButton_);
+
+    headerLayout->addSpacing(4);
+
+    QPushButton* resetLayoutButton = new QPushButton("Reset", header);
+    resetLayoutButton->setFixedSize(48, 18);
+    resetLayoutButton->setStyleSheet(STYLE_BTN_TOGGLE);
+    resetLayoutButton->setToolTip("Reset components to their auto-arranged positions");
+    connect(resetLayoutButton, &QPushButton::clicked, this, [this]() {
+        canvasWidget_->resetLayout();
+    });
+    headerLayout->addWidget(resetLayoutButton);
+
     layout->addWidget(header);
 
     canvasWidget_ = new CanvasWidget();
@@ -1024,6 +1071,11 @@ void MainWindow::onStopClicked() {
     stopButton_->setEnabled(false);
 }
 
+void MainWindow::onLayoutToggled(bool on) {
+    canvasWidget_->setLayoutMode(on);
+    statusBar()->showMessage(on ? "Layout mode: drag components to reposition" : "Ready");
+}
+
 void MainWindow::onOpenClicked() {
     QString sketches_root = QCoreApplication::applicationDirPath() + "/sketches";
     QString path = QFileDialog::getOpenFileName(
@@ -1032,6 +1084,7 @@ void MainWindow::onOpenClicked() {
     if (path.isEmpty()) return;
 
     currentSketchPath_ = path;
+    canvasWidget_->loadLayout(path);
 
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -1067,6 +1120,7 @@ void MainWindow::onSaveClicked() {
     file.close();
     codeEditor_->document()->setModified(false);
     QFile::remove(currentSketchPath_ + ".autosave");
+    canvasWidget_->saveLayout(currentSketchPath_);
     statusBar()->showMessage("Saved: " + currentSketchPath_);
     addToRecentSketches(currentSketchPath_);
 }
@@ -1101,6 +1155,7 @@ void MainWindow::promptAndSaveAsNewSketch() {
 
     // Update current path so Run compiles this file going forward
     currentSketchPath_ = file_path;
+    canvasWidget_->saveLayout(file_path);
     codeEditor_->document()->setModified(false);
     QFile::remove(file_path + ".autosave");
     windowTitleBase_ = "VEMCODE — " + name + ".cpp";
@@ -1709,6 +1764,7 @@ void MainWindow::onNewSketch() {
     codeEditor_->setPlainText(default_sketch);
     codeEditor_->document()->setModified(false);
     currentSketchPath_ = file_path;
+    canvasWidget_->loadLayout(file_path);
     windowTitleBase_ = "VEMCODE — " + name + ".cpp";
     updateWindowTitle();
     statusBar()->showMessage("Created: " + file_path);
@@ -1736,6 +1792,7 @@ void MainWindow::onRecentSketches() {
                 return;
             }
             currentSketchPath_ = path;
+            canvasWidget_->loadLayout(path);
             QFile file(path);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
