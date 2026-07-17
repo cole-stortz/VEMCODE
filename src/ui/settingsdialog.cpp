@@ -1,6 +1,7 @@
 #include "src/ui/settingsdialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QFormLayout>
 #include <QLabel>
 #include <QDialogButtonBox>
 #include <QFileDialog>
@@ -8,15 +9,54 @@
 #include <QCheckBox>
 #include <QStandardPaths>
 #include <QCoreApplication>
+#include <QTabWidget>
+#include <QScrollArea>
+#include <QMessageBox>
 #include <filesystem>
+
+const QVector<KeybindEntry>& defaultKeybinds() {
+    static const QVector<KeybindEntry> kDefs = {
+        { "save",              "Save sketch",         QKeySequence::Save },
+        { "save_as",           "Save As",              QKeySequence::SaveAs },
+        { "run",                "Run sketch",           QKeySequence(Qt::CTRL | Qt::Key_R) },
+        { "editor_zoom_in",     "Editor zoom in",       QKeySequence(Qt::CTRL | Qt::Key_Equal) },
+        { "editor_zoom_out",    "Editor zoom out",      QKeySequence(Qt::CTRL | Qt::Key_Minus) },
+        { "editor_zoom_reset",  "Reset editor zoom",    QKeySequence(Qt::CTRL | Qt::Key_0) },
+        { "canvas_zoom_in",     "Canvas zoom in",       QKeySequence(Qt::ALT | Qt::Key_Equal) },
+        { "canvas_zoom_out",    "Canvas zoom out",      QKeySequence(Qt::ALT | Qt::Key_Minus) },
+        { "find",               "Find",                 QKeySequence::Find },
+        { "code_completion",    "Code completion",      QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space) },
+        { "duplicate_line",     "Duplicate line",       QKeySequence(Qt::CTRL | Qt::Key_D) },
+        { "comment_toggle",     "Toggle comment",       QKeySequence(Qt::CTRL | Qt::Key_Slash) },
+    };
+    return kDefs;
+}
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
     setWindowTitle("VEMCODE Settings");
-    setMinimumWidth(500);
+    setMinimumSize(520, 420);
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    QVBoxLayout* outer = new QVBoxLayout(this);
+
+    QTabWidget* tabs = new QTabWidget(this);
+    tabs->addTab(buildGeneralTab(), "General");
+    tabs->addTab(buildKeybindsTab(), "Keybinds");
+    outer->addWidget(tabs);
+
+    QDialogButtonBox* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel);
+    connect(buttons, &QDialogButtonBox::accepted, this, &SettingsDialog::onAcceptClicked);
+    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    outer->addWidget(buttons);
+
+    updateCompilerValidation();
+}
+
+QWidget* SettingsDialog::buildGeneralTab() {
+    QWidget*     tab    = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(tab);
 
     // Compiler path row
     QHBoxLayout* compilerRow = new QHBoxLayout();
@@ -64,14 +104,37 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     autoCompileCheck_ = new QCheckBox("Auto-compile on save (Ctrl+R still runs manually)");
     layout->addWidget(autoCompileCheck_);
 
-    // Save/Cancel buttons
-    QDialogButtonBox* buttons = new QDialogButtonBox(
-        QDialogButtonBox::Save | QDialogButtonBox::Cancel);
-    connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
+    layout->addStretch();
+    return tab;
+}
 
-    updateCompilerValidation();
+QWidget* SettingsDialog::buildKeybindsTab() {
+    QWidget* tab = new QWidget();
+    QVBoxLayout* outer = new QVBoxLayout(tab);
+
+    QScrollArea* scroll = new QScrollArea();
+    scroll->setWidgetResizable(true);
+    QWidget* rowsWidget = new QWidget();
+    QFormLayout* rows = new QFormLayout(rowsWidget);
+
+    for (const KeybindEntry& entry : defaultKeybinds()) {
+        QKeySequenceEdit* edit = new QKeySequenceEdit(entry.defaultSeq);
+        keybindEdits_[entry.id] = edit;
+        rows->addRow(entry.label + ":", edit);
+    }
+
+    scroll->setWidget(rowsWidget);
+    outer->addWidget(scroll);
+
+    QLabel* hint = new QLabel("Click a field and press a key combination. Backspace clears it.");
+    hint->setStyleSheet("color: #888; font-size: 11px;");
+    outer->addWidget(hint);
+
+    QPushButton* resetButton = new QPushButton("Reset to Defaults");
+    connect(resetButton, &QPushButton::clicked, this, &SettingsDialog::onResetKeybinds);
+    outer->addWidget(resetButton);
+
+    return tab;
 }
 
 QString SettingsDialog::compilerPath() const {
@@ -118,6 +181,52 @@ bool SettingsDialog::autoCompileOnSave() const {
 
 void SettingsDialog::setAutoCompileOnSave(bool enabled) {
     autoCompileCheck_->setChecked(enabled);
+}
+
+void SettingsDialog::setKeybinds(const QMap<QString, QKeySequence>& current) {
+    for (auto it = current.constBegin(); it != current.constEnd(); ++it) {
+        auto edit = keybindEdits_.find(it.key());
+        if (edit != keybindEdits_.end())
+            edit.value()->setKeySequence(it.value());
+    }
+}
+
+QMap<QString, QKeySequence> SettingsDialog::keybinds() const {
+    QMap<QString, QKeySequence> result;
+    for (auto it = keybindEdits_.constBegin(); it != keybindEdits_.constEnd(); ++it)
+        result[it.key()] = it.value()->keySequence();
+    return result;
+}
+
+void SettingsDialog::onResetKeybinds() {
+    for (const KeybindEntry& entry : defaultKeybinds())
+        keybindEdits_[entry.id]->setKeySequence(entry.defaultSeq);
+}
+
+void SettingsDialog::onAcceptClicked() {
+    QMap<QString, QStringList> byKeySequence; // sequence text -> labels using it
+    QMap<QString, QString> labels;
+    for (const KeybindEntry& entry : defaultKeybinds())
+        labels[entry.id] = entry.label;
+
+    for (auto it = keybindEdits_.constBegin(); it != keybindEdits_.constEnd(); ++it) {
+        QKeySequence seq = it.value()->keySequence();
+        if (seq.isEmpty()) continue;
+        byKeySequence[seq.toString()].append(labels.value(it.key()));
+    }
+
+    QStringList conflicts;
+    for (auto it = byKeySequence.constBegin(); it != byKeySequence.constEnd(); ++it)
+        if (it.value().size() > 1)
+            conflicts << it.key() + " -- " + it.value().join(", ");
+
+    if (!conflicts.isEmpty()) {
+        QMessageBox::warning(this, "Keybind conflict",
+            "The same shortcut is assigned to more than one action:\n\n" + conflicts.join("\n"));
+        return;
+    }
+
+    accept();
 }
 
 void SettingsDialog::onBrowseCompiler() {

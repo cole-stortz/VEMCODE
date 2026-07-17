@@ -324,7 +324,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [ ] **Canvas theme** — dark/light canvas background toggle; component colors adapt automatically
 - [x] **Auto-compile on save** — toggle in settings; when enabled, saving immediately triggers a compile without a manual Run click; separate keybind for run (Ctrl+R)
 - [ ] **Default sketch location** — configurable root folder for new sketches
-- [ ] **Change Keybinds** — section to change default keybinds for hotkeys
+- [x] **Change Keybinds** — Keybinds tab in Settings; remap Save, Save As, Run, editor/canvas zoom, Find, code completion, duplicate line, and comment toggle; conflicts blocked on save, changes apply live
 
 **Canvas improvements:**
 - [x] Canvas layout mode — "Layout" toolbar button, components become draggable

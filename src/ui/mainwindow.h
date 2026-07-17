@@ -161,6 +161,14 @@ private:
     bool analogNoise_ = false;
     bool autoCompileOnSave_ = false;
 
+    // Current sequence per keybind id (source of truth for both QShortcut-backed
+    // actions and the raw key comparisons in eventFilter). Loaded from
+    // "keybinds/<id>" in settings.ini, falling back to defaultKeybinds().
+    QMap<QString, QKeySequence> keybindSeq_;
+    QMap<QString, QShortcut*>   keybindShortcuts_; // id -> live shortcut, for the ones backed by one
+    QKeySequence loadKeybind(QSettings& settings, const QString& id, QKeySequence def);
+    void applyKeybinds(const QMap<QString, QKeySequence>& newBinds); // persists + rebinds live shortcuts
+
     QSlider*   speedSlider_  = nullptr;
     QLineEdit* serialInput_  = nullptr;
 

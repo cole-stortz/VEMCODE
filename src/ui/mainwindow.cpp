@@ -205,6 +205,7 @@ MainWindow::MainWindow(QWidget* parent)
             projectRoot_  = dialog.projectRoot();
             settings.setValue("compiler/path", compilerPath_);
             settings.setValue("compiler/project_root", projectRoot_);
+            applyKeybinds(dialog.keybinds());
         }
     }
 
@@ -267,45 +268,63 @@ MainWindow::MainWindow(QWidget* parent)
                 sketchThread_->setWatchList(vars);
             });
 
-    QShortcut* save_shortcut = new QShortcut(QKeySequence::Save, this);
+    QShortcut* save_shortcut = new QShortcut(loadKeybind(settings, "save", QKeySequence::Save), this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
-    QShortcut* save_as_shortcut = new QShortcut(QKeySequence::SaveAs, this);
+    keybindShortcuts_["save"] = save_shortcut;
+    QShortcut* save_as_shortcut = new QShortcut(loadKeybind(settings, "save_as", QKeySequence::SaveAs), this);
     connect(save_as_shortcut, &QShortcut::activated, this, &MainWindow::onSaveAsClicked);
+    keybindShortcuts_["save_as"] = save_as_shortcut;
 
     // Mirrors runButton_'s own disabled-while-running guard -- a shortcut has
     // no disabled state of its own to stop it firing mid-run.
-    QShortcut* run_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R), this);
+    QShortcut* run_shortcut = new QShortcut(loadKeybind(settings, "run", QKeySequence(Qt::CTRL | Qt::Key_R)), this);
     connect(run_shortcut, &QShortcut::activated, this, [this]() {
         if (runButton_->isEnabled()) onRunClicked();
     });
+    keybindShortcuts_["run"] = run_shortcut;
 
     // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- the platform
     // standard key for ZoomIn resolves to the same sequence as literal "Ctrl+=" on this
     // setup, and two QShortcuts sharing one sequence make Qt treat it as ambiguous
-    // (neither fires). Bind both the unshifted "=" and shifted "+" explicitly instead.
-    QShortcut* zoom_in_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Equal), this);
+    // (neither fires). Bind both the unshifted "=" and shifted "+" explicitly instead;
+    // only the unshifted one is user-remappable, the shifted one is a fixed convenience
+    // alias so layouts where "+" is easier to reach than bare "=" still work.
+    QShortcut* zoom_in_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_in", QKeySequence(Qt::CTRL | Qt::Key_Equal)), this);
     connect(zoom_in_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
+    keybindShortcuts_["editor_zoom_in"] = zoom_in_shortcut;
     QShortcut* zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Equal), this);
     connect(zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
-    QShortcut* zoom_out_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Minus), this);
+    QShortcut* zoom_out_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_out", QKeySequence(Qt::CTRL | Qt::Key_Minus)), this);
     connect(zoom_out_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(-1); });
-    QShortcut* zoom_reset_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0), this);
+    keybindShortcuts_["editor_zoom_out"] = zoom_out_shortcut;
+    QShortcut* zoom_reset_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_reset", QKeySequence(Qt::CTRL | Qt::Key_0)), this);
     connect(zoom_reset_shortcut, &QShortcut::activated, this, &MainWindow::resetEditorZoom);
+    keybindShortcuts_["editor_zoom_reset"] = zoom_reset_shortcut;
 
     // Same unshifted/shifted pairing as the editor zoom shortcuts above, on Alt
     // instead of Ctrl so it doesn't collide with editor font zoom.
-    QShortcut* canvas_zoom_in_shortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Equal), this);
+    QShortcut* canvas_zoom_in_shortcut = new QShortcut(loadKeybind(settings, "canvas_zoom_in", QKeySequence(Qt::ALT | Qt::Key_Equal)), this);
     connect(canvas_zoom_in_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
+    keybindShortcuts_["canvas_zoom_in"] = canvas_zoom_in_shortcut;
     QShortcut* canvas_zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::ALT | Qt::SHIFT | Qt::Key_Equal), this);
     connect(canvas_zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
-    QShortcut* canvas_zoom_out_shortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Minus), this);
+    QShortcut* canvas_zoom_out_shortcut = new QShortcut(loadKeybind(settings, "canvas_zoom_out", QKeySequence(Qt::ALT | Qt::Key_Minus)), this);
     connect(canvas_zoom_out_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomOut(); });
+    keybindShortcuts_["canvas_zoom_out"] = canvas_zoom_out_shortcut;
 
     connect(codeEditor_->document(), &QTextDocument::modificationChanged,
             this, [this](bool) { updateWindowTitle(); });
 
-    QShortcut* find_shortcut = new QShortcut(QKeySequence::Find, this);
+    QShortcut* find_shortcut = new QShortcut(loadKeybind(settings, "find", QKeySequence::Find), this);
     connect(find_shortcut, &QShortcut::activated, this, &MainWindow::showFindBar);
+    keybindShortcuts_["find"] = find_shortcut;
+
+    // code_completion, duplicate_line, and comment_toggle have no QShortcut of
+    // their own -- they're raw key comparisons in eventFilter (scoped to
+    // codeEditor_ only), so just seed keybindSeq_ with their current sequence.
+    loadKeybind(settings, "code_completion", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space));
+    loadKeybind(settings, "duplicate_line", QKeySequence(Qt::CTRL | Qt::Key_D));
+    loadKeybind(settings, "comment_toggle", QKeySequence(Qt::CTRL | Qt::Key_Slash));
 
     // Autosave every 30s, but only for a sketch with a real (non-scratch) path
     // and only if there are actually unsaved changes to write
@@ -1564,14 +1583,17 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             }
         }
 
-        if (key->key() == Qt::Key_Space &&
-            key->modifiers().testFlag(Qt::ControlModifier) &&
-            key->modifiers().testFlag(Qt::ShiftModifier)) {
+        // These three have no QShortcut of their own (kept as raw key checks so
+        // they only fire while the editor itself has focus), so they're matched
+        // against keybindSeq_ directly instead of a hardcoded key+modifier pair.
+        QKeySequence pressed(key->keyCombination());
+
+        if (pressed == keybindSeq_.value("code_completion")) {
             showCompletionPopup();
             return true;
         }
 
-        if (key->key() == Qt::Key_D && key->modifiers() == Qt::ControlModifier) {
+        if (pressed == keybindSeq_.value("duplicate_line")) {
             QTextCursor cursor = codeEditor_->textCursor();
             int col = cursor.positionInBlock();
 
@@ -1588,7 +1610,7 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         }
 
-        if (key->key() == Qt::Key_Slash && key->modifiers() == Qt::ControlModifier) {
+        if (pressed == keybindSeq_.value("comment_toggle")) {
             toggleCommentSelection();
             return true;
         }
@@ -1711,6 +1733,28 @@ void MainWindow::showCompileErrors(const CompileResult& result) {
     }
 }
 
+QKeySequence MainWindow::loadKeybind(QSettings& settings, const QString& id, QKeySequence def) {
+    QString saved = settings.value("keybinds/" + id, QString()).toString();
+    QKeySequence seq = saved.isEmpty() ? def : QKeySequence::fromString(saved);
+    keybindSeq_[id] = seq;
+    return seq;
+}
+
+// Persists every id -> sequence and, for ids backed by a live QShortcut,
+// rebinds it immediately -- no restart needed to pick up a remap.
+void MainWindow::applyKeybinds(const QMap<QString, QKeySequence>& newBinds) {
+    QSettings settings(
+        QCoreApplication::applicationDirPath() + "/settings.ini",
+        QSettings::IniFormat);
+    for (auto it = newBinds.constBegin(); it != newBinds.constEnd(); ++it) {
+        keybindSeq_[it.key()] = it.value();
+        settings.setValue("keybinds/" + it.key(), it.value().toString());
+        auto shortcut = keybindShortcuts_.find(it.key());
+        if (shortcut != keybindShortcuts_.end())
+            shortcut.value()->setKey(it.value());
+    }
+}
+
 void MainWindow::onSettingsClicked() {
     QSettings settings(
         QCoreApplication::applicationDirPath() + "/settings.ini",
@@ -1722,6 +1766,7 @@ void MainWindow::onSettingsClicked() {
     dialog.setSelectedBoard(QString(activeProfile_.name));
     dialog.setAnalogNoise(analogNoise_);
     dialog.setAutoCompileOnSave(autoCompileOnSave_);
+    dialog.setKeybinds(keybindSeq_);
 
     if (dialog.exec() == QDialog::Accepted) {
         compilerPath_      = dialog.compilerPath();
@@ -1735,6 +1780,7 @@ void MainWindow::onSettingsClicked() {
         settings.setValue("board/name", QString(activeProfile_.name));
         settings.setValue("simulation/analog_noise", analogNoise_);
         settings.setValue("editor/auto_compile_on_save", autoCompileOnSave_);
+        applyKeybinds(dialog.keybinds());
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);
