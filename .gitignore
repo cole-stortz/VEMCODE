@@ -1,6 +1,10 @@
 # Root build directory only (leading slash = root only)
 /build/
 
+# Windows cross-compile build (mingw-w64), used to sanity-check Windows
+# portability from Linux -- see /usr/share/mingw/toolchain-mingw64.cmake
+/build-win64/
+
 # App runtime files -- keep sketches folder but ignore binaries
 /app/VEMCODE
 /app/*.dll

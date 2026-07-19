@@ -3,14 +3,26 @@
 #include <csignal>
 #include <setjmp.h>
 
+// Windows has no sigaction/sigsetjmp/siglongjmp -- plain signal()/setjmp()/
+// longjmp() cover the same SIGFPE/SIGSEGV recovery there (and the CRT
+// already resets the handler to SIG_DFL before invoking it, same as
+// SA_RESETHAND below).
+#ifdef _WIN32
+static thread_local jmp_buf     tl_crash_jmp;
+#else
 static thread_local sigjmp_buf  tl_crash_jmp;
+#endif
 static thread_local bool        tl_in_sketch = false;
 static thread_local int         tl_crash_sig  = 0;
 
 static void sketch_signal_handler(int sig) {
     if (!tl_in_sketch) { ::signal(sig, SIG_DFL); ::raise(sig); return; }
     tl_crash_sig = sig;
+#ifdef _WIN32
+    ::longjmp(tl_crash_jmp, 1);
+#else
     ::siglongjmp(tl_crash_jmp, 1);
+#endif
 }
 
 static WatchVarType parse_watch_type(const QString& type) {
@@ -99,21 +111,35 @@ void SketchThread::run() {
     }
 
     // Install signal handlers so SIGFPE/SIGSEGV from sketch code are recoverable
+#ifdef _WIN32
+    auto old_fpe  = ::signal(SIGFPE,  sketch_signal_handler);
+    auto old_segv = ::signal(SIGSEGV, sketch_signal_handler);
+#else
     struct sigaction sa = {}, old_fpe, old_segv;
     sa.sa_handler = sketch_signal_handler;
     sa.sa_flags   = SA_RESETHAND; // one-shot: reverts to SIG_DFL after first delivery
     sigaction(SIGFPE,  &sa, &old_fpe);
     sigaction(SIGSEGV, &sa, &old_segv);
+#endif
     tl_in_sketch = true;
 
+#ifdef _WIN32
+    if (::setjmp(tl_crash_jmp) != 0) {
+#else
     if (::sigsetjmp(tl_crash_jmp, 1) != 0) {
+#endif
         QString reason = (tl_crash_sig == SIGFPE)
             ? "Sketch crashed — check for division by zero or invalid arithmetic"
             : "Sketch crashed — check for null pointer or out-of-bounds array access";
         emit sketchCrashed(reason);
         tl_in_sketch = false;
+#ifdef _WIN32
+        ::signal(SIGFPE,  old_fpe);
+        ::signal(SIGSEGV, old_segv);
+#else
         sigaction(SIGFPE,  &old_fpe,  nullptr);
         sigaction(SIGSEGV, &old_segv, nullptr);
+#endif
         return;
     }
 
@@ -155,8 +181,13 @@ void SketchThread::run() {
     }
 
     tl_in_sketch = false;
+#ifdef _WIN32
+    ::signal(SIGFPE,  old_fpe);
+    ::signal(SIGSEGV, old_segv);
+#else
     sigaction(SIGFPE,  &old_fpe,  nullptr);
     sigaction(SIGSEGV, &old_segv, nullptr);
+#endif
 }
 void SketchThread::injectPin(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
