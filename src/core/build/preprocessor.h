@@ -31,6 +31,10 @@ private:
     // Replace all Arduino API calls with api-> equivalents
     std::string replace_api_calls(const std::string& source);
 
+    // Collapses whitespace between a call name and its "(" (e.g. "Serial.begin (9600)"
+    // -> "Serial.begin(9600)") so replace_token/replace_all's exact matching still finds it.
+    std::string normalize_call_whitespace(const std::string& source);
+
     // Wrap setup() and loop() with DLL exports
     std::string wrap_functions(const std::string& source);
 

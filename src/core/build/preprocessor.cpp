@@ -42,8 +42,12 @@ bool Preprocessor::is_already_transformed(const std::string& source) {
            source.find("ArduinoAPI") != std::string::npos;
 }
 
+std::string Preprocessor::normalize_call_whitespace(const std::string& source) {
+    return std::regex_replace(source, std::regex(R"((\w)\s+\()"), "$1(");
+}
+
 std::string Preprocessor::replace_api_calls(const std::string& source) {
-    std::string s = source;
+    std::string s = normalize_call_whitespace(source);
 
     // Arduino binary literals: B00101 → 0b00101 (must run before other replacements)
     s = std::regex_replace(s, std::regex("\\bB([01]{1,8})\\b"), "0b$1");

@@ -70,5 +70,28 @@ static bool registered = []() {
     };
     def.wire_color = HBRIDGE_ACTIVE;
     ComponentRegistry::instance().register_component(def);
+
+    // Separate entry for the bare ENA/IN1/IN2 wiring style (L298N/L293D
+    // naming with no shared prefix) -- detect_prefix_group requires an
+    // underscore to derive a group key, so this never grouped. Same
+    // type_name/create_item, same tradeoff Stepper's IN1-IN4 entry accepts.
+    ComponentDefinition enaIn{
+        "HBridgeMotor",
+        {},
+        {
+            {"PWM",        {"ENA"}},
+            {"ANTI_CWISE", {"IN2"}},
+            {"CWISE",      {"IN1"}},
+        },
+        {},
+        true,
+        [](int pin, QGraphicsItem* parent) -> ComponentItem* {
+            return new HBridgeMotorItem(pin, parent);
+        },
+        MultiPinStrategy::Singleton,
+        "PWM"
+    };
+    enaIn.wire_color = HBRIDGE_ACTIVE;
+    ComponentRegistry::instance().register_component(enaIn);
     return true;
 }();
