@@ -826,10 +826,13 @@ void MainWindow::onRunClicked() {
     runButton_->setEnabled(false);
 
     QFile file(currentSketchPath_);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        file.write(codeEditor_->toPlainText().toUtf8());
-        file.close();
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to write: " + currentSketchPath_);
+        runButton_->setEnabled(true);
+        return;
     }
+    file.write(codeEditor_->toPlainText().toUtf8());
+    file.close();
 
     Compiler compiler;
     compiler.set_compiler_path(compilerPath_.toStdString());
@@ -1022,15 +1025,18 @@ void MainWindow::onOpenClicked() {
     );
     if (path.isEmpty()) return;
 
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to open: " + path);
+        return;
+    }
+    QString contents = QString::fromUtf8(file.readAll());
+    file.close();
+
     currentSketchPath_ = path;
     canvasWidget_->loadLayout(path);
-
-    QFile file(path);
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
-        codeEditor_->document()->setModified(false);
-        file.close();
-    }
+    codeEditor_->setPlainText(contents);
+    codeEditor_->document()->setModified(false);
 
     windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
     updateWindowTitle();
