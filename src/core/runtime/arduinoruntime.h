@@ -113,7 +113,7 @@ public:
 
     // Must be called before the sketch DLL is unloaded -- wdt_thread_/timer_thread_
     // call function pointers into it (ISR handlers), so unloading first is a use-after-free.
-    void stop_threads() { stop_wdt_thread(); stop_timer_thread(); }
+    void stop_threads() { stop_wdt_thread(); stop_timer_thread(); stop_tone_threads(); }
 
     void inject_analog(int pin, int value) {
         // A0=14, A1=15... → index 0,1...
@@ -153,6 +153,7 @@ public:
         // must fully join before destroying state_'s mutex/condvar
         stop_wdt_thread();
         stop_timer_thread();
+        stop_tone_threads();
         state_.~RuntimeState();
         new (&state_) RuntimeState();
     }
@@ -277,6 +278,10 @@ private:
     std::thread timer_thread_;
     std::atomic<bool> timer_thread_stop_{false};
     std::atomic<bool> timer_thread_started_{false};
+
+    void stop_tone_threads();
+    std::mutex tone_threads_mtx_;
+    std::vector<std::thread> tone_threads_;
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;

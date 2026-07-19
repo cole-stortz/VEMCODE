@@ -57,6 +57,7 @@ ArduinoRuntime::ArduinoRuntime(BoardProfile profile) : profile_(profile) {
 ArduinoRuntime::~ArduinoRuntime() {
     stop_wdt_thread();
     stop_timer_thread();
+    stop_tone_threads();
 }
 
 // Must run before state_'s mutex/condvar are destroyed -- an unjoined
@@ -404,7 +405,7 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
     if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, frequency);
     if (duration_ms == 0) return;
     ArduinoRuntime* rt = g_runtime;
-    std::thread([pin, duration_ms, rt]() {
+    std::thread t([pin, duration_ms, rt]() {
         unsigned long scaled_duration = (unsigned long)(duration_ms * rt->speed_multiplier_);
         unsigned long elapsed = 0;
         while (elapsed < scaled_duration) {
@@ -417,7 +418,9 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
             rt->state_.tone_frequencies_[pin] = 0;
             if (rt->on_pin_changed) rt->on_pin_changed(pin, 0);
         }
-    }).detach();
+    });
+    std::lock_guard<std::mutex> lock(rt->tone_threads_mtx_);
+    rt->tone_threads_.push_back(std::move(t));
 }
 
 void ArduinoRuntime::impl_noTone(int pin) {
@@ -888,4 +891,14 @@ void ArduinoRuntime::stop_timer_thread() {
     if (timer_thread_.joinable())
         timer_thread_.join();
     timer_thread_started_ = false;
+}
+
+void ArduinoRuntime::stop_tone_threads() {
+    std::vector<std::thread> threads;
+    {
+        std::lock_guard<std::mutex> lock(tone_threads_mtx_);
+        threads.swap(tone_threads_);
+    }
+    for (auto& t : threads)
+        if (t.joinable()) t.join();
 }
