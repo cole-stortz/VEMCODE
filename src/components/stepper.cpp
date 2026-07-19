@@ -17,6 +17,7 @@ class StepperItem : public ComponentItem {
     bool fourPhase_ = false;
     bool dirCW_ = true;
     long position_ = 0;
+    bool stepHigh_ = false;
 
 public:
     StepperItem(int pin, QGraphicsItem* parent) : ComponentItem(pin, parent) {}
@@ -24,7 +25,10 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = STEPPER_ACTIVE;
+        bool active = fourPhase_
+            ? (phaseState_[0] || phaseState_[1] || phaseState_[2] || phaseState_[3])
+            : stepHigh_;
+        QColor fill = active ? STEPPER_ACTIVE : STEPPER_INACTIVE;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
@@ -62,8 +66,8 @@ public:
                     else if (highIdx == (lastPhaseIdx_ + 3) % 4) { position_--; dirCW_ = false; }
                 }
                 lastPhaseIdx_ = highIdx;
-                update();
             }
+            update();
             return;
         }
 
@@ -73,7 +77,8 @@ public:
             return;
         }
         // STEP pin (or the lone pin in single-pin fallback): count rising edges
-        if (value != 0) position_ += dirCW_ ? 1 : -1;
+        stepHigh_ = value != 0;
+        if (stepHigh_) position_ += dirCW_ ? 1 : -1;
         update();
     }
 };

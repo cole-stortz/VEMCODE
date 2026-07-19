@@ -75,7 +75,8 @@ private:
 
     std::string infer_type(const std::string& name, const std::string& mode);
     int resolve_pin(const std::string& token,
-                    const std::map<std::string, std::string>& defines);
+                    const std::map<std::string, std::string>& defines,
+                    int depth = 0);
     bool contains_any(const std::string& str,
                       const std::vector<std::string>& keywords);
     bool pin_already_added(int pin) const;

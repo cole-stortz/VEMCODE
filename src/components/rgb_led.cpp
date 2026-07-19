@@ -35,9 +35,9 @@ public:
     }
 
     void onPinChanged(int pin, int value) override {
-        if (pin == redpin_)        redval_ = value;
-        else if (pin == greenpin_) greenval_ = value;
-        else if (pin == bluepin_)  blueval_ = value;
+        if (pin == redpin_)        redval_   = qBound(0, value, 255);
+        else if (pin == greenpin_) greenval_ = qBound(0, value, 255);
+        else if (pin == bluepin_)  blueval_  = qBound(0, value, 255);
         update();
     }
 };

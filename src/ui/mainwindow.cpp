@@ -857,28 +857,31 @@ void MainWindow::onRunClicked() {
     if (!result.board_hint.empty()) {
         QString boardName = QString::fromStdString(result.board_hint);
         int oldSerialCount = activeProfile_.serial_count;
+        bool knownBoard = true;
         if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
         else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
         else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
         else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
         else if (boardName == "Arduino Uno")        activeProfile_ = BOARD_UNO;
         else {
+            knownBoard = false;
             serialMonitor_->appendPlainText(
                 "WARNING: Unknown board '" + boardName + "' in @board hint — using currently selected board instead.\n");
-            return;
         }
 
-        canvasWidget_->setProfile(activeProfile_);
-        boardLabel_->setText(activeProfile_.name);
-        if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+        if (knownBoard) {
+            canvasWidget_->setProfile(activeProfile_);
+            boardLabel_->setText(activeProfile_.name);
+            if (sketchThread_) sketchThread_->setProfile(activeProfile_);
 
-        if (activeProfile_.serial_count != oldSerialCount)
-            rebuildSerialMonitors();
+            if (activeProfile_.serial_count != oldSerialCount)
+                rebuildSerialMonitors();
 
-        QSettings settings(
-            QCoreApplication::applicationDirPath() + "/settings.ini",
-            QSettings::IniFormat);
-        settings.setValue("board/name", boardName);
+            QSettings settings(
+                QCoreApplication::applicationDirPath() + "/settings.ini",
+                QSettings::IniFormat);
+            settings.setValue("board/name", boardName);
+        }
     }
 
     if (!result.success) {

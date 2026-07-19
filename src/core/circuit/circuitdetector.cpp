@@ -600,7 +600,8 @@ std::string CircuitDetector::infer_type(
 
 int CircuitDetector::resolve_pin(
     const std::string& token,
-    const std::map<std::string, std::string>& defines)
+    const std::map<std::string, std::string>& defines,
+    int depth)
 {
     // Direct number
     if (!token.empty() && std::isdigit(token[0]))
@@ -610,10 +611,17 @@ int CircuitDetector::resolve_pin(
     if (token.size() >= 2 && token[0] == 'A' && std::isdigit(token[1]))
         return 14 + (token[1] - '0');
 
+    // Guard against self-referential #define chains (e.g. "#define A B" /
+    // "#define B A") recursing forever and stack-overflowing the app -- a
+    // valid chain can pass through at most defines.size() distinct keys
+    // before it must terminate or repeat.
+    if (depth > (int)defines.size())
+        return -1;
+
     // Look up in defines
     auto it = defines.find(token);
     if (it != defines.end())
-        return resolve_pin(it->second, defines); // recurse in case of chained defines
+        return resolve_pin(it->second, defines, depth + 1); // recurse in case of chained defines
 
     return -1; // unresolvable
 }

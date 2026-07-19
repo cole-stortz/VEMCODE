@@ -11,7 +11,10 @@ public:
         memset(buf_, ' ', sizeof(buf_)); buf_[0][16]=buf_[1][16]='\0';
         row_=0; col_=0;
         if (api) { flush_(0); flush_(1); } }
-    void setCursor(int col, int row) { col_=col<16?col:15; row_=row<2?row:1; }
+    void setCursor(int col, int row) {
+        col_ = col < 0 ? 0 : (col < 16 ? col : 15);
+        row_ = row < 0 ? 0 : (row < 2 ? row : 1);
+    }
     void write(uint8_t c) {
         if (col_ >= 16) return;
         buf_[row_][col_++] = (c < 32) ? '*' : (char)c;
