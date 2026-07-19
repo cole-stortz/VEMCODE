@@ -14,6 +14,7 @@ static thread_local sigjmp_buf  tl_crash_jmp;
 #endif
 static thread_local bool        tl_in_sketch = false;
 static thread_local int         tl_crash_sig  = 0;
+static thread_local bool        tl_exec_locked = false; // is exec_mutex() held right now?
 
 static void sketch_signal_handler(int sig) {
     if (!tl_in_sketch) { ::signal(sig, SIG_DFL); ::raise(sig); return; }
@@ -133,6 +134,7 @@ void SketchThread::run() {
             : "Sketch crashed — check for null pointer or out-of-bounds array access";
         emit sketchCrashed(reason);
         tl_in_sketch = false;
+        if (tl_exec_locked) { host_.runtime().exec_mutex().unlock(); tl_exec_locked = false; }
 #ifdef _WIN32
         ::signal(SIGFPE,  old_fpe);
         ::signal(SIGSEGV, old_segv);
@@ -148,11 +150,19 @@ void SketchThread::run() {
 
     while (running_) {
         try {
+            host_.runtime().exec_mutex().lock();
+            tl_exec_locked = true;
             host_.run_loop();
+            tl_exec_locked = false;
+            host_.runtime().exec_mutex().unlock();
         } catch (const std::exception& e) {
+            tl_exec_locked = false;
+            host_.runtime().exec_mutex().unlock();
             emit sketchCrashed(QString("Sketch crashed: %1").arg(e.what()));
             break;
         } catch (...) {
+            tl_exec_locked = false;
+            host_.runtime().exec_mutex().unlock();
             emit sketchCrashed("Sketch crashed — unknown error");
             break;
         }

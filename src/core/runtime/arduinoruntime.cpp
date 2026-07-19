@@ -244,12 +244,16 @@ void ArduinoRuntime::impl_delay(unsigned long ms) {
     if (!g_runtime) return;
     unsigned long scaled = (unsigned long)(ms * g_runtime->speed_multiplier_);
 
-    // Sleep in 10ms chunks so stop requests are handled quickly
+    // Sleep in 10ms chunks so stop requests are handled quickly, releasing
+    // exec_mtx_ each chunk so ISR handlers can still preempt a delay() call,
+    // same as real interrupts firing during a busy-wait.
     unsigned long elapsed = 0;
     while (elapsed < scaled) {
         if (g_runtime->stop_requested_) return;
         unsigned long chunk = qMin(10UL, scaled - elapsed);
+        g_runtime->state_.exec_mtx_.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
+        g_runtime->state_.exec_mtx_.lock();
         elapsed += chunk;
     }
 }
@@ -356,20 +360,26 @@ unsigned long ArduinoRuntime::impl_pulseIn(int pin, int value, unsigned long tim
     while (impl_digitalRead(pin) == value) {
         if (g_runtime->stop_requested_) return 0;
         if (impl_micros() - start_time >= timeout) return 0;
+        g_runtime->state_.exec_mtx_.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        g_runtime->state_.exec_mtx_.lock();
     }
     // Phase 2
     while (impl_digitalRead(pin) != value) {
         if (g_runtime->stop_requested_) return 0;
         if (impl_micros() - start_time >= timeout) return 0;
+        g_runtime->state_.exec_mtx_.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        g_runtime->state_.exec_mtx_.lock();
     }
     unsigned long pulse_start = impl_micros();
     // Phase 3
     while (impl_digitalRead(pin) == value) {
         if (g_runtime->stop_requested_) return 0;
         if (impl_micros() - start_time >= timeout) return 0;
+        g_runtime->state_.exec_mtx_.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        g_runtime->state_.exec_mtx_.lock();
     }
     unsigned long pulse_end = impl_micros();
     return pulse_end - pulse_start;
@@ -382,7 +392,9 @@ void ArduinoRuntime::impl_delayMicroseconds(unsigned long us) {
     while (std::chrono::duration_cast<std::chrono::microseconds>(
                std::chrono::steady_clock::now() - start).count() < scaled) {
         if (g_runtime->stop_requested_) return;
+        g_runtime->state_.exec_mtx_.unlock();
         std::this_thread::sleep_for(std::chrono::microseconds(50));
+        g_runtime->state_.exec_mtx_.lock();
     }
 }
 
@@ -567,6 +579,7 @@ void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
 
     rt->wdt_thread_stop_ = false;
     rt->wdt_thread_ = std::thread([rt]() {
+        g_runtime = rt;
         while (!rt->wdt_thread_stop_ && !rt->stop_requested_) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -591,9 +604,11 @@ void ArduinoRuntime::impl_wdt_enable(int timeout_ms) {
             auto isr_it = rt->state_.isr_handlers_.find("WDT_vect");
             if (isr_it != rt->state_.isr_handlers_.end() && isr_it->second) {
                 // Interrupt mode: fire ISR, reset timer, keep watching
+                rt->state_.exec_mtx_.lock();
                 rt->state_.interrupts_enabled_ = false;
                 isr_it->second();
                 rt->state_.interrupts_enabled_ = true;
+                rt->state_.exec_mtx_.unlock();
                 std::lock_guard<std::mutex> lock(rt->state_.sleep_mtx_);
                 rt->state_.wdt_last_reset_ = std::chrono::steady_clock::now();
             } else {
@@ -626,6 +641,9 @@ void ArduinoRuntime::impl_sleep_cpu() {
 
     if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(true);
 
+    // Release exec_mtx_ for the wait -- otherwise the watchdog thread could
+    // never acquire it to fire the WDT ISR that's supposed to wake us up.
+    g_runtime->state_.exec_mtx_.unlock();
     {
         std::unique_lock<std::mutex> lock(g_runtime->state_.sleep_mtx_);
         g_runtime->state_.sleep_woken_ = false;
@@ -633,6 +651,7 @@ void ArduinoRuntime::impl_sleep_cpu() {
             return g_runtime->state_.sleep_woken_ || g_runtime->stop_requested_.load();
         });
     }
+    g_runtime->state_.exec_mtx_.lock();
 
     if (g_runtime->on_sleep_changed) g_runtime->on_sleep_changed(false);
 }
@@ -816,9 +835,11 @@ void ArduinoRuntime::dispatch_isr(const char* vect_name) {
     if (!state_.interrupts_enabled_) return;
     auto it = state_.isr_handlers_.find(vect_name);
     if (it == state_.isr_handlers_.end() || !it->second) return;
+    state_.exec_mtx_.lock();
     state_.interrupts_enabled_ = false;
     it->second();
     state_.interrupts_enabled_ = true;
+    state_.exec_mtx_.unlock();
 }
 
 void ArduinoRuntime::poll_timer(AvrTimerState& st, long long avr_us,
@@ -850,6 +871,7 @@ void ArduinoRuntime::ensure_timer_thread_running() {
     ArduinoRuntime* rt = this;
     timer_thread_stop_ = false;
     timer_thread_ = std::thread([rt]() {
+        g_runtime = rt;
         while (!rt->timer_thread_stop_ && !rt->stop_requested_) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             long long avr_us = avr_scaled_micros(rt);

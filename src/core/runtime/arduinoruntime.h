@@ -84,6 +84,8 @@ struct RuntimeState {
                             // thread (register writes), read from the timer thread (poll_timer)
     AvrTimerState timer1_{65536, 9, 10}; // Timer1: 16-bit, OC1A=pin9, OC1B=pin10
     AvrTimerState timer2_{256, 11, 3};   // Timer2: 8-bit,  OC2A=pin11, OC2B=pin3
+
+    std::mutex exec_mtx_; // serializes loop() against ISR handlers
 };
 
 class ArduinoRuntime {
@@ -92,6 +94,7 @@ public:
     ~ArduinoRuntime();
     ArduinoAPI get_api();
     RuntimeState& get_state() { return state_; }
+    std::mutex& exec_mutex() { return state_.exec_mtx_; }
 
     // Callbacks set by SketchThread; if unset, impl_* functions fall back to std::cout.
     std::function<void(const std::string&)> on_serial_output;

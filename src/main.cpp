@@ -14,6 +14,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <mutex>
 
 static std::atomic<bool>   g_stop_requested{false};
 static ArduinoRuntime*     g_headless_runtime = nullptr;
@@ -167,8 +168,10 @@ static int run_headless(const std::string& given_path) {
     g_headless_runtime = &runtime;
     std::signal(SIGINT, handle_sigint);
 
-    while (!g_stop_requested)
+    while (!g_stop_requested) {
+        std::lock_guard<std::mutex> exec_lock(runtime.exec_mutex());
         host.run_loop();
+    }
 
     std::cout << "\nStopped.\n";
     return 0;
