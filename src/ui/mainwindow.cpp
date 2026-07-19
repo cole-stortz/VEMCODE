@@ -282,11 +282,13 @@ MainWindow::~MainWindow() {
         sketchThread_->stopSketch();
 }
 
-// A clean exit means nothing to recover -- drop any pending autosave
+// A clean exit with nothing unsaved means nothing to recover -- drop any
+// pending autosave. If there ARE unsaved changes, leave it so
+// checkForAutosaveRecovery can offer it back next time this sketch is opened.
 void MainWindow::closeEvent(QCloseEvent* event) {
     bool has_real_path = !currentSketchPath_.isEmpty()
         && !currentSketchPath_.startsWith(QDir::tempPath());
-    if (has_real_path)
+    if (has_real_path && !codeEditor_->document()->isModified())
         QFile::remove(currentSketchPath_ + ".autosave");
     QMainWindow::closeEvent(event);
 }
