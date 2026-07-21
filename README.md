@@ -226,11 +226,23 @@ cmake --build build
 On first launch VEMCODE will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/msys64/ucrt64/bin/g++.exe` on Windows) and the root of the VEMCODE repo. These are saved to `app/settings.ini`.
 
 ### Headless mode
-VEMCODE can run headlessly in the terminal by typing either of these two forms of commands:
-- `./app/VEMCODE SKETCH_PATH` or `./app/VEMCODE SKETCH.cpp`
-- EX: `./app/VEMCODE OutputTest.cpp`
+VEMCODE can run headlessly in the terminal:
+- `./app/VEMCODE SKETCH.cpp` — compiles and runs the sketch with no UI, streaming Serial output to the terminal. Stop with `Ctrl+C`.
+- `./app/VEMCODE SKETCH.cpp SKETCH.timeline` — same, but drives the sketch with a `.timeline` sidecar file: inject stimulus (button presses, sensor values, Serial data, ...) at specific times and assert on pin state / Serial output, turning it into a scriptable regression test with a pass/fail exit code.
 
-Doing this you can run sketches without the UI and just see the serial output given by the sketch. There is no way to input values yet like clicking buttons and other types of inputs. You can stop the sketch by using the conventional `CTRL+C` hotkey to close it.
+Options (`key=value`, in any order, after the sketch path):
+- `timeout=N` — hard wall-clock ceiling in real seconds (default: unlimited, stop with `Ctrl+C`)
+- `speed=N` — sketch-time multiplier (default `1` = real-time); timeline event times stay in sketch-time seconds regardless of `speed`
+- `timeline=true` — use `<sketch-name>.timeline` next to the sketch instead of passing the timeline path explicitly
+
+`.timeline` file — one event per line, `#` comments allowed:
+```
+0.5, PRESS, BUTTON1
+1,   SET, POT1, 512
+2,   ASSERT, PIN, LED1, HIGH
+2.5, ASSERT, SERIAL_CONTAINS, "done"
+```
+Targets are resolved against the same component names printed under "Components detected".
 
 ---
 
@@ -295,18 +307,26 @@ VEMCODE/
 │   └── settings.ini            # Compiler path + recent sketches (gitignored)
 ├── docs/                       # Docs, logo/resources, ROADMAP, demo media
 ├── src/
-│   ├── main.cpp
+│   ├── main.cpp                # GUI entry point + headless CLI (run_headless)
+│   ├── appsettings.h           # Shared settings.ini accessor (GUI + headless)
 │   ├── lsan_suppressions.cpp   # LeakSanitizer suppression list
 │   ├── ui/
 │   │   ├── mainwindow.cpp/h    # Main window, toolbar, all UI wiring
 │   │   ├── canvaswidget.cpp/h  # Circuit canvas + component rendering
-│   │   ├── signaltimeline.cpp/h
-│   │   ├── codehighlighter.cpp/h
-│   │   ├── linenumberarea.cpp/h
-│   │   ├── variablewatch.cpp/h
-│   │   ├── devicespanel.cpp/h  # "I2C" debug tab — virtual device responses
-│   │   ├── spipanel.cpp/h      # "SPI" debug tab — virtual response sequence
-│   │   └── settingsdialog.cpp/h
+│   │   ├── apptheme.cpp/h      # Light/dark palette + stylesheet
+│   │   ├── settingsdialog.cpp/h
+│   │   ├── editor/             # Sketch editor internals
+│   │   │   ├── codehighlighter.cpp/h
+│   │   │   ├── linenumberarea.cpp/h
+│   │   │   ├── sketchlinter.cpp/h     # Static checks + compiler-error humanizer
+│   │   │   ├── keybindmanager.cpp/h   # Keybind persistence/remapping
+│   │   │   └── findreplacebar.cpp/h
+│   │   └── panels/             # Debug-panel widgets
+│   │       ├── signaltimeline.cpp/h
+│   │       ├── variablewatch.cpp/h
+│   │       ├── devicespanel.cpp/h  # "I2C" debug tab — virtual device responses
+│   │       ├── spipanel.cpp/h      # "SPI" debug tab — virtual response sequence
+│   │       └── byteparsing.h
 │   ├── components/             # One .cpp per component type — drop a file in, CMake glob auto-registers it
 │   └── core/
 │       ├── runtime/
@@ -315,7 +335,8 @@ VEMCODE/
 │       │   └── arduinoruntime.cpp/h
 │       ├── host/
 │       │   ├── sketchhost.cpp/h        # DLL load/unload + hot-reload
-│       │   └── sketchhostthread.cpp/h  # Background simulation thread
+│       │   ├── sketchhostthread.cpp/h  # Background simulation thread (GUI mode)
+│       │   └── timeline.cpp/h          # Headless .timeline parsing + injection/assertions
 │       ├── build/
 │       │   ├── compiler.cpp/h      # Invokes g++
 │       │   ├── preprocessor.cpp/h  # Sketch → VEMCODE transform
