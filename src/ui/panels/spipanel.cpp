@@ -1,17 +1,7 @@
-#include "src/ui/spipanel.h"
+#include "src/ui/panels/spipanel.h"
+#include "src/ui/panels/byteparsing.h"
 #include <QVBoxLayout>
 #include <QLabel>
-
-static std::vector<uint8_t> parseByteList(const QString& text) {
-    std::vector<uint8_t> bytes;
-    for (const QString& tok : text.split(',', Qt::SkipEmptyParts)) {
-        bool ok = false;
-        int v = tok.trimmed().toInt(&ok, 0); // base 0 auto-detects "0x.." / decimal
-        if (ok)
-            bytes.push_back((uint8_t)(v & 0xFF));
-    }
-    return bytes;
-}
 
 SpiPanel::SpiPanel(QWidget* parent)
     : QWidget(parent)

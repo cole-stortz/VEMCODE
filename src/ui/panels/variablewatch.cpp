@@ -1,4 +1,4 @@
-#include "src/ui/variablewatch.h"
+#include "src/ui/panels/variablewatch.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>

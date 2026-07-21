@@ -1,4 +1,4 @@
-#include "src/ui/codehighlighter.h"
+#include "src/ui/editor/codehighlighter.h"
 
 CodeHighlighter::CodeHighlighter(QTextDocument* parent)
     : QSyntaxHighlighter(parent)

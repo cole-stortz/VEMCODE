@@ -98,13 +98,16 @@ file(GLOB COMPONENT_SOURCES "${CMAKE_SOURCE_DIR}/src/components/*.cpp")
 set(SOURCES
     src/main.cpp
     src/ui/mainwindow.cpp
+    src/ui/editor/sketchlinter.cpp
+    src/ui/editor/keybindmanager.cpp
+    src/ui/editor/findreplacebar.cpp
     src/ui/canvaswidget.cpp
-    src/ui/signaltimeline.cpp
-    src/ui/codehighlighter.cpp
-    src/ui/linenumberarea.cpp
-    src/ui/variablewatch.cpp
-    src/ui/devicespanel.cpp
-    src/ui/spipanel.cpp
+    src/ui/editor/codehighlighter.cpp
+    src/ui/editor/linenumberarea.cpp
+    src/ui/panels/signaltimeline.cpp
+    src/ui/panels/variablewatch.cpp
+    src/ui/panels/devicespanel.cpp
+    src/ui/panels/spipanel.cpp
     src/ui/settingsdialog.cpp
     src/ui/apptheme.cpp
     src/core/runtime/arduinoruntime.cpp
@@ -128,13 +131,16 @@ set(SOURCES
 
 set(HEADERS
     src/ui/mainwindow.h
+    src/ui/editor/sketchlinter.h
+    src/ui/editor/keybindmanager.h
+    src/ui/editor/findreplacebar.h
     src/ui/canvaswidget.h
-    src/ui/signaltimeline.h
-    src/ui/codehighlighter.h
-    src/ui/linenumberarea.h
-    src/ui/variablewatch.h
-    src/ui/devicespanel.h
-    src/ui/spipanel.h
+    src/ui/editor/codehighlighter.h
+    src/ui/editor/linenumberarea.h
+    src/ui/panels/signaltimeline.h
+    src/ui/panels/variablewatch.h
+    src/ui/panels/devicespanel.h
+    src/ui/panels/spipanel.h
     src/ui/settingsdialog.h
     src/ui/apptheme.h
     src/core/runtime/arduinoapi.h

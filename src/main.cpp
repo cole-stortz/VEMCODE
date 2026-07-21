@@ -8,6 +8,7 @@
 #include "src/core/circuit/circuitdetector.h"
 #include "src/core/host/sketchhost.h"
 #include "src/core/runtime/boardprofile.h"
+#include "src/appsettings.h"
 #include <csignal>
 #include <atomic>
 #include <iostream>
@@ -33,9 +34,7 @@ static bool resolve_sketch_path(const std::string& given, std::string& resolved)
         return true;
     }
 
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
     QString default_location = settings.value("sketches/default_location",
         QCoreApplication::applicationDirPath() + "/sketches").toString();
     std::string search_root = default_location.toStdString();
@@ -70,9 +69,7 @@ static int run_headless(const std::string& given_path) {
     if (!resolve_sketch_path(given_path, sketch_path))
         return 1;
 
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
     std::string compilerPath = settings.value("compiler/path", "").toString().toStdString();
     std::string projectRoot  = settings.value("compiler/project_root", "").toString().toStdString();
     if (compilerPath.empty() || projectRoot.empty()) {
@@ -90,12 +87,8 @@ static int run_headless(const std::string& given_path) {
         settings.setValue("compiler/project_root", detectedRoot);
     }
 
-    std::string boardName = settings.value("board/name", "Arduino Uno").toString().toStdString();
-    BoardProfile profile = BOARD_UNO;
-    if      (boardName == "Arduino Nano")       profile = BOARD_NANO;
-    else if (boardName == "Arduino Mega 2560")  profile = BOARD_MEGA;
-    else if (boardName == "Arduino Due")        profile = BOARD_DUE;
-    else if (boardName == "Teensy 4.1")         profile = BOARD_TEENSY;
+    QString boardName = settings.value("board/name", "Arduino Uno").toString();
+    BoardProfile profile = boardProfileForName(boardName);
 
     std::ifstream sketch_file(sketch_path);
     if (!sketch_file) {
@@ -119,14 +112,8 @@ static int run_headless(const std::string& given_path) {
     for (const auto& w : result.warnings)
         std::cout << w << "\n";
 
-    if (!result.board_hint.empty()) {
-        const std::string& hint = result.board_hint;
-        if      (hint == "Arduino Nano")       profile = BOARD_NANO;
-        else if (hint == "Arduino Mega 2560")  profile = BOARD_MEGA;
-        else if (hint == "Arduino Due")        profile = BOARD_DUE;
-        else if (hint == "Teensy 4.1")         profile = BOARD_TEENSY;
-        else if (hint == "Arduino Uno")        profile = BOARD_UNO;
-    }
+    if (!result.board_hint.empty())
+        boardProfileForName(QString::fromStdString(result.board_hint), profile);
 
     if (!result.success) {
         std::cerr << "=== Compile errors ===\n" << result.raw_output << "\n";

@@ -1,4 +1,4 @@
-#include "src/ui/signaltimeline.h"
+#include "src/ui/panels/signaltimeline.h"
 #include <QPainter>
 #include <QPen>
 #include <QWheelEvent>

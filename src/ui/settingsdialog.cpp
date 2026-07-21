@@ -178,12 +178,7 @@ void SettingsDialog::setDefaultSketchLocation(const QString& path) {
 }
 
 BoardProfile SettingsDialog::selectedBoard() const {
-    QString name = boardCombo_->currentText();
-    if (name == "Arduino Nano")       return BOARD_NANO;
-    if (name == "Arduino Mega 2560")  return BOARD_MEGA;
-    if (name == "Arduino Due")        return BOARD_DUE;
-    if (name == "Teensy 4.1")         return BOARD_TEENSY;
-    return BOARD_UNO;
+    return boardProfileForName(boardCombo_->currentText());
 }
 
 void SettingsDialog::setSelectedBoard(const QString& name) {

@@ -22,27 +22,92 @@ struct AppPalette {
     QColor serial_text;
 };
 
-const AppPalette kDark{
-    QColor("#1e1e1e"), QColor("#252526"), QColor("#333333"), QColor("#444444"),
-    QColor("#d4d4d4"), QColor("#cccccc"), QColor("#888888"), QColor("#666666"),
-    QColor("#2d7a2d"), QColor("#3a9a3a"),
-    QColor("#7a2d2d"), QColor("#9a3a3a"),
-    QColor("#aaaaaa"), QColor("#2a2a2a"), QColor("#ffffff"),
-    QColor("#2a2a2a"), QColor("#555555"),
-    QColor("#3a5a8c"), QColor("#4a7abc"), QColor("#ffffff"),
-    QColor("#4ec94e"),
-};
+const AppPalette kDark = [] {
+    AppPalette p;
+    p.bg_chrome              = QColor("#1e1e1e");
+    p.bg_panel_header        = QColor("#252526");
+    p.border                 = QColor("#333333");
+    p.border_light           = QColor("#444444");
+    p.text_primary           = QColor("#d4d4d4");
+    p.text_title             = QColor("#cccccc");
+    p.text_muted             = QColor("#888888");
+    p.text_dim               = QColor("#666666");
+    p.btn_run                = QColor("#2d7a2d");
+    p.btn_run_hover          = QColor("#3a9a3a");
+    p.btn_stop               = QColor("#7a2d2d");
+    p.btn_stop_hover         = QColor("#9a3a3a");
+    p.btn_outline_text       = QColor("#aaaaaa");
+    p.btn_outline_hover_bg   = QColor("#2a2a2a");
+    p.btn_outline_hover_text = QColor("#ffffff");
+    p.btn_disabled_bg        = QColor("#2a2a2a");
+    p.btn_disabled_text      = QColor("#555555");
+    p.toggle_checked_bg      = QColor("#3a5a8c");
+    p.toggle_checked_border  = QColor("#4a7abc");
+    p.toggle_checked_text    = QColor("#ffffff");
+    p.serial_text            = QColor("#4ec94e");
+    return p;
+}();
 
-const AppPalette kLight{
-    QColor("#f5f5f7"), QColor("#e8e8ec"), QColor("#d0d0d5"), QColor("#c0c0c8"),
-    QColor("#1e1e1e"), QColor("#2a2a2a"), QColor("#6a6a72"), QColor("#8a8a92"),
-    QColor("#2d9d2d"), QColor("#38b038"),
-    QColor("#c23b3b"), QColor("#d94a4a"),
-    QColor("#55555f"), QColor("#dcdce2"), QColor("#000000"),
-    QColor("#dcdce2"), QColor("#aaaaaa"),
-    QColor("#b8d0f0"), QColor("#6a90c8"), QColor("#1a1a2a"),
-    QColor("#1a7a1a"),
-};
+const AppPalette kLight = [] {
+    AppPalette p;
+    p.bg_chrome              = QColor("#f5f5f7");
+    p.bg_panel_header        = QColor("#e8e8ec");
+    p.border                 = QColor("#d0d0d5");
+    p.border_light           = QColor("#c0c0c8");
+    p.text_primary           = QColor("#1e1e1e");
+    p.text_title             = QColor("#2a2a2a");
+    p.text_muted             = QColor("#6a6a72");
+    p.text_dim               = QColor("#8a8a92");
+    p.btn_run                = QColor("#2d9d2d");
+    p.btn_run_hover          = QColor("#38b038");
+    p.btn_stop               = QColor("#c23b3b");
+    p.btn_stop_hover         = QColor("#d94a4a");
+    p.btn_outline_text       = QColor("#55555f");
+    p.btn_outline_hover_bg   = QColor("#dcdce2");
+    p.btn_outline_hover_text = QColor("#000000");
+    p.btn_disabled_bg        = QColor("#dcdce2");
+    p.btn_disabled_text      = QColor("#aaaaaa");
+    p.toggle_checked_bg      = QColor("#b8d0f0");
+    p.toggle_checked_border  = QColor("#6a90c8");
+    p.toggle_checked_text    = QColor("#1a1a2a");
+    p.serial_text            = QColor("#1a7a1a");
+    return p;
+}();
+
+// Substitutes %{field_name} tokens in a stylesheet template with the matching
+// AppPalette color. Field names are looked up by name, not position, so
+// adding/reordering AppPalette members can't silently shift a color onto the
+// wrong selector -- a token left unmatched shows up as literal "%{...}" text
+// in the rendered UI instead of a swapped color.
+QString substitutePalette(QString qss, const AppPalette& p) {
+    struct Token { const char* name; QColor color; };
+    const Token tokens[] = {
+        {"bg_chrome", p.bg_chrome},
+        {"bg_panel_header", p.bg_panel_header},
+        {"border", p.border},
+        {"border_light", p.border_light},
+        {"text_primary", p.text_primary},
+        {"text_title", p.text_title},
+        {"text_muted", p.text_muted},
+        {"text_dim", p.text_dim},
+        {"btn_run", p.btn_run},
+        {"btn_run_hover", p.btn_run_hover},
+        {"btn_stop", p.btn_stop},
+        {"btn_stop_hover", p.btn_stop_hover},
+        {"btn_outline_text", p.btn_outline_text},
+        {"btn_outline_hover_bg", p.btn_outline_hover_bg},
+        {"btn_outline_hover_text", p.btn_outline_hover_text},
+        {"btn_disabled_bg", p.btn_disabled_bg},
+        {"btn_disabled_text", p.btn_disabled_text},
+        {"toggle_checked_bg", p.toggle_checked_bg},
+        {"toggle_checked_border", p.toggle_checked_border},
+        {"toggle_checked_text", p.toggle_checked_text},
+        {"serial_text", p.serial_text},
+    };
+    for (const auto& t : tokens)
+        qss.replace(QString("%{%1}").arg(t.name), t.color.name());
+    return qss;
+}
 
 const EditorHighlightColors kDarkHighlights{
     QColor("#3a0000"), QColor("#3a3400"), QColor("#264f78"), QColor("#5a4a00"),
@@ -85,84 +150,59 @@ QPalette appQPalette(bool dark) {
 QString appStylesheet(bool dark) {
     const AppPalette& p = dark ? kDark : kLight;
 
-    // Placeholder order below is 1..21, in the exact order the .arg() chain
-    // supplies them -- QString::arg() fills the lowest-numbered unfilled
-    // placeholder on each call, so any gap in the numbering shifts every
-    // later substitution. Keep this list and the chain below in lockstep.
     QString qss =
-        "QMainWindow, QDialog, QMessageBox { background: %1; color: %5; }"
-        "QLabel { color: %5; }"
-        "QCheckBox { color: %5; }"
-        "QComboBox { background: %1; color: %5; border: 1px solid %4; border-radius: 3px; padding: 2px 6px; }"
+        "QMainWindow, QDialog, QMessageBox { background: %{bg_chrome}; color: %{text_primary}; }"
+        "QLabel { color: %{text_primary}; }"
+        "QCheckBox { color: %{text_primary}; }"
+        "QComboBox { background: %{bg_chrome}; color: %{text_primary}; border: 1px solid %{border_light}; border-radius: 3px; padding: 2px 6px; }"
 
-        "QWidget#toolbar { background: %1; border-bottom: 1px solid %3; }"
-        "QLabel#appTitle { color: %6; font-size: 13px; font-weight: bold; border: none; background: transparent; }"
-        "QLabel#boardLabel { color: %8; font-size: 11px; border: none; background: transparent; }"
-        "QLabel[role=\"muted-label\"] { color: %7; font-size: 11px; border: none; background: transparent; }"
+        "QWidget#toolbar { background: %{bg_chrome}; border-bottom: 1px solid %{border}; }"
+        "QLabel#appTitle { color: %{text_title}; font-size: 13px; font-weight: bold; border: none; background: transparent; }"
+        "QLabel#boardLabel { color: %{text_dim}; font-size: 11px; border: none; background: transparent; }"
+        "QLabel[role=\"muted-label\"] { color: %{text_muted}; font-size: 11px; border: none; background: transparent; }"
 
         "QWidget[role=\"panel-header\"], QLabel[role=\"panel-header\"] {"
-        "  background: %2; color: %7; font-size: 10px; font-weight: bold; border-bottom: 1px solid %3; }"
-        "QWidget[role=\"input-row\"] { background: %2; border-top: 1px solid %3; }"
-        "QLabel[role=\"port-label\"] { background: %2; color: %8; font-size: 10px; padding-left: 4px; border-bottom: 1px solid %3; }"
-        "QLabel[role=\"port-label-bordered\"] { background: %2; color: %8; font-size: 10px; padding-left: 4px;"
-        "  border-left: 1px solid %3; border-bottom: 1px solid %3; }"
+        "  background: %{bg_panel_header}; color: %{text_muted}; font-size: 10px; font-weight: bold; border-bottom: 1px solid %{border}; }"
+        "QWidget[role=\"input-row\"] { background: %{bg_panel_header}; border-top: 1px solid %{border}; }"
+        "QLabel[role=\"port-label\"] { background: %{bg_panel_header}; color: %{text_dim}; font-size: 10px; padding-left: 4px; border-bottom: 1px solid %{border}; }"
+        "QLabel[role=\"port-label-bordered\"] { background: %{bg_panel_header}; color: %{text_dim}; font-size: 10px; padding-left: 4px;"
+        "  border-left: 1px solid %{border}; border-bottom: 1px solid %{border}; }"
 
-        "QPushButton#btnRun { background: %9; color: #ffffff; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; }"
-        "QPushButton#btnRun:hover { background: %10; }"
-        "QPushButton#btnRun:disabled { background: %16; color: %17; }"
-        "QPushButton#btnStop { background: %11; color: #ffffff; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; }"
-        "QPushButton#btnStop:hover { background: %12; }"
-        "QPushButton#btnStop:disabled { background: %16; color: %17; }"
+        "QPushButton#btnRun { background: %{btn_run}; color: #ffffff; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; }"
+        "QPushButton#btnRun:hover { background: %{btn_run_hover}; }"
+        "QPushButton#btnRun:disabled { background: %{btn_disabled_bg}; color: %{btn_disabled_text}; }"
+        "QPushButton#btnStop { background: %{btn_stop}; color: #ffffff; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; }"
+        "QPushButton#btnStop:hover { background: %{btn_stop_hover}; }"
+        "QPushButton#btnStop:disabled { background: %{btn_disabled_bg}; color: %{btn_disabled_text}; }"
 
-        "QPushButton[role=\"outline\"] { background: transparent; color: %13; border: 1px solid %4; border-radius: 4px; font-size: 12px; padding: 0 10px; }"
-        "QPushButton[role=\"outline\"]:hover { background: %14; color: %15; }"
+        "QPushButton[role=\"outline\"] { background: transparent; color: %{btn_outline_text}; border: 1px solid %{border_light}; border-radius: 4px; font-size: 12px; padding: 0 10px; }"
+        "QPushButton[role=\"outline\"]:hover { background: %{btn_outline_hover_bg}; color: %{btn_outline_hover_text}; }"
 
-        "QPushButton[role=\"toggle\"] { background: transparent; color: %13; border: 1px solid %4; border-radius: 4px; font-size: 11px; padding: 0 8px; }"
-        "QPushButton[role=\"toggle\"]:hover { background: %14; color: %15; }"
-        "QPushButton[role=\"toggle\"]:checked { background: %18; color: %20; border-color: %19; }"
+        "QPushButton[role=\"toggle\"] { background: transparent; color: %{btn_outline_text}; border: 1px solid %{border_light}; border-radius: 4px; font-size: 11px; padding: 0 8px; }"
+        "QPushButton[role=\"toggle\"]:hover { background: %{btn_outline_hover_bg}; color: %{btn_outline_hover_text}; }"
+        "QPushButton[role=\"toggle\"]:checked { background: %{toggle_checked_bg}; color: %{toggle_checked_text}; border-color: %{toggle_checked_border}; }"
 
-        "QSplitter::handle { background: %3; }"
+        "QSplitter::handle { background: %{border}; }"
 
-        "QPlainTextEdit#codeEditor { background: %1; color: %5; border: none; font-family: 'Courier New', monospace; }"
-        "QPlainTextEdit[role=\"serial\"] { background: %1; color: %21; border: none; font-family: 'Courier New', monospace; font-size: 12px; }"
+        "QPlainTextEdit#codeEditor { background: %{bg_chrome}; color: %{text_primary}; border: none; font-family: 'Courier New', monospace; }"
+        "QPlainTextEdit[role=\"serial\"] { background: %{bg_chrome}; color: %{serial_text}; border: none; font-family: 'Courier New', monospace; font-size: 12px; }"
 
-        "QLineEdit { background: %1; color: %5; border: 1px solid %4; border-radius: 3px; padding: 3px 6px; font-size: 12px; }"
+        "QLineEdit { background: %{bg_chrome}; color: %{text_primary}; border: 1px solid %{border_light}; border-radius: 3px; padding: 3px 6px; font-size: 12px; }"
 
-        "QSlider::groove:horizontal { background: %3; height: 4px; border-radius: 2px; }"
-        "QSlider::handle:horizontal { background: %8; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }"
-        "QSlider::handle:horizontal:hover { background: %6; }"
+        "QSlider::groove:horizontal { background: %{border}; height: 4px; border-radius: 2px; }"
+        "QSlider::handle:horizontal { background: %{text_dim}; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }"
+        "QSlider::handle:horizontal:hover { background: %{text_title}; }"
 
-        "QTabWidget { background: %2; }"
-        "QTabWidget::pane { border: none; background: %1; }"
-        "QTabWidget::tab-bar { background: %2; }"
-        "QTabBar { background: %2; }"
-        "QTabBar::tab { background: %2; color: %7; padding: 4px 14px; font-size: 11px; border: none; border-right: 1px solid %3; }"
-        "QTabBar::tab:selected { background: %1; color: %6; }"
-        "QTabBar::tab:hover { background: %14; color: %8; }"
+        "QTabWidget { background: %{bg_panel_header}; }"
+        "QTabWidget::pane { border: none; background: %{bg_chrome}; }"
+        "QTabWidget::tab-bar { background: %{bg_panel_header}; }"
+        "QTabBar { background: %{bg_panel_header}; }"
+        "QTabBar::tab { background: %{bg_panel_header}; color: %{text_muted}; padding: 4px 14px; font-size: 11px; border: none; border-right: 1px solid %{border}; }"
+        "QTabBar::tab:selected { background: %{bg_chrome}; color: %{text_title}; }"
+        "QTabBar::tab:hover { background: %{btn_outline_hover_bg}; color: %{text_dim}; }"
 
-        "QTableWidget { background: %1; color: %5; border: none; font-family: 'Courier New'; font-size: 12px; }"
-        "QHeaderView::section { background: %2; color: %7; border: none; padding: 4px; }";
+        "QTableWidget { background: %{bg_chrome}; color: %{text_primary}; border: none; font-family: 'Courier New'; font-size: 12px; }"
+        "QHeaderView::section { background: %{bg_panel_header}; color: %{text_muted}; border: none; padding: 4px; }";
 
-    return qss
-        .arg(p.bg_chrome.name())            // %1
-        .arg(p.bg_panel_header.name())      // %2
-        .arg(p.border.name())               // %3
-        .arg(p.border_light.name())         // %4
-        .arg(p.text_primary.name())         // %5
-        .arg(p.text_title.name())           // %6
-        .arg(p.text_muted.name())           // %7
-        .arg(p.text_dim.name())             // %8
-        .arg(p.btn_run.name())              // %9
-        .arg(p.btn_run_hover.name())        // %10
-        .arg(p.btn_stop.name())             // %11
-        .arg(p.btn_stop_hover.name())       // %12
-        .arg(p.btn_outline_text.name())     // %13
-        .arg(p.btn_outline_hover_bg.name()) // %14
-        .arg(p.btn_outline_hover_text.name())// %15
-        .arg(p.btn_disabled_bg.name())      // %16
-        .arg(p.btn_disabled_text.name())    // %17
-        .arg(p.toggle_checked_bg.name())    // %18
-        .arg(p.toggle_checked_border.name())// %19
-        .arg(p.toggle_checked_text.name())  // %20
-        .arg(p.serial_text.name());         // %21
+    return substitutePalette(qss, p);
 }

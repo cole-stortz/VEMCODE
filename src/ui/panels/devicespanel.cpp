@@ -1,4 +1,5 @@
-#include "src/ui/devicespanel.h"
+#include "src/ui/panels/devicespanel.h"
+#include "src/ui/panels/byteparsing.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -8,16 +9,6 @@ static bool parseIntCell(const QString& text, int& out) {
     bool ok = false;
     out = text.trimmed().toInt(&ok, 0); // base 0 auto-detects "0x.." / decimal
     return ok;
-}
-
-static std::vector<uint8_t> parseByteList(const QString& text) {
-    std::vector<uint8_t> bytes;
-    for (const QString& tok : text.split(',', Qt::SkipEmptyParts)) {
-        int v;
-        if (parseIntCell(tok, v))
-            bytes.push_back((uint8_t)(v & 0xFF));
-    }
-    return bytes;
 }
 
 DevicesPanel::DevicesPanel(QWidget* parent)

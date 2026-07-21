@@ -1,6 +1,8 @@
 #include "src/ui/mainwindow.h"
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/componentitem.h"
+#include "src/appsettings.h"
+#include "src/ui/editor/sketchlinter.h"
 #include <regex>
 #include <algorithm>
 #include <QVBoxLayout>
@@ -23,70 +25,6 @@
 #include <QWheelEvent>
 #include <QMessageBox>
 
-// Returns true if a define/const name looks like a pin definition
-static bool is_pin_name(const std::string& name) {
-    static const char* INCLUDE[] = {
-        "PIN", "LED", "BTN", "BUTTON", "SERVO", "TRIG", "ECHO",
-        "SENSOR", "MOTOR", "CLK", "DT", "CS", "RST", "RS",
-        "SWITCH", "BUZZER", "SPEAKER", "PIEZO", "POT", "DIAL"
-    };
-    static const char* EXCLUDE[] = {
-        "COUNT", "NUM", "SIZE", "LEN", "MAX", "SPEED", "BAUD", "RATE", "DELAY", "TIMEOUT"
-    };
-    std::string up = name;
-    std::transform(up.begin(), up.end(), up.begin(), ::toupper);
-    for (const char* kw : EXCLUDE)
-        if (up.find(kw) != std::string::npos) return false;
-    for (const char* kw : INCLUDE)
-        if (up.find(kw) != std::string::npos) return true;
-    return false;
-}
-
-// PWM-capable pins per board; empty = board supports PWM on all pins (skip check)
-static std::vector<int> get_pwm_pins_for(const BoardProfile& p) {
-    std::string name = p.name;
-    if (name == "Arduino Uno" || name == "Arduino Nano")
-        return {3, 5, 6, 9, 10, 11};
-    if (name == "Arduino Mega 2560")
-        return {2,3,4,5,6,7,8,9,10,11,12,13,44,45,46};
-    return {}; // Due / Teensy: all pins support PWM
-}
-
-// Rewrite cryptic GCC error messages to plain English
-static QString humanizeErrors(const QString& raw) {
-    struct Rule { QRegularExpression re; QString repl; };
-    static const Rule rules[] = {
-        { QRegularExpression(R"('([\w:<>*& ]+)' was not declared in this scope)"),
-          "'\\1' not found — did you forget to declare it?" },
-        { QRegularExpression(R"(no matching function for call to '([^']+)')"),
-          "Wrong arguments passed to '\\1'" },
-        { QRegularExpression(R"(expected ';' before '}' token)"),
-          "Missing semicolon, probably the line above" },
-        { QRegularExpression(R"(expected '}' at end of input)"),
-          "Unclosed brace — one of your { was never closed" },
-        { QRegularExpression(R"(lvalue required as left operand of assignment)"),
-          "Did you mean == instead of =?" },
-        { QRegularExpression(R"(undefined reference to [`']([^'`]+)[`'])"),
-          "Function '\\1' is used but never defined" },
-        { QRegularExpression(R"(control reaches end of non-void function)"),
-          "Function is missing a return statement" },
-        { QRegularExpression(R"(expected unqualified-id before '\{' token)"),
-          "Code found outside a function — all code must be inside setup(), loop(), or another function" },
-        { QRegularExpression(R"(too (many|few) arguments to function '([^']+)')"),
-          "Wrong number of arguments passed to '\\2'" },
-        { QRegularExpression(R"(stray '\\[^']*' in program)"),
-          "Invalid character in code — this sometimes happens when copy-pasting from a website; try retyping the line" },
-        { QRegularExpression(R"(overflow in implicit constant conversion)"),
-          "Number is too large for this variable type — try using long instead of int" },
-        { QRegularExpression(R"(comparison between pointer and integer)"),
-          "Can't compare strings with == — use strcmp() or the String class" },
-    };
-    QString result = raw;
-    for (const auto& r : rules)
-        result.replace(r.re, r.repl);
-    return result;
-}
-
 // Font size intentionally left out of the editor's styling -- it's set via
 // setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
 // widget's QFont directly) aren't fought by a QSS-cascaded font-size.
@@ -107,20 +45,14 @@ MainWindow::MainWindow(QWidget* parent)
     layout->setSpacing(0);
     setCentralWidget(central);
 
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
     compilerPath_ = settings.value("compiler/path", "").toString();
     projectRoot_  = settings.value("compiler/project_root", "").toString();
     defaultSketchLocation_ = settings.value("sketches/default_location",
         QCoreApplication::applicationDirPath() + "/sketches").toString();
 
     QString boardName = settings.value("board/name", "Arduino Uno").toString();
-    if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
-    else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
-    else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
-    else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
-    else                                        activeProfile_ = BOARD_UNO;
+    activeProfile_ = boardProfileForName(boardName);
 
     if (compilerPath_.isEmpty() || projectRoot_.isEmpty()) {
         SettingsDialog dialog(this);
@@ -134,7 +66,7 @@ MainWindow::MainWindow(QWidget* parent)
             projectRoot_  = dialog.projectRoot();
             settings.setValue("compiler/path", compilerPath_);
             settings.setValue("compiler/project_root", projectRoot_);
-            applyKeybinds(dialog.keybinds());
+            keybinds_.apply(dialog.keybinds());
         }
     }
 
@@ -199,20 +131,20 @@ MainWindow::MainWindow(QWidget* parent)
                 sketchThread_->setWatchList(vars);
             });
 
-    QShortcut* save_shortcut = new QShortcut(loadKeybind(settings, "save", QKeySequence::Save), this);
+    QShortcut* save_shortcut = new QShortcut(keybinds_.load(settings, "save", QKeySequence::Save), this);
     connect(save_shortcut, &QShortcut::activated, this, &MainWindow::onSaveClicked);
-    keybindShortcuts_["save"] = save_shortcut;
-    QShortcut* save_as_shortcut = new QShortcut(loadKeybind(settings, "save_as", QKeySequence::SaveAs), this);
+    keybinds_.registerShortcut("save", save_shortcut);
+    QShortcut* save_as_shortcut = new QShortcut(keybinds_.load(settings, "save_as", QKeySequence::SaveAs), this);
     connect(save_as_shortcut, &QShortcut::activated, this, &MainWindow::onSaveAsClicked);
-    keybindShortcuts_["save_as"] = save_as_shortcut;
+    keybinds_.registerShortcut("save_as", save_as_shortcut);
 
     // Mirrors runButton_'s own disabled-while-running guard -- a shortcut has
     // no disabled state of its own to stop it firing mid-run.
-    QShortcut* run_shortcut = new QShortcut(loadKeybind(settings, "run", QKeySequence(Qt::CTRL | Qt::Key_R)), this);
+    QShortcut* run_shortcut = new QShortcut(keybinds_.load(settings, "run", QKeySequence(Qt::CTRL | Qt::Key_R)), this);
     connect(run_shortcut, &QShortcut::activated, this, [this]() {
         if (runButton_->isEnabled()) onRunClicked();
     });
-    keybindShortcuts_["run"] = run_shortcut;
+    keybinds_.registerShortcut("run", run_shortcut);
 
     // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- the platform
     // standard key for ZoomIn resolves to the same sequence as literal "Ctrl+=" on this
@@ -220,42 +152,42 @@ MainWindow::MainWindow(QWidget* parent)
     // (neither fires). Bind both the unshifted "=" and shifted "+" explicitly instead;
     // only the unshifted one is user-remappable, the shifted one is a fixed convenience
     // alias so layouts where "+" is easier to reach than bare "=" still work.
-    QShortcut* zoom_in_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_in", QKeySequence(Qt::CTRL | Qt::Key_Equal)), this);
+    QShortcut* zoom_in_shortcut = new QShortcut(keybinds_.load(settings, "editor_zoom_in", QKeySequence(Qt::CTRL | Qt::Key_Equal)), this);
     connect(zoom_in_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
-    keybindShortcuts_["editor_zoom_in"] = zoom_in_shortcut;
+    keybinds_.registerShortcut("editor_zoom_in", zoom_in_shortcut);
     QShortcut* zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Equal), this);
     connect(zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
-    QShortcut* zoom_out_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_out", QKeySequence(Qt::CTRL | Qt::Key_Minus)), this);
+    QShortcut* zoom_out_shortcut = new QShortcut(keybinds_.load(settings, "editor_zoom_out", QKeySequence(Qt::CTRL | Qt::Key_Minus)), this);
     connect(zoom_out_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(-1); });
-    keybindShortcuts_["editor_zoom_out"] = zoom_out_shortcut;
-    QShortcut* zoom_reset_shortcut = new QShortcut(loadKeybind(settings, "editor_zoom_reset", QKeySequence(Qt::CTRL | Qt::Key_0)), this);
+    keybinds_.registerShortcut("editor_zoom_out", zoom_out_shortcut);
+    QShortcut* zoom_reset_shortcut = new QShortcut(keybinds_.load(settings, "editor_zoom_reset", QKeySequence(Qt::CTRL | Qt::Key_0)), this);
     connect(zoom_reset_shortcut, &QShortcut::activated, this, &MainWindow::resetEditorZoom);
-    keybindShortcuts_["editor_zoom_reset"] = zoom_reset_shortcut;
+    keybinds_.registerShortcut("editor_zoom_reset", zoom_reset_shortcut);
 
     // Same unshifted/shifted pairing as the editor zoom shortcuts above, on Alt
     // instead of Ctrl so it doesn't collide with editor font zoom.
-    QShortcut* canvas_zoom_in_shortcut = new QShortcut(loadKeybind(settings, "canvas_zoom_in", QKeySequence(Qt::ALT | Qt::Key_Equal)), this);
+    QShortcut* canvas_zoom_in_shortcut = new QShortcut(keybinds_.load(settings, "canvas_zoom_in", QKeySequence(Qt::ALT | Qt::Key_Equal)), this);
     connect(canvas_zoom_in_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
-    keybindShortcuts_["canvas_zoom_in"] = canvas_zoom_in_shortcut;
+    keybinds_.registerShortcut("canvas_zoom_in", canvas_zoom_in_shortcut);
     QShortcut* canvas_zoom_in_shortcut_shift = new QShortcut(QKeySequence(Qt::ALT | Qt::SHIFT | Qt::Key_Equal), this);
     connect(canvas_zoom_in_shortcut_shift, &QShortcut::activated, this, [this]() { canvasWidget_->zoomIn(); });
-    QShortcut* canvas_zoom_out_shortcut = new QShortcut(loadKeybind(settings, "canvas_zoom_out", QKeySequence(Qt::ALT | Qt::Key_Minus)), this);
+    QShortcut* canvas_zoom_out_shortcut = new QShortcut(keybinds_.load(settings, "canvas_zoom_out", QKeySequence(Qt::ALT | Qt::Key_Minus)), this);
     connect(canvas_zoom_out_shortcut, &QShortcut::activated, this, [this]() { canvasWidget_->zoomOut(); });
-    keybindShortcuts_["canvas_zoom_out"] = canvas_zoom_out_shortcut;
+    keybinds_.registerShortcut("canvas_zoom_out", canvas_zoom_out_shortcut);
 
     connect(codeEditor_->document(), &QTextDocument::modificationChanged,
             this, [this](bool) { updateWindowTitle(); });
 
-    QShortcut* find_shortcut = new QShortcut(loadKeybind(settings, "find", QKeySequence::Find), this);
-    connect(find_shortcut, &QShortcut::activated, this, &MainWindow::showFindBar);
-    keybindShortcuts_["find"] = find_shortcut;
+    QShortcut* find_shortcut = new QShortcut(keybinds_.load(settings, "find", QKeySequence::Find), this);
+    connect(find_shortcut, &QShortcut::activated, findReplaceBar_, &FindReplaceBar::showBar);
+    keybinds_.registerShortcut("find", find_shortcut);
 
     // code_completion, duplicate_line, and comment_toggle have no QShortcut of
     // their own -- they're raw key comparisons in eventFilter (scoped to
     // codeEditor_ only), so just seed keybindSeq_ with their current sequence.
-    loadKeybind(settings, "code_completion", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space));
-    loadKeybind(settings, "duplicate_line", QKeySequence(Qt::CTRL | Qt::Key_D));
-    loadKeybind(settings, "comment_toggle", QKeySequence(Qt::CTRL | Qt::Key_Slash));
+    keybinds_.load(settings, "code_completion", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space));
+    keybinds_.load(settings, "duplicate_line", QKeySequence(Qt::CTRL | Qt::Key_D));
+    keybinds_.load(settings, "comment_toggle", QKeySequence(Qt::CTRL | Qt::Key_Slash));
 
     // Autosave every 30s, but only for a sketch with a real (non-scratch) path
     // and only if there are actually unsaved changes to write
@@ -412,74 +344,6 @@ QWidget* MainWindow::buildEditorPanel() {
     header->setProperty("role", "panel-header");
     layout->addWidget(header);
 
-    // Find & Replace bar -- hidden until Ctrl+F/Ctrl+H
-    findBar_ = new QWidget();
-    findBar_->setObjectName("findBar");
-    findBar_->setProperty("role", "panel-header"); // same bg/border look as panel headers
-    QVBoxLayout* findBarLayout = new QVBoxLayout(findBar_);
-    findBarLayout->setContentsMargins(8, 6, 8, 6);
-    findBarLayout->setSpacing(4);
-
-    QHBoxLayout* findRowLayout = new QHBoxLayout();
-    findRowLayout->setSpacing(6);
-    findInput_ = new QLineEdit(findBar_);
-    findInput_->setPlaceholderText("Find");
-    findRowLayout->addWidget(findInput_);
-
-    findStatusLabel_ = new QLabel(findBar_);
-    findStatusLabel_->setProperty("role", "muted-label");
-    findStatusLabel_->setFixedWidth(60);
-    findRowLayout->addWidget(findStatusLabel_);
-
-    QPushButton* findPrevButton = new QPushButton("Prev", findBar_);
-    findPrevButton->setFixedHeight(24);
-    findPrevButton->setProperty("role", "outline");
-    connect(findPrevButton, &QPushButton::clicked, this, &MainWindow::onFindPrev);
-    findRowLayout->addWidget(findPrevButton);
-
-    QPushButton* findNextButton = new QPushButton("Next", findBar_);
-    findNextButton->setFixedHeight(24);
-    findNextButton->setProperty("role", "outline");
-    connect(findNextButton, &QPushButton::clicked, this, &MainWindow::onFindNext);
-    findRowLayout->addWidget(findNextButton);
-
-    QPushButton* findCloseButton = new QPushButton("✕", findBar_);
-    findCloseButton->setFixedSize(24, 24);
-    findCloseButton->setProperty("role", "outline");
-    connect(findCloseButton, &QPushButton::clicked, this, &MainWindow::hideFindBar);
-    findRowLayout->addWidget(findCloseButton);
-
-    findBarLayout->addLayout(findRowLayout);
-
-    replaceRow_ = new QWidget(findBar_);
-    QHBoxLayout* replaceRowLayout = new QHBoxLayout(replaceRow_);
-    replaceRowLayout->setContentsMargins(0, 0, 0, 0);
-    replaceRowLayout->setSpacing(6);
-    replaceInput_ = new QLineEdit(replaceRow_);
-    replaceInput_->setPlaceholderText("Replace");
-    replaceRowLayout->addWidget(replaceInput_);
-
-    QPushButton* replaceButton = new QPushButton("Replace", replaceRow_);
-    replaceButton->setFixedHeight(24);
-    replaceButton->setProperty("role", "outline");
-    connect(replaceButton, &QPushButton::clicked, this, &MainWindow::onReplaceClicked);
-    replaceRowLayout->addWidget(replaceButton);
-
-    QPushButton* replaceAllButton = new QPushButton("Replace All", replaceRow_);
-    replaceAllButton->setFixedHeight(24);
-    replaceAllButton->setProperty("role", "outline");
-    connect(replaceAllButton, &QPushButton::clicked, this, &MainWindow::onReplaceAllClicked);
-    replaceRowLayout->addWidget(replaceAllButton);
-
-    findBarLayout->addWidget(replaceRow_);
-
-    connect(findInput_, &QLineEdit::textChanged, this, [this](const QString&) { runFindSearch(); });
-    findInput_->installEventFilter(this);
-    replaceInput_->installEventFilter(this);
-
-    findBar_->hide();
-    layout->addWidget(findBar_);
-
     codeEditor_ = new EditorWithLines();
     highlighter_ = new CodeHighlighter(codeEditor_->document());
     codeEditor_->setObjectName("codeEditor");
@@ -495,6 +359,18 @@ QWidget* MainWindow::buildEditorPanel() {
     codeEditor_->installEventFilter(this);
     connect(codeEditor_, &QPlainTextEdit::cursorPositionChanged,
             this, &MainWindow::updateBracketMatch);
+
+    // Find & Replace bar -- hidden until Ctrl+F
+    findReplaceBar_ = new FindReplaceBar(codeEditor_);
+    findReplaceBar_->setHighlightColor(highlightColors_.find_match_bg);
+    connect(findReplaceBar_, &FindReplaceBar::matchesChanged, this,
+            [this](QList<QTextEdit::ExtraSelection> selections) {
+                findSelections_ = selections;
+                refreshExtraSelections();
+            });
+    connect(findReplaceBar_, &FindReplaceBar::statusMessage, this,
+            [this](const QString& text) { statusBar()->showMessage(text); });
+    layout->addWidget(findReplaceBar_);
 
     // Auto Complete
     completer_ = new QCompleter(this);
@@ -849,7 +725,7 @@ void MainWindow::onRunClicked() {
     compiler.set_output_dir(sketch_dir);
 
     // Static pre-compile checks (pin range, PWM, ISR issues, etc.)
-    for (const QString& w : runStaticChecks(codeEditor_->toPlainText()))
+    for (const QString& w : SketchLinter::checkSource(codeEditor_->toPlainText(), activeProfile_))
         serialMonitor_->appendPlainText(w + "\n");
 
     CompileResult result = compiler.compile(sketch_path);
@@ -862,14 +738,8 @@ void MainWindow::onRunClicked() {
     if (!result.board_hint.empty()) {
         QString boardName = QString::fromStdString(result.board_hint);
         int oldSerialCount = activeProfile_.serial_count;
-        bool knownBoard = true;
-        if      (boardName == "Arduino Nano")       activeProfile_ = BOARD_NANO;
-        else if (boardName == "Arduino Mega 2560")  activeProfile_ = BOARD_MEGA;
-        else if (boardName == "Arduino Due")        activeProfile_ = BOARD_DUE;
-        else if (boardName == "Teensy 4.1")         activeProfile_ = BOARD_TEENSY;
-        else if (boardName == "Arduino Uno")        activeProfile_ = BOARD_UNO;
-        else {
-            knownBoard = false;
+        bool knownBoard = boardProfileForName(boardName, activeProfile_);
+        if (!knownBoard) {
             serialMonitor_->appendPlainText(
                 "WARNING: Unknown board '" + boardName + "' in @board hint — using currently selected board instead.\n");
         }
@@ -882,9 +752,7 @@ void MainWindow::onRunClicked() {
             if (activeProfile_.serial_count != oldSerialCount)
                 rebuildSerialMonitors();
 
-            QSettings settings(
-                QCoreApplication::applicationDirPath() + "/settings.ini",
-                QSettings::IniFormat);
+            QSettings settings = appSettings();
             settings.setValue("board/name", boardName);
         }
     }
@@ -937,7 +805,7 @@ void MainWindow::onRunClicked() {
         // Strip api-> -- user never wrote this
         raw.replace("api->", "");
 
-        raw = humanizeErrors(raw);
+        raw = SketchLinter::humanizeErrors(raw);
         serialMonitor_->appendPlainText("=== Compile errors ===\n");
         serialMonitor_->appendPlainText(raw);
         statusBar()->showMessage("Compile failed");
@@ -983,7 +851,7 @@ void MainWindow::onRunClicked() {
         std::regex pin_def_re(R"(#\s*define\s+(\w+)\s+\d+)");
         for (auto it = std::sregex_iterator(src.begin(), src.end(), pin_def_re);
              it != std::sregex_iterator(); ++it) {
-            if (is_pin_name((*it)[1].str())) { has_pin_defines = true; break; }
+            if (SketchLinter::isPinName((*it)[1].str())) { has_pin_defines = true; break; }
         }
         bool has_hardcoded = std::regex_search(src,
             std::regex(R"((?:digitalWrite|analogWrite|pinMode)\s*\(\s*\d+)"));
@@ -1262,128 +1130,6 @@ void MainWindow::updateBracketMatch() {
     refreshExtraSelections();
 }
 
-void MainWindow::showFindBar() {
-    findBar_->show();
-
-    QString selected = codeEditor_->textCursor().selectedText();
-    if (!selected.isEmpty() && !selected.contains(QChar::ParagraphSeparator))
-        findInput_->setText(selected);
-
-    findInput_->setFocus();
-    findInput_->selectAll();
-    runFindSearch();
-}
-
-void MainWindow::hideFindBar() {
-    findBar_->hide();
-    findSelections_.clear();
-    findMatches_.clear();
-    currentMatchIndex_ = -1;
-    refreshExtraSelections();
-    codeEditor_->setFocus();
-}
-
-// Re-scans the whole document for findInput_'s text, highlights every match, and
-// jumps to whichever match is nearest the current cursor position.
-void MainWindow::runFindSearch() {
-    QString needle = findInput_->text();
-    findMatches_.clear();
-    findSelections_.clear();
-
-    if (!needle.isEmpty()) {
-        QTextDocument* doc = codeEditor_->document();
-        QTextCursor cursor(doc);
-        while (true) {
-            cursor = doc->find(needle, cursor);
-            if (cursor.isNull()) break;
-            findMatches_.append(cursor.selectionStart());
-
-            QTextEdit::ExtraSelection sel;
-            sel.format.setBackground(highlightColors_.find_match_bg);
-            sel.cursor = cursor;
-            findSelections_.append(sel);
-        }
-    }
-
-    if (findMatches_.isEmpty()) {
-        currentMatchIndex_ = -1;
-    } else {
-        int cursorPos = codeEditor_->textCursor().selectionStart();
-        currentMatchIndex_ = 0;
-        for (int i = 0; i < findMatches_.size(); i++) {
-            if (findMatches_[i] >= cursorPos) { currentMatchIndex_ = i; break; }
-        }
-        selectMatch(currentMatchIndex_);
-    }
-
-    updateFindStatusLabel();
-    refreshExtraSelections();
-}
-
-void MainWindow::selectMatch(int index) {
-    if (index < 0 || index >= findMatches_.size()) return;
-    QTextCursor cursor(codeEditor_->document());
-    cursor.setPosition(findMatches_[index]);
-    cursor.setPosition(findMatches_[index] + findInput_->text().length(), QTextCursor::KeepAnchor);
-    codeEditor_->setTextCursor(cursor);
-    codeEditor_->centerCursor();
-}
-
-void MainWindow::updateFindStatusLabel() {
-    if (findMatches_.isEmpty())
-        findStatusLabel_->setText(findInput_->text().isEmpty() ? "" : "No results");
-    else
-        findStatusLabel_->setText(QString("%1 of %2").arg(currentMatchIndex_ + 1).arg(findMatches_.size()));
-}
-
-void MainWindow::onFindNext() {
-    if (findMatches_.isEmpty()) return;
-    currentMatchIndex_ = (currentMatchIndex_ + 1) % findMatches_.size();
-    selectMatch(currentMatchIndex_);
-    updateFindStatusLabel();
-}
-
-void MainWindow::onFindPrev() {
-    if (findMatches_.isEmpty()) return;
-    currentMatchIndex_ = (currentMatchIndex_ - 1 + findMatches_.size()) % findMatches_.size();
-    selectMatch(currentMatchIndex_);
-    updateFindStatusLabel();
-}
-
-void MainWindow::onReplaceClicked() {
-    if (findMatches_.isEmpty() || currentMatchIndex_ < 0) return;
-
-    QTextCursor cursor(codeEditor_->document());
-    cursor.setPosition(findMatches_[currentMatchIndex_]);
-    cursor.setPosition(findMatches_[currentMatchIndex_] + findInput_->text().length(),
-                        QTextCursor::KeepAnchor);
-    cursor.insertText(replaceInput_->text());
-
-    runFindSearch(); // positions shifted -- recompute and land on the next match
-}
-
-void MainWindow::onReplaceAllClicked() {
-    QString needle = findInput_->text();
-    if (needle.isEmpty()) return;
-    QString replacement = replaceInput_->text();
-
-    QTextDocument* doc = codeEditor_->document();
-    QTextCursor editCursor(doc);
-    editCursor.beginEditBlock();
-
-    int count = 0;
-    QTextCursor found = doc->find(needle);
-    while (!found.isNull()) {
-        found.insertText(replacement);
-        count++;
-        found = doc->find(needle, found.position());
-    }
-    editCursor.endEditBlock();
-
-    runFindSearch();
-    statusBar()->showMessage(QString("Replaced %1 occurrence(s)").arg(count));
-}
-
 // Editor helpers
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (completer_ && obj == completer_->popup() && event->type() == QEvent::KeyPress) {
@@ -1403,19 +1149,6 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         default:
             break;
-        }
-    }
-
-    if ((obj == findInput_ || obj == replaceInput_) && event->type() == QEvent::KeyPress) {
-        QKeyEvent* key = static_cast<QKeyEvent*>(event);
-        if (key->key() == Qt::Key_Escape) {
-            hideFindBar();
-            return true;
-        }
-        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
-            if (key->modifiers() & Qt::ShiftModifier) onFindPrev();
-            else onFindNext();
-            return true;
         }
     }
 
@@ -1508,12 +1241,12 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         // against keybindSeq_ directly instead of a hardcoded key+modifier pair.
         QKeySequence pressed(key->keyCombination());
 
-        if (pressed == keybindSeq_.value("code_completion")) {
+        if (pressed == keybinds_.value("code_completion")) {
             showCompletionPopup();
             return true;
         }
 
-        if (pressed == keybindSeq_.value("duplicate_line")) {
+        if (pressed == keybinds_.value("duplicate_line")) {
             QTextCursor cursor = codeEditor_->textCursor();
             int col = cursor.positionInBlock();
 
@@ -1530,7 +1263,7 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         }
 
-        if (pressed == keybindSeq_.value("comment_toggle")) {
+        if (pressed == keybinds_.value("comment_toggle")) {
             toggleCommentSelection();
             return true;
         }
@@ -1596,7 +1329,7 @@ void MainWindow::showCompletionPopup() {
         "define", "include", "ifdef", "ifndef", "endif", "pragma",
     };
 
-    QStringList symbols = scanSketchSymbols();
+    QStringList symbols = SketchLinter::scanSymbols(codeEditor_->toPlainText());
     symbols += kCompletionWords;
 
     completer_->setModel(new QStringListModel(symbols, completer_));
@@ -1662,34 +1395,11 @@ void MainWindow::setAppTheme(bool dark) {
     if (highlighter_) highlighter_->setTheme(dark);
     if (signalTimeline_) signalTimeline_->setDarkTheme(dark);
     if (lineNumbers_) lineNumbers_->setDarkTheme(dark);
-}
-
-QKeySequence MainWindow::loadKeybind(QSettings& settings, const QString& id, QKeySequence def) {
-    QString saved = settings.value("keybinds/" + id, QString()).toString();
-    QKeySequence seq = saved.isEmpty() ? def : QKeySequence::fromString(saved);
-    keybindSeq_[id] = seq;
-    return seq;
-}
-
-// Persists every id -> sequence and, for ids backed by a live QShortcut,
-// rebinds it immediately -- no restart needed to pick up a remap.
-void MainWindow::applyKeybinds(const QMap<QString, QKeySequence>& newBinds) {
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
-    for (auto it = newBinds.constBegin(); it != newBinds.constEnd(); ++it) {
-        keybindSeq_[it.key()] = it.value();
-        settings.setValue("keybinds/" + it.key(), it.value().toString());
-        auto shortcut = keybindShortcuts_.find(it.key());
-        if (shortcut != keybindShortcuts_.end())
-            shortcut.value()->setKey(it.value());
-    }
+    if (findReplaceBar_) findReplaceBar_->setHighlightColor(highlightColors_.find_match_bg);
 }
 
 void MainWindow::onSettingsClicked() {
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
 
     SettingsDialog dialog(this);
     dialog.setCompilerPath(compilerPath_);
@@ -1699,7 +1409,7 @@ void MainWindow::onSettingsClicked() {
     dialog.setAutoCompileOnSave(autoCompileOnSave_);
     dialog.setDarkTheme(darkTheme_);
     dialog.setDefaultSketchLocation(defaultSketchLocation_);
-    dialog.setKeybinds(keybindSeq_);
+    dialog.setKeybinds(keybinds_.all());
 
     if (dialog.exec() == QDialog::Accepted) {
         compilerPath_      = dialog.compilerPath();
@@ -1718,7 +1428,7 @@ void MainWindow::onSettingsClicked() {
         darkTheme_ = dialog.darkTheme();
         settings.setValue("canvas/dark_theme", darkTheme_);
         setAppTheme(darkTheme_);
-        applyKeybinds(dialog.keybinds());
+        keybinds_.apply(dialog.keybinds());
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);
@@ -1771,9 +1481,7 @@ void MainWindow::onNewSketch() {
 }
 
 void MainWindow::onRecentSketches() {
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
     QStringList recent = settings.value("recent/sketches").toStringList();
 
     if (recent.isEmpty()) {
@@ -1809,9 +1517,7 @@ void MainWindow::onRecentSketches() {
 }
 
 void MainWindow::addToRecentSketches(const QString& path) {
-    QSettings settings(
-        QCoreApplication::applicationDirPath() + "/settings.ini",
-        QSettings::IniFormat);
+    QSettings settings = appSettings();
     QStringList recent = settings.value("recent/sketches").toStringList();
     recent.removeAll(path);
     recent.prepend(path);
@@ -1833,233 +1539,4 @@ void MainWindow::onSerialSend() {
     sketchThread_->injectSerial(text + "\n");
     serialMonitor_->appendPlainText("> " + text);
     serialInput_->clear();
-}
-
-QStringList MainWindow::runStaticChecks(const QString& source) {
-    QStringList warnings;
-    std::string src = source.toStdString();
-
-    // Build pin symbol table from #define NAME VALUE and const int NAME = VALUE
-    std::map<std::string, int> pin_defs;
-    {
-        auto scan = [&](const std::regex& re) {
-            for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
-                 it != std::sregex_iterator(); ++it) {
-                std::string name = (*it)[1].str();
-                try { pin_defs[name] = std::stoi((*it)[2].str()); } catch (...) {}
-            }
-        };
-        scan(std::regex(R"(#\s*define\s+(\w+)\s+\(?\s*(\d+)\s*\)?)"));
-        scan(std::regex(R"(const\s+int\s+(\w+)\s*=\s*(\d+)\s*;)"));
-    }
-
-    // Shared helper — extract any named void function's body by brace-counting
-    auto extract_func_body = [&](const std::string& func_name) -> std::string {
-        std::regex func_re("\\bvoid\\s+" + func_name + R"(\s*\(\s*\)\s*\{)");
-        std::smatch m;
-        std::string s = src;
-        if (!std::regex_search(s, m, func_re)) return "";
-        size_t pos = static_cast<size_t>(m.position()) + m.length() - 1;
-        int depth = 1;
-        size_t start = pos + 1;
-        while (pos < src.size() - 1 && depth > 0) {
-            ++pos;
-            if (src[pos] == '{') ++depth;
-            else if (src[pos] == '}') --depth;
-        }
-        return src.substr(start, pos - start);
-    };
-
-    // Pre-extract loop and setup bodies for reuse across checks
-    std::string loop_body  = extract_func_body("loop");
-    std::string setup_body = extract_func_body("setup");
-
-    // Pin out of range for selected board
-    for (const auto& [name, pin] : pin_defs) {
-        if (!is_pin_name(name)) continue;
-        if (pin < 0 || pin >= 80) continue;
-        if (pin >= activeProfile_.pin_count) {
-            warnings << QString("WARNING: Pin %1 ('%2') is not available on the %3 (max pin %4)")
-                .arg(pin)
-                .arg(QString::fromStdString(name))
-                .arg(activeProfile_.name)
-                .arg(activeProfile_.pin_count - 1);
-        }
-    }
-
-    // analogWrite() on a non-PWM pin
-    auto pwm_pins = get_pwm_pins_for(activeProfile_);
-    if (!pwm_pins.empty()) {
-        std::regex aw_re(R"((?:api->)?analogWrite\s*\(\s*(\w+))");
-        std::set<int> warned_pins;
-        for (auto it = std::sregex_iterator(src.begin(), src.end(), aw_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string token = (*it)[1].str();
-            int pin = -1;
-            try { pin = std::stoi(token); } catch (...) {
-                auto def_it = pin_defs.find(token);
-                if (def_it != pin_defs.end()) pin = def_it->second;
-            }
-            if (pin < 0 || warned_pins.count(pin)) continue;
-            if (std::find(pwm_pins.begin(), pwm_pins.end(), pin) == pwm_pins.end()) {
-                warned_pins.insert(pin);
-                warnings << QString("WARNING: Pin %1 does not support PWM on the %2 — analogWrite() will have no effect")
-                    .arg(pin).arg(activeProfile_.name);
-            }
-        }
-    }
-
-    // attachInterrupt() with raw interrupt number (Uno/Nano: interrupt 0=pin 2, 1=pin 3)
-    {
-        std::string board = activeProfile_.name;
-        if (board == "Arduino Uno" || board == "Arduino Nano") {
-            std::regex ai_re(R"(attachInterrupt\s*\(\s*([01])\s*,)");
-            std::set<std::string> warned_nums;
-            for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
-                 it != std::sregex_iterator(); ++it) {
-                std::string n = (*it)[1].str();
-                if (warned_nums.count(n)) continue;
-                warned_nums.insert(n);
-                int correct_pin = (n == "0") ? 2 : 3;
-                warnings << QString("WARNING: attachInterrupt(%1, ...) uses an interrupt number, not a pin number — use digitalPinToInterrupt(%2) to attach to pin %2 on the %3")
-                    .arg(QString::fromStdString(n)).arg(correct_pin).arg(activeProfile_.name);
-            }
-        }
-    }
-
-    // delay() inside an attachInterrupt callback function
-    {
-        std::regex ai_re(R"(attachInterrupt\s*\([^,]+,\s*(\w+)\s*,)");
-        std::set<std::string> warned_funcs;
-        for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string fn = (*it)[1].str();
-            if (warned_funcs.count(fn)) continue;
-            std::string body = extract_func_body(fn);
-            if (!body.empty() && body.find("delay(") != std::string::npos) {
-                warned_funcs.insert(fn);
-                warnings << QString("WARNING: delay() inside '%1' (used as an interrupt handler) will hang on real Arduino — interrupts are disabled during ISR execution")
-                    .arg(QString::fromStdString(fn));
-            }
-        }
-    }
-
-    // Pin defined as an expression (CircuitDetector cannot evaluate it)
-    {
-        std::regex def_re(R"(#\s*define\s+(\w+)\s+(.+))");
-        for (auto it = std::sregex_iterator(src.begin(), src.end(), def_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string name  = (*it)[1].str();
-            std::string value = (*it)[2].str();
-            auto comment = value.find("//");
-            if (comment != std::string::npos) value = value.substr(0, comment);
-            while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r'))
-                value.pop_back();
-            bool has_op = value.find('+') != std::string::npos ||
-                          value.find('*') != std::string::npos ||
-                          value.find('/') != std::string::npos ||
-                          value.find("<<") != std::string::npos;
-            if (!has_op && value.size() > 1 && value.find('-') != std::string::npos)
-                has_op = (value.find('-') != 0 &&
-                          !(value.find('-') == 1 && value[0] == '('));
-            if (!has_op) continue;
-            if (!is_pin_name(name)) continue;
-            warnings << QString("WARNING: Pin '%1' is defined as an expression — the simulator could not evaluate it and the component may not appear on the canvas; use a plain number instead")
-                .arg(QString::fromStdString(name));
-        }
-    }
-
-    // pinMode() never called for a digitalWrite() pin
-    {
-        std::set<int> dw_pins;
-        std::set<int> pm_pins;
-        std::regex dw_re(R"(digitalWrite\s*\(\s*(\w+))");
-        std::regex pm_re(R"(pinMode\s*\(\s*(\w+))");
-        auto collect_pins = [&](const std::regex& re, std::set<int>& out) {
-            for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
-                 it != std::sregex_iterator(); ++it) {
-                std::string token = (*it)[1].str();
-                int pin = -1;
-                try { pin = std::stoi(token); } catch (...) {
-                    auto def_it = pin_defs.find(token);
-                    if (def_it != pin_defs.end()) pin = def_it->second;
-                }
-                if (pin >= 0) out.insert(pin);
-            }
-        };
-        collect_pins(dw_re, dw_pins);
-        collect_pins(pm_re, pm_pins);
-        for (int pin : dw_pins) {
-            if (!pm_pins.count(pin)) {
-                warnings << QString("WARNING: Pin %1 is used with digitalWrite() but pinMode() was never called — it will default to INPUT on real hardware")
-                    .arg(pin);
-            }
-        }
-    }
-
-    // Missing volatile on ISR-shared variables
-    {
-        // Find all variables written inside attachInterrupt callbacks
-        std::set<std::string> isr_written;
-        std::regex ai_re(R"(attachInterrupt\s*\([^,]+,\s*(\w+)\s*,)");
-        for (auto it = std::sregex_iterator(src.begin(), src.end(), ai_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string fn = (*it)[1].str();
-            std::string body = extract_func_body(fn);
-            if (body.empty()) continue;
-            // Find assignments in ISR body: varName = or varName++/varName--
-            std::regex assign_re(R"(\b(\w+)\s*(?:=|\+=|-=|\+\+|--))" );
-            for (auto jt = std::sregex_iterator(body.begin(), body.end(), assign_re);
-                 jt != std::sregex_iterator(); ++jt) {
-                isr_written.insert((*jt)[1].str());
-            }
-        }
-        // Check if any ISR-written variables appear in loop/setup without volatile
-        for (const auto& var : isr_written) {
-            if (var.empty()) continue;
-            if (var.size() < 3) continue; // skip short names like i, n, x
-            // Check loop and setup bodies for reads of this variable
-            bool read_in_main = (loop_body.find(var) != std::string::npos ||
-                                 setup_body.find(var) != std::string::npos);
-            if (!read_in_main) continue;
-            // Check if declared volatile anywhere in source
-            std::regex vol_re(R"(\bvolatile\b[^;]*\b)" + var + R"(\b)");
-            if (!std::regex_search(src, vol_re)) {
-                warnings << QString("WARNING: '%1' is shared with an ISR but not declared volatile — this may work in simulation but will likely fail on real hardware")
-                    .arg(QString::fromStdString(var));
-            }
-        }
-    }
-
-    // String += in a tight loop
-    {
-        if (!loop_body.empty()) {
-            std::regex str_concat_re(R"(\bString\b[^;]*\+=)");
-            if (std::regex_search(loop_body, str_concat_re)) {
-                warnings << QString("WARNING: Repeated String concatenation in loop() causes heap fragmentation on real Arduino — consider using a char buffer instead");
-            }
-        }
-    }
-
-    return warnings;
-}
-
-QStringList MainWindow::scanSketchSymbols() {
-    QStringList symbols;
-    std::string src = codeEditor_->toPlainText().toStdString();
-
-    auto collect = [&](const std::regex& re) {
-        for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
-            it != std::sregex_iterator(); ++it) {
-            QString name = QString::fromStdString((*it)[1].str());
-            if (!symbols.contains(name))
-                symbols << name;
-        }
-    };
-
-    collect(std::regex(R"(#\s*define\s+(\w+))"));                                   // constants
-    collect(std::regex(R"(\b(?:void|int|float|double|bool|long|char|byte|String)\s+(\w+)\s*\()"));  // functions
-    collect(std::regex(R"(\b(?:int|float|double|bool|long|char|byte|String)\s+(\w+)\s*[=;])"));      // variables
-
-    return symbols;
 }

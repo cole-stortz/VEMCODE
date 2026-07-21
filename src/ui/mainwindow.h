@@ -25,16 +25,18 @@
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
-#include "src/ui/signaltimeline.h"
-#include "src/ui/codehighlighter.h"
+#include "src/ui/panels/signaltimeline.h"
+#include "src/ui/editor/codehighlighter.h"
 #include "src/core/build/preprocessor.h"
-#include "src/ui/linenumberarea.h"
-#include "src/ui/variablewatch.h"
-#include "src/ui/devicespanel.h"
-#include "src/ui/spipanel.h"
+#include "src/ui/editor/linenumberarea.h"
+#include "src/ui/panels/variablewatch.h"
+#include "src/ui/panels/devicespanel.h"
+#include "src/ui/panels/spipanel.h"
 #include "src/ui/settingsdialog.h"
 #include "src/ui/apptheme.h"
 #include "src/core/runtime/boardprofile.h"
+#include "src/ui/editor/keybindmanager.h"
+#include "src/ui/editor/findreplacebar.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -79,8 +81,6 @@ private:
     
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
-    QStringList runStaticChecks(const QString& source);
-    QStringList scanSketchSymbols();
     void showCompletionPopup();
     void updateWindowTitle();
     void adjustEditorZoom(int steps);
@@ -89,15 +89,6 @@ private:
     void toggleCommentSelection();
     void refreshExtraSelections();
     void updateBracketMatch();
-    void showFindBar();
-    void hideFindBar();
-    void runFindSearch();
-    void selectMatch(int index);
-    void updateFindStatusLabel();
-    void onFindNext();
-    void onFindPrev();
-    void onReplaceClicked();
-    void onReplaceAllClicked();
     void checkForAutosaveRecovery(const QString& sketchPath);
 
     QWidget* buildEditorPanel();
@@ -127,14 +118,8 @@ private:
     QList<QTextEdit::ExtraSelection> findSelections_;
 
     // Find & Replace bar
-    QWidget*    findBar_          = nullptr;
-    QWidget*    replaceRow_       = nullptr;
-    QLineEdit*  findInput_        = nullptr;
-    QLineEdit*  replaceInput_     = nullptr;
-    QLabel*     findStatusLabel_  = nullptr;
-    QList<int>  findMatches_; // start position of each match in the document
-    int         currentMatchIndex_ = -1;
-    
+    FindReplaceBar* findReplaceBar_ = nullptr;
+
     // Canvas panel (top right)
     CanvasWidget*   canvasWidget_   = nullptr;
 
@@ -166,13 +151,9 @@ private:
     EditorHighlightColors highlightColors_ = editorHighlightColors(true);
     void setAppTheme(bool dark); // qApp stylesheet + canvas + syntax highlighter + signal timeline
 
-    // Current sequence per keybind id (source of truth for both QShortcut-backed
-    // actions and the raw key comparisons in eventFilter). Loaded from
-    // "keybinds/<id>" in settings.ini, falling back to defaultKeybinds().
-    QMap<QString, QKeySequence> keybindSeq_;
-    QMap<QString, QShortcut*>   keybindShortcuts_; // id -> live shortcut, for the ones backed by one
-    QKeySequence loadKeybind(QSettings& settings, const QString& id, QKeySequence def);
-    void applyKeybinds(const QMap<QString, QKeySequence>& newBinds); // persists + rebinds live shortcuts
+    // Falls back to defaultKeybinds() (settingsdialog.h) for any id with no
+    // saved override yet.
+    KeybindManager keybinds_;
 
     QSlider*   speedSlider_  = nullptr;
     QLineEdit* serialInput_  = nullptr;
