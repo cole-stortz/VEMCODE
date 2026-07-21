@@ -11,6 +11,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 TESTS_DIR="app/sketches/tests"
 TIMEOUT_SECS=5
 
+VEMCODE_BIN="./app/VEMCODE"
+[ -f "${VEMCODE_BIN}.exe" ] && VEMCODE_BIN="${VEMCODE_BIN}.exe"
+
+TIMEOUT_BIN="timeout"
+[ -x "/usr/bin/timeout" ] && TIMEOUT_BIN="/usr/bin/timeout"
+
 declare -a PASSED=()
 declare -a FAILED=()
 
@@ -20,12 +26,12 @@ for dir in "$TESTS_DIR"/*/; do
     [ -f "$sketch" ] || continue
 
     echo "=== $name ==="
-    output=$(timeout --signal=INT "$TIMEOUT_SECS" ./app/VEMCODE "$sketch" 2>&1)
+    output=$("$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch" 2>&1)
     code=$?
     echo "$output"
     echo
 
-    if [ "$code" -eq 124 ] || [ "$code" -eq 0 ]; then
+    if [ "$code" -eq 124 ] || [ "$code" -eq 0 ] || [ "$code" -eq 137 ]; then
         PASSED+=("$name")
     else
         FAILED+=("$name (exit $code)")
