@@ -172,6 +172,14 @@ Displays a virtual SPI device panel similar to I2C: SPI has no address field lik
 
 **Windows:**
 
+Before building, permanently add `C:\msys64\ucrt64\bin` to your user PATH — CMake's configure step shells out to other MSYS2 UCRT64 toolchain binaries (`windres`, `ar`, etc.) that it expects to find on PATH, not just the compiler/generator paths passed explicitly below.
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\msys64\ucrt64\bin", "User")
+```
+
+Open a new terminal after running this so the change takes effect.
+
 ```powershell
 # Clone
 git clone https://github.com/cole-stortz/VEMCODE.git
