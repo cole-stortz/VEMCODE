@@ -157,9 +157,11 @@ Displays a virtual SPI device panel similar to I2C: SPI has no address field lik
 
 **Windows:**
 - Windows 10/11 64-bit
-- Qt 6.x with MinGW 64-bit — [download from qt.io](https://www.qt.io/download)
-  - During install select: Qt 6.x → MinGW 64-bit, and Developer Tools → Ninja
-- CMake 3.20+
+- [MSYS2](https://www.msys2.org/), with these packages installed from a MSYS2 UCRT64 shell:
+  ```
+  pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-qt6-base mingw-w64-ucrt-x86_64-qt6-tools mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+  ```
+  (Qt's own official installer bundles a MinGW toolchain that's missing several runtime symbols `std::filesystem`/`std::thread`/`setjmp` need on Windows — MSYS2's UCRT64 toolchain doesn't have this problem.)
 
 **Linux:**
 - Qt 6 development packages (e.g. `qt6-qtbase-devel` on Fedora, `qt6-base-dev` on Ubuntu/Debian)
@@ -176,16 +178,16 @@ git clone https://github.com/cole-stortz/VEMCODE.git
 cd VEMCODE
 
 # Configure (all one line)
-cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/mingw_64" -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw1310_64/bin/g++.exe" -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/Ninja/ninja.exe"
+cmake -B build -S . -G "Ninja" -DCMAKE_PREFIX_PATH="C:/msys64/ucrt64" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_MAKE_PROGRAM="C:/msys64/ucrt64/bin/ninja.exe"
 
 # Build
 cmake --build build
 
 # Deploy Qt runtime (first time only)
-C:\Qt\6.11.1\mingw_64\bin\windeployqt.exe app\VEMCODE.exe
+C:\msys64\ucrt64\bin\windeployqt6.exe app\VEMCODE.exe
 ```
 
-> **Note:** Ninja may be at a different path depending on your system. Run `where.exe ninja` to find it.
+> **Note:** If MSYS2 isn't installed at `C:\msys64`, adjust the paths above to match.
 
 **Linux:**
 
@@ -213,7 +215,7 @@ cmake --build build
 ./app/VEMCODE
 ```
 
-On first launch VEMCODE will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/Qt/Tools/mingw1310_64/bin/g++.exe` on Windows) and the root of the VEMCODE repo. These are saved to `app/settings.ini`.
+On first launch VEMCODE will ask for your compiler path and project root. Point it at your `g++` (e.g. `/usr/bin/g++` on Linux, `C:/msys64/ucrt64/bin/g++.exe` on Windows) and the root of the VEMCODE repo. These are saved to `app/settings.ini`.
 
 ### Headless mode
 VEMCODE can run headlessly in the terminal by typing either of these two forms of commands:
