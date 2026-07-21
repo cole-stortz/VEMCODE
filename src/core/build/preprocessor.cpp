@@ -2,6 +2,51 @@
 #include <cstring>
 #include <regex>
 
+namespace {
+
+// Marks each byte of `source` that falls inside a string literal, char
+// literal, or comment, so replace_token can skip matches there instead of
+// rewriting visible debug text (e.g. a Serial.print("delay(1000)") string)
+// or comment prose.
+std::vector<bool> mask_non_code(const std::string& source) {
+    std::vector<bool> masked(source.size(), false);
+    enum class State { Code, LineComment, BlockComment, String, Char };
+    State state = State::Code;
+    for (size_t i = 0; i < source.size(); ++i) {
+        char c = source[i];
+        char next = (i + 1 < source.size()) ? source[i + 1] : '\0';
+        switch (state) {
+        case State::Code:
+            if (c == '/' && next == '/') { state = State::LineComment; masked[i] = true; }
+            else if (c == '/' && next == '*') { state = State::BlockComment; masked[i] = true; }
+            else if (c == '"') { state = State::String; masked[i] = true; }
+            else if (c == '\'') { state = State::Char; masked[i] = true; }
+            break;
+        case State::LineComment:
+            masked[i] = true;
+            if (c == '\n') state = State::Code;
+            break;
+        case State::BlockComment:
+            masked[i] = true;
+            if (c == '*' && next == '/') { masked[i + 1] = true; ++i; state = State::Code; }
+            break;
+        case State::String:
+            masked[i] = true;
+            if (c == '\\' && i + 1 < source.size()) { masked[i + 1] = true; ++i; }
+            else if (c == '"') state = State::Code;
+            break;
+        case State::Char:
+            masked[i] = true;
+            if (c == '\\' && i + 1 < source.size()) { masked[i + 1] = true; ++i; }
+            else if (c == '\'') state = State::Code;
+            break;
+        }
+    }
+    return masked;
+}
+
+} // namespace
+
 std::string Preprocessor::process(const std::string& source) {
     // If already in VirtualEmbeddedProgrammer format, pass through unchanged
     if (is_already_transformed(source))
@@ -63,33 +108,33 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Serial.read(",     "api->Serial_read(");
 
     // GPIO -- digitalRead before digitalWrite to avoid partial match
-    s = replace_all(s, "digitalRead(",     "api->digitalRead(");
-    s = replace_all(s, "digitalWrite(",    "api->digitalWrite(");
-    s = replace_all(s, "pinMode(",         "api->pinMode(");
-    s = replace_all(s, "analogRead(",      "api->analogRead(");
-    s = replace_all(s, "analogWrite(",     "api->analogWrite(");
+    s = replace_token(s, "digitalRead(",     "api->digitalRead(");
+    s = replace_token(s, "digitalWrite(",    "api->digitalWrite(");
+    s = replace_token(s, "pinMode(",         "api->pinMode(");
+    s = replace_token(s, "analogRead(",      "api->analogRead(");
+    s = replace_token(s, "analogWrite(",     "api->analogWrite(");
 
     // Timing
-    s = replace_all(s, "delayMicroseconds(","api->delayMicroseconds(");
-    s = replace_all(s, "delay(",           "api->delay(");
-    s = replace_all(s, "micros()",         "api->micros()");
-    s = replace_all(s, "millis()",         "api->millis()");
+    s = replace_token(s, "delayMicroseconds(","api->delayMicroseconds(");
+    s = replace_token(s, "delay(",           "api->delay(");
+    s = replace_token(s, "micros()",         "api->micros()");
+    s = replace_token(s, "millis()",         "api->millis()");
     // pulseIn is handled by an inline wrapper (with default timeout) in inject_header
 
     // Watch Variable
-    s = replace_all(s, "watch_variable(", "api->watch_variable(");
+    s = replace_token(s, "watch_variable(", "api->watch_variable(");
 
     // tone/noTone are handled by inline wrappers (with default duration) in injected_header
 
     // Interupts
-    s = replace_all(s, "attachInterrupt(",   "api->attachInterrupt(");
-    s = replace_all(s, "noInterrupts()",   "api->noInterrupts()");
-    s = replace_all(s, "interrupts()",     "api->interrupts()");
+    s = replace_token(s, "attachInterrupt(",   "api->attachInterrupt(");
+    s = replace_token(s, "noInterrupts()",   "api->noInterrupts()");
+    s = replace_token(s, "interrupts()",     "api->interrupts()");
 
     // EEPROM
-    s = replace_all(s, "EEPROM.write(",    "api->EEPROM_write(");
-    s = replace_all(s, "EEPROM.read(",     "api->EEPROM_read(");
-    s = replace_all(s, "EEPROM.update(",   "api->EEPROM_update(");
+    s = replace_token(s, "EEPROM.write(",    "api->EEPROM_write(");
+    s = replace_token(s, "EEPROM.read(",     "api->EEPROM_read(");
+    s = replace_token(s, "EEPROM.update(",   "api->EEPROM_update(");
 
     // Serial1 and Serial2
     s = replace_token(s, "Serial1.begin(",    "api->Serial1_begin(");
@@ -224,6 +269,7 @@ std::string Preprocessor::replace_token(const std::string& source,
                                          const std::string& from,
                                          const std::string& to) {
     if (from.empty()) return source;
+    std::vector<bool> masked = mask_non_code(source);
     std::string result;
     result.reserve(source.size());
     size_t pos = 0;
@@ -235,7 +281,7 @@ std::string Preprocessor::replace_token(const std::string& source,
         }
         bool preceded_by_word = (found > 0 &&
             (std::isalnum((unsigned char)source[found - 1]) || source[found - 1] == '_'));
-        if (preceded_by_word) {
+        if (preceded_by_word || masked[found]) {
             result.append(source, pos, found - pos + 1);
             pos = found + 1;
         } else {
@@ -272,10 +318,26 @@ std::string Preprocessor::inject_safety_delay(const std::string& source) {
 
     bool has_delay = result.find("api->delay(") != std::string::npos;
     if (!has_delay) {
-        // No delay anywhere — inject one at the end of vb_loop()
-        size_t last_brace = result.rfind('}');
-        if (last_brace != std::string::npos)
-            result.insert(last_brace, "    api->delay(10);\n");
+        // No delay anywhere — inject one just before vb_loop()'s closing brace,
+        // found by brace-counting from vb_loop()'s own opening brace (same
+        // approach as inject_while_delays below) rather than rfind('}') over
+        // the whole file, which would grab a later helper function's closing
+        // brace instead if one is defined after loop().
+        size_t fn = result.find("vb_loop(");
+        if (fn != std::string::npos) {
+            size_t open = result.find('{', fn);
+            if (open != std::string::npos) {
+                int depth = 1;
+                size_t p = open + 1;
+                while (p < result.size() && depth > 0) {
+                    if (result[p] == '{') ++depth;
+                    else if (result[p] == '}') --depth;
+                    ++p;
+                }
+                if (depth == 0)
+                    result.insert(p - 1, "    api->delay(10);\n");
+            }
+        }
     }
 
     // Also scan every while loop body and inject a delay if missing

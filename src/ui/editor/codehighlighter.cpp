@@ -100,21 +100,25 @@ void CodeHighlighter::buildRules(bool dark) {
 
     QTextCharFormat string_fmt;
     string_fmt.setForeground(string_color);
-    rule.pattern = QRegularExpression(R"("([^"\\]|\\.)*")");
+    string_pattern_ = QRegularExpression(R"("([^"\\]|\\.)*")");
+    rule.pattern = string_pattern_;
     rule.format  = string_fmt;
     rules_.append(rule);
 
-    QTextCharFormat sl_comment_fmt;
-    sl_comment_fmt.setForeground(comment_color);
-    sl_comment_fmt.setFontItalic(true);
-    rule.pattern = QRegularExpression(R"(//[^\n]*)");
-    rule.format  = sl_comment_fmt;
-    rules_.append(rule);
+    sl_comment_format_.setForeground(comment_color);
+    sl_comment_format_.setFontItalic(true);
+    sl_comment_start_ = QRegularExpression(R"(//)");
 
     comment_format_.setForeground(comment_color);
     comment_format_.setFontItalic(true);
     comment_start_ = QRegularExpression(R"(/\*)");
     comment_end_   = QRegularExpression(R"(\*/)");
+}
+
+bool CodeHighlighter::insideString(const QVector<std::pair<int, int>>& stringRanges, int start) const {
+    for (const auto& [rangeStart, rangeEnd] : stringRanges)
+        if (start >= rangeStart && start < rangeEnd) return true;
+    return false;
 }
 
 void CodeHighlighter::highlightBlock(const QString& text) {
@@ -127,11 +131,36 @@ void CodeHighlighter::highlightBlock(const QString& text) {
         }
     }
 
+    QVector<std::pair<int, int>> stringRanges;
+    {
+        QRegularExpressionMatchIterator it = string_pattern_.globalMatch(text);
+        while (it.hasNext()) {
+            QRegularExpressionMatch m = it.next();
+            stringRanges.append({m.capturedStart(), m.capturedStart() + m.capturedLength()});
+        }
+    }
+
+    // Single-line comment -- find the first "//" that isn't part of a string
+    // literal (e.g. a "http://..." URL) and color it through end of line.
+    {
+        QRegularExpressionMatchIterator it = sl_comment_start_.globalMatch(text);
+        while (it.hasNext()) {
+            QRegularExpressionMatch m = it.next();
+            if (!insideString(stringRanges, m.capturedStart())) {
+                setFormat(m.capturedStart(), text.length() - m.capturedStart(), sl_comment_format_);
+                break;
+            }
+        }
+    }
+
     setCurrentBlockState(0);
 
     int start = 0;
-    if (previousBlockState() != 1)
+    if (previousBlockState() != 1) {
         start = text.indexOf(comment_start_);
+        while (start >= 0 && insideString(stringRanges, start))
+            start = text.indexOf(comment_start_, start + 1);
+    }
 
     while (start >= 0) {
         QRegularExpressionMatch end_match =
@@ -149,6 +178,9 @@ void CodeHighlighter::highlightBlock(const QString& text) {
         }
 
         setFormat(start, comment_len, comment_format_);
+
         start = text.indexOf(comment_start_, start + comment_len);
+        while (start >= 0 && insideString(stringRanges, start))
+            start = text.indexOf(comment_start_, start + 1);
     }
 }

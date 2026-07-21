@@ -87,7 +87,7 @@ static bool registered = []() {
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ColorSensorItem(pin, parent);
         },
-        MultiPinStrategy::Array,
+        MultiPinStrategy::Singleton,
         "OUT"
     };
     def.wire_color = COLOR_SENSOR_FILL;

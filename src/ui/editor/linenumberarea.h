@@ -3,8 +3,12 @@
 #include <QWidget>
 #include <QPainter>
 #include <QTextBlock>
+#include <QKeySequence>
 
-// Exposes protected QPlainTextEdit methods needed by LineNumberArea.
+// The sketch editor widget. Exposes protected QPlainTextEdit methods needed
+// by LineNumberArea, and owns editor-only key handling (tab-insert,
+// auto-indent, bracket auto-close/skip, dedent, duplicate-line,
+// comment-toggle) that only makes sense while the editor itself has focus.
 class EditorWithLines : public QPlainTextEdit {
     Q_OBJECT
 public:
@@ -16,6 +20,34 @@ public:
     QRectF      blockRect(const QTextBlock& b){ return blockBoundingRect(b); }
     QPointF     contentOff()    { return contentOffset(); }
     void setLeftMargin(int margin) { setViewportMargins(margin, 0, 0, 0); }
+
+    // code_completion/duplicate_line/comment_toggle have no QShortcut of
+    // their own (kept as raw key comparisons so they only fire while the
+    // editor itself has focus) -- owned by MainWindow's KeybindManager,
+    // pushed in here whenever they're loaded or remapped.
+    void setActionKeybinds(QKeySequence completion, QKeySequence duplicateLine, QKeySequence commentToggle) {
+        completionKey_    = completion;
+        duplicateLineKey_ = duplicateLine;
+        commentToggleKey_ = commentToggle;
+    }
+
+signals:
+    // completion has no self-contained handling here -- it needs MainWindow's
+    // QCompleter, so this just asks MainWindow to show the popup.
+    void completionRequested();
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+
+private:
+    // Toggles "// " on every line touched by the selection (or just the
+    // current line with no selection). Uncomments if every non-blank line in
+    // range already starts with "//", otherwise comments every non-blank line.
+    void toggleCommentSelection();
+
+    QKeySequence completionKey_;
+    QKeySequence duplicateLineKey_;
+    QKeySequence commentToggleKey_;
 };
 
 class LineNumberArea : public QWidget {

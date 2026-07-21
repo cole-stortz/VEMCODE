@@ -301,6 +301,12 @@ void CircuitDetector::detect_prefix_group(
         const auto& members = g.second;
         if (members.size() < 2) continue;
 
+        // Every role here has keywords that distinguish it from its siblings
+        // (PWM/ANTI/CWISE etc.) -- only assign a role its keyword-matched
+        // pin. A leftover-member fallback used to fill any still-unfilled
+        // role with whatever unused member came next in map order, which
+        // could wire an unrelated pin sharing the same prefix (e.g. an extra
+        // enable pin) into a role it was never named for.
         std::vector<int> pins(def.detect_multi.size(), -1);
         std::vector<bool> used(members.size(), false);
         for (size_t r = 0; r < def.detect_multi.size(); ++r) {
@@ -312,12 +318,6 @@ void CircuitDetector::detect_prefix_group(
                     break;
                 }
             }
-        }
-        size_t mi = 0;
-        for (size_t r = 0; r < pins.size(); ++r) {
-            if (pins[r] >= 0) continue;
-            while (mi < members.size() && used[mi]) mi++;
-            if (mi < members.size()) { pins[r] = members[mi].second; used[mi] = true; }
         }
 
         int filled = 0;

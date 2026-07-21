@@ -47,8 +47,10 @@ private:
                             const std::string& to);
 
     // Like replace_all but skips matches where the character immediately before
-    // the match is a word character (letter, digit, _). Prevents "Serial." from
-    // matching inside "mySerial." or other identifiers ending in "Serial".
+    // the match is a word character (letter, digit, _) -- prevents "Serial." from
+    // matching inside "mySerial." or other identifiers ending in "Serial" -- and
+    // skips matches inside string/char literals or comments, so e.g. a
+    // Serial.print("delay(1000)") debug string isn't rewritten.
     std::string replace_token(const std::string& source,
                               const std::string& from,
                               const std::string& to);

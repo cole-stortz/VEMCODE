@@ -183,11 +183,17 @@ MainWindow::MainWindow(QWidget* parent)
     keybinds_.registerShortcut("find", find_shortcut);
 
     // code_completion, duplicate_line, and comment_toggle have no QShortcut of
-    // their own -- they're raw key comparisons in eventFilter (scoped to
-    // codeEditor_ only), so just seed keybindSeq_ with their current sequence.
+    // their own -- they're raw key comparisons in EditorWithLines::keyPressEvent
+    // (scoped to codeEditor_ only), so just seed keybindSeq_ with their current
+    // sequence and push it down to the editor.
     keybinds_.load(settings, "code_completion", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space));
     keybinds_.load(settings, "duplicate_line", QKeySequence(Qt::CTRL | Qt::Key_D));
     keybinds_.load(settings, "comment_toggle", QKeySequence(Qt::CTRL | Qt::Key_Slash));
+    codeEditor_->setActionKeybinds(keybinds_.value("code_completion"),
+                                    keybinds_.value("duplicate_line"),
+                                    keybinds_.value("comment_toggle"));
+    connect(codeEditor_, &EditorWithLines::completionRequested,
+            this, &MainWindow::showCompletionPopup);
 
     // Autosave every 30s, but only for a sketch with a real (non-scratch) path
     // and only if there are actually unsaved changes to write
@@ -1032,43 +1038,6 @@ void MainWindow::resetEditorZoom() {
 // Toggles "// " on every line touched by the selection (or just the current line
 // with no selection). Uncomments if every non-blank line in range already starts
 // with "//", otherwise comments every non-blank line.
-void MainWindow::toggleCommentSelection() {
-    QTextCursor cursor = codeEditor_->textCursor();
-    QTextBlock startBlock = codeEditor_->document()->findBlock(cursor.selectionStart());
-    QTextBlock endBlock   = codeEditor_->document()->findBlock(cursor.selectionEnd());
-    if (endBlock != startBlock && cursor.selectionEnd() == endBlock.position())
-        endBlock = endBlock.previous();
-
-    bool allCommented = true;
-    for (QTextBlock b = startBlock; b.isValid(); b = b.next()) {
-        QString trimmed = b.text().trimmed();
-        if (!trimmed.isEmpty() && !trimmed.startsWith("//")) allCommented = false;
-        if (b == endBlock) break;
-    }
-
-    cursor.beginEditBlock();
-    for (QTextBlock b = startBlock; b.isValid(); b = b.next()) {
-        QString text = b.text();
-        int firstNonSpace = 0;
-        while (firstNonSpace < text.length() && text[firstNonSpace] == ' ') firstNonSpace++;
-
-        QTextCursor lineCursor(b);
-        if (allCommented) {
-            if (text.mid(firstNonSpace, 2) == "//") {
-                int len = (text.mid(firstNonSpace, 3) == "// ") ? 3 : 2;
-                lineCursor.setPosition(b.position() + firstNonSpace);
-                lineCursor.setPosition(b.position() + firstNonSpace + len, QTextCursor::KeepAnchor);
-                lineCursor.removeSelectedText();
-            }
-        } else if (!text.trimmed().isEmpty()) {
-            lineCursor.setPosition(b.position() + firstNonSpace);
-            lineCursor.insertText("// ");
-        }
-        if (b == endBlock) break;
-    }
-    cursor.endEditBlock();
-}
-
 void MainWindow::refreshExtraSelections() {
     codeEditor_->setExtraSelections(compileSelections_ + bracketSelections_ + findSelections_);
 }
@@ -1160,114 +1129,6 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         }
     }
 
-    if (obj == codeEditor_ && event->type() == QEvent::KeyPress) {
-        QKeyEvent* key = static_cast<QKeyEvent*>(event);
-
-        if (key->key() == Qt::Key_Tab) {
-            codeEditor_->insertPlainText("    ");
-            return true;
-        }
-
-        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
-            QTextCursor cursor = codeEditor_->textCursor();
-
-            cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-            QString line = cursor.selectedText();
-
-            int spaces = 0;
-            for (QChar c : line) {
-                if (c == ' ') spaces++;
-                else break;
-            }
-
-            QString trimmed = line.trimmed();
-            if (trimmed.endsWith('{'))
-                spaces += 4;
-
-            cursor = codeEditor_->textCursor();
-            cursor.insertText("\n" + QString(spaces, ' '));
-            codeEditor_->setTextCursor(cursor);
-            return true;
-        }
-
-        // Auto-close (, [, {, " and skip over an already-present closer instead of
-        // doubling it. Checked ahead of the Key_BraceRight dedent handler below so a
-        // skip-over "}" takes priority over that block's plain-text-insert fallback.
-        {
-            QString typedText = key->text();
-            if (typedText.size() == 1) {
-                QChar tc = typedText.at(0);
-                static const QString kOpen  = "([{\"";
-                static const QString kClose = ")]}\"";
-
-                if (kClose.contains(tc)) {
-                    QTextCursor cursor = codeEditor_->textCursor();
-                    if (!cursor.hasSelection() &&
-                        codeEditor_->document()->characterAt(cursor.position()) == tc) {
-                        cursor.movePosition(QTextCursor::NextCharacter);
-                        codeEditor_->setTextCursor(cursor);
-                        return true;
-                    }
-                }
-                if (kOpen.contains(tc) && !codeEditor_->textCursor().hasSelection()) {
-                    QChar closer = kClose.at(kOpen.indexOf(tc));
-                    codeEditor_->insertPlainText(QString(tc) + QString(closer));
-                    QTextCursor cursor = codeEditor_->textCursor();
-                    cursor.movePosition(QTextCursor::PreviousCharacter);
-                    codeEditor_->setTextCursor(cursor);
-                    return true;
-                }
-            }
-        }
-
-        if (key->key() == Qt::Key_BraceRight) {
-            QTextCursor cursor = codeEditor_->textCursor();
-
-            cursor.movePosition(QTextCursor::StartOfLine);
-            cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-            QString line = cursor.selectedText();
-
-            if (line.trimmed().isEmpty() && line.length() > 0) {
-                int new_indent = qMax(0, (int)line.length() - 4);
-                cursor.removeSelectedText();
-                cursor.insertText(QString(new_indent, ' ') + "}");
-                codeEditor_->setTextCursor(cursor);
-                return true;
-            }
-        }
-
-        // These three have no QShortcut of their own (kept as raw key checks so
-        // they only fire while the editor itself has focus), so they're matched
-        // against keybindSeq_ directly instead of a hardcoded key+modifier pair.
-        QKeySequence pressed(key->keyCombination());
-
-        if (pressed == keybinds_.value("code_completion")) {
-            showCompletionPopup();
-            return true;
-        }
-
-        if (pressed == keybinds_.value("duplicate_line")) {
-            QTextCursor cursor = codeEditor_->textCursor();
-            int col = cursor.positionInBlock();
-
-            QTextCursor lineCursor = cursor;
-            lineCursor.movePosition(QTextCursor::StartOfLine);
-            lineCursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-            QString line = lineCursor.selectedText();
-
-            cursor.movePosition(QTextCursor::EndOfLine);
-            cursor.insertText("\n" + line);
-            cursor.movePosition(QTextCursor::StartOfLine);
-            cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, col);
-            codeEditor_->setTextCursor(cursor);
-            return true;
-        }
-
-        if (pressed == keybinds_.value("comment_toggle")) {
-            toggleCommentSelection();
-            return true;
-        }
-    }
     return QMainWindow::eventFilter(obj, event);
 }
 
@@ -1429,6 +1290,9 @@ void MainWindow::onSettingsClicked() {
         settings.setValue("canvas/dark_theme", darkTheme_);
         setAppTheme(darkTheme_);
         keybinds_.apply(dialog.keybinds());
+        codeEditor_->setActionKeybinds(keybinds_.value("code_completion"),
+                                        keybinds_.value("duplicate_line"),
+                                        keybinds_.value("comment_toggle"));
         canvasWidget_->setProfile(activeProfile_);
         boardLabel_->setText(activeProfile_.name);
         if (sketchThread_) sketchThread_->setProfile(activeProfile_);

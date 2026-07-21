@@ -86,7 +86,6 @@ private:
     void adjustEditorZoom(int steps);
     void resetEditorZoom();
     void promptAndSaveAsNewSketch();
-    void toggleCommentSelection();
     void refreshExtraSelections();
     void updateBracketMatch();
     void checkForAutosaveRecovery(const QString& sketchPath);
