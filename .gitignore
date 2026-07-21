@@ -48,6 +48,7 @@ compile_commands.json
 # IDE -- keep c_cpp_properties.json but ignore personal settings
 .vscode/settings.json
 .idea/
+.obsidian/
 *.vcxproj
 *.vcxproj.filters
 *.sln
