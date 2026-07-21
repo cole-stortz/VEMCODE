@@ -1,0 +1,8 @@
+
+0,  SET_COLOR, ColorSensor, 128, 128, 128  
+0,  SET, DistanceSensor_PIN, 10   # 10cm see wall
+5,  SET, DistanceSensor_PIN, 1    # 1cm backward
+10, SET, DistanceSensor_PIN, 100  # 100cm forward
+15, SET, DistanceSensor_PIN, 10   # 10cm see wall
+20, SET, DistanceSensor_PIN, 100  # 100cm forward
+30, SET_COLOR, ColorSensor, 0, 1000, 0

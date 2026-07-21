@@ -92,5 +92,13 @@ static bool registered = []() {
     };
     def.wire_color = COLOR_SENSOR_FILL;
     ComponentRegistry::instance().register_component(def);
+
+    // Separate entry for the array-of-pins style (e.g. `const int S2[] = {A2};`)
+    // some ported sketches use instead of plain #defines -- same type_name/
+    // create_item, same tradeoff HBridgeMotor's bare ENA/IN1/IN2 entry accepts.
+    ComponentDefinition arrayDef = def;
+    arrayDef.multi_pin_strategy = MultiPinStrategy::Array;
+    ComponentRegistry::instance().register_component(arrayDef);
+
     return true;
 }();
