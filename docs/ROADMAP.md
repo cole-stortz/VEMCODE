@@ -342,40 +342,7 @@ The signal timeline already records every `(timestamp_µs, pin, level)` transiti
 
 ---
 
-### Phase 11 — Component Visual Upgrades
-
-Replace placeholder colored rectangles with proper component graphics. Visual work for this phase is being handled separately from the rest of the roadmap.
-
-- [ ] Replace colored rectangles with QPainter-drawn component visuals for all existing components — animations (LED glow, buzzer pulse, motor rotation) driven by a shared canvas `QTimer` incrementing a `phase_` value on each active item
-- [ ] Architecture is SVG-ready by design: swapping any component's visuals to `QSvgRenderer`-based rendering later only requires changing that component's `paint()` implementation
-- [ ] LCD 16x2 — pixel-accurate character cell rendering, backlight color, cursor blink
-
-> **Milestone:** Canvas looks polished with recognizable component graphics; adding SVG art for any component in the future is a single-file `paint()` swap.
-
----
-
-### Phase 12 — Memory Analysis
-
-Give the user realistic flash and RAM usage figures without requiring a real AVR toolchain on the hot path.
-
-Uses `arduino-cli` rather than raw `avr-gcc`: plain `avr-gcc`/`avr-libc` don't include the Arduino core (`Arduino.h`, `Servo.h`, `pins_arduino.h`, the real `digitalWrite`/`pinMode` implementations) at all, so a raw-avr-gcc approach would still need to locate an Arduino core installation itself; `arduino-cli` already manages core discovery, board flags, and produces both the size report and the `.hex` as normal parts of a compile.
-
-- [ ] `arduino_cli_path` setting in settings dialog; degrades gracefully if not configured — shows nothing rather than blocking Run
-- [ ] After successful compile, run `arduino-cli compile --fqbn <board> --format json` for size analysis only (not execution)
-- [ ] Parse `arduino-cli`'s JSON output for flash and SRAM usage (structured fields, not scraped text)
-- [ ] Flash → hard enforce: block Run if over board's flash limit
-- [ ] Static RAM → hard enforce: block Run if globals exceed board's SRAM limit
-- [ ] Dynamic RAM (String/malloc) → warn but don't block; separate mechanism from the arduino-cli analysis above — hooks `operator new`/`malloc` in VEMCODE's own x86 runtime while the sketch actually runs, since static analysis has no way to see heap usage, only `.data`/`.bss`
-- [ ] Memory bar in UI: `████░░░░ 1234 / 32256 bytes (3%)`
-- [ ] Warn at >75% usage before hitting the limit
-- [ ] Auto-detect `arduino-cli` on first run — check `PATH`, then common bundled locations inside an Arduino IDE 2.x install (it embeds `arduino-cli` internally)
-- [ ] Export `.hex` — toolbar button copies the `.hex` `arduino-cli` already produced during its last compile into the sketch subfolder alongside the compiled DLL; no separate `avr-objcopy` step needed
-
-> **Milestone:** Flash and RAM usage shown for every compile; over-limit sketches are blocked from running; `.hex` can be exported for flashing to real hardware.
-
----
-
-### Phase 13 — Multi-board Simulation
+### Phase 11 — Multi-board Simulation
 
 Run any number of sketches simultaneously in one window, each in its own tab, rather than one board per window or one board per app instance.
 
@@ -394,17 +361,19 @@ Run any number of sketches simultaneously in one window, each in its own tab, ra
 ---
 
 > ### Beta Release
-> Tag `v1.0-beta` after Phase 12 is complete. The tool is feature-complete enough for real-world use: the editor is polished, the API surface covers the common cases, and users get meaningful memory feedback. Installer and auto-update (QtIFW + GitHub Releases as update repository) ships with the stable `v1.0` release — not before.
+> Tag `v1.0-beta` after Phase 10 is complete. The tool is feature-complete enough for real-world use: the editor is polished and the API surface covers the common cases. Installer and auto-update (QtIFW + GitHub Releases as update repository) ships with the stable `v1.0` release — not before.
 
 ---
 
 ### Later
 
-- Add/Remove component button — detached window to add/remove components from the sketch: dropdown of supported components, pin picker, customizable define name, then inject the `#define` and `pinMode()` call into the existing code. The dropdown/pin-picker UI is easy since `componentregistry.cpp` already has the component metadata to drive it. Hardest part: safely injecting into a sketch the user has already hand-written and keeps editing — finding the right insertion point without duplicating an existing `#define`, adding to `void setup()` without disturbing other `pinMode` calls, and handling remove/re-edit after the user has since touched that code by hand. v1 should probably be one-shot insert-only (anchored by a generated comment marker per component, e.g. `// VEMCODE:BTN1`), not full bidirectional sync between canvas state and arbitrary edited text.
-- Step-through debugger — pause execution at any line, step statement by statement; clickable gutter breakpoints, `impl_vb_breakpoint` blocks the sketch thread on a condition variable (same pattern as `impl_sleep_cpu`), Step/Resume toolbar buttons; variable watch (already dlsym-polling-based) and canvas (already just reflects the last fired pin-change callback) should show the paused state for free. Hardest part by far: the preprocessor needs a real line-boundary scanner (brace/paren-depth tracking, skipping string/comment contents) to safely inject breakpoint calls between statements without splicing into a `for(;;)` header or similar — nothing else in the preprocessor today does real parsing, it's all narrow fixed-pattern regex transforms
+- Add/Remove component button — detached window: dropdown + pin picker + define name, injects `#define`/`pinMode()` into the sketch. Hardest part: safely inserting into a hand-edited sketch without duplicating defines or disturbing other `pinMode` calls — v1 should be one-shot insert-only, anchored by a generated comment marker per component (e.g. `// VEMCODE:BTN1`), not full bidirectional canvas↔text sync
+- Step-through debugger — clickable gutter breakpoints, Step/Resume buttons; `impl_vb_breakpoint` blocks the sketch thread on a condition variable (same pattern as `impl_sleep_cpu`); variable watch and canvas already show paused state for free. Hardest part: needs a real line-boundary scanner (brace/paren-depth tracking, skip string/comment contents) to inject breakpoints safely — everything else in the preprocessor today is narrow regex, not real parsing
 - Installer — QtIFW with GitHub Releases as the update repository; bundle MinGW for zero-dependency install on Windows; package for common Linux distros
 - macOS support
 - Additional board profiles (STM32, etc.) — add one `BoardProfile` entry each
-- Hardware Bridge — run a sketch inside VEMCODE while reading from physical sensors and driving physical hardware over USB serial; no code changes between virtual and hybrid operation
+- Component visual upgrades — QPainter-drawn visuals (LED glow, buzzer pulse, motor rotation) replacing placeholder rectangles, animated off a shared canvas `QTimer` phase value; architecture is SVG-ready, swapping to `QSvgRenderer` later is a single-file `paint()` change per component. Blocked on a friend doing the actual graphics — timeline unknown
+- Memory analysis — flash/SRAM usage via `arduino-cli compile --format json` (skips raw avr-gcc, which lacks the Arduino core); blocks Run over a board's limit, warns on heap usage tracked separately in VEMCODE's own runtime; memory bar in UI, `.hex` export
+- Hardware Bridge — per-pin mixing of virtual and real: some pins stay canvas-driven, others wire to a real board over USB serial, same running sketch, no code changes either way (e.g. a virtual OLED/button UI paired with a real sensor under test). Native desktop app avoids the WebSerial/browser-permission friction a webUI sim would have doing the same thing
 - MicroPython / CircuitPython support — Python execution path on Pico and compatible boards using the same runtime, canvas, and signal timeline
 - ESP32 + Network Simulation — WiFi stubs and a mock HTTP server; deterministic, offline, and repeatable responses for firmware testing. Must avoid real sockets entirely (no actual `bind`/`connect`/`listen` to a real port) to preserve VEMCODE's "no network code" trust claim — same virtual-panel pattern as Wire/SPI: a configurable fake response the sketch reads, not an actual HTTP client/server
