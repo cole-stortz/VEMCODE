@@ -54,7 +54,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc"
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc"
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc")
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad.inc")
 
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc" SERVO_LIB_CONTENT)
 configure_file(
@@ -88,6 +89,13 @@ file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc" SPI_LIB_CONTENT)
 configure_file(
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi_lib.cpp.in"
     "${CMAKE_BINARY_DIR}/generated/spi_lib.cpp"
+    @ONLY
+)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad.inc" KEYPAD_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/keypad_lib.cpp"
     @ONLY
 )
 
@@ -127,6 +135,7 @@ set(SOURCES
     ${CMAKE_BINARY_DIR}/generated/wire_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/spi_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/keypad_lib.cpp
     ${COMPONENT_SOURCES}
 )
 

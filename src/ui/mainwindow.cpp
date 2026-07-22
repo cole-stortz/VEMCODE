@@ -679,6 +679,21 @@ void MainWindow::onComponentInput(int pin, int eventType, QVariant value) {
                 c.value(0).toInt(), c.value(1).toInt(), c.value(2).toInt());
             break;
         }
+        case ComponentEventType::KeypadWiring: {
+            QVariantList w = value.toList();
+            int num_cols = w.value(0).toInt();
+            std::vector<int> colPins, rowPins;
+            int i = 1;
+            for (int n = 0; n < num_cols; ++n) colPins.push_back(w.value(i++).toInt());
+            for (; i < w.size(); ++i) rowPins.push_back(w.value(i).toInt());
+            sketchThread_->injectKeypadWiring(colPins, rowPins);
+            break;
+        }
+        case ComponentEventType::KeypadPress: {
+            QVariantList k = value.toList();
+            sketchThread_->injectKeypadPress(k.value(0).toInt(), k.value(1).toInt(), k.value(2).toInt() != 0);
+            break;
+        }
     }
 }
 

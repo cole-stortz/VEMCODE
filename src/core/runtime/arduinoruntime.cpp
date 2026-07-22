@@ -212,6 +212,21 @@ int ArduinoRuntime::impl_digitalRead(int pin) {
         g_runtime->state_.pin_bounce_until_.erase(bounce_it);
         return settled;
     }
+    // Keypad matrix: this column's electrical value depends on which row is
+    // currently driven active by the injected Keypad class's own scan loop --
+    // pulled high (idle) unless the actively-driven row's key is held.
+    {
+        std::lock_guard<std::mutex> lock(g_runtime->state_.keypad_mtx_);
+        auto it = g_runtime->state_.keypad_col_rows_.find(pin);
+        if (it != g_runtime->state_.keypad_col_rows_.end()) {
+            for (int row_pin : it->second) {
+                if (g_runtime->state_.pin_values[row_pin] == 0 &&
+                    g_runtime->state_.keypad_pressed_.count({row_pin, pin}))
+                    return 0;
+            }
+            return 1;
+        }
+    }
     // Floating pin: INPUT mode (0) with nothing injected from UI returns random
     if (g_runtime->state_.pin_modes[pin] == 0 && !g_runtime->state_.pin_driven[pin])
         return g_runtime->rng_() & 1;

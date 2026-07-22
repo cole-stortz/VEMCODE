@@ -14,6 +14,8 @@
 #include <new>
 #include <vector>
 #include <thread>
+#include <set>
+#include <utility>
 
 struct AvrTimerState {
     long long prescaler = 0; // 0 = stopped; decoded from TCCRxB's CS bits
@@ -79,6 +81,18 @@ struct RuntimeState {
     size_t spi_response_index_ = 0;
     std::mutex spi_mtx_; // guards the two fields above -- written from the GUI
                           // thread (inject_spi_bytes), read from the sketch thread (impl_spi_transfer)
+
+    // Keypad matrix: for each column pin, the row pins it's wired to. The
+    // injected Keypad class does real pinMode/digitalWrite/digitalRead row
+    // scanning on the sketch thread (no race there -- it's reading pin values
+    // it just wrote, sequentially, on the same thread); impl_digitalRead
+    // resolves a column's electrical value from whichever row is currently
+    // driven active plus which (row_pin, col_pin) key is currently held.
+    std::map<int, std::vector<int>> keypad_col_rows_; // col_pin -> row_pins
+    std::set<std::pair<int, int>> keypad_pressed_;    // (row_pin, col_pin) currently held
+    std::mutex keypad_mtx_; // guards the two maps above -- written from the
+                             // GUI thread (inject_keypad_wiring/inject_keypad_press),
+                             // read from the sketch thread (impl_digitalRead)
 
     std::mutex timer_mtx_; // guards timer1_/timer2_ -- written from the sketch
                             // thread (register writes), read from the timer thread (poll_timer)
@@ -174,6 +188,18 @@ public:
         state_.color_channels_[out_pin][3] = to_period(g);
         state_.color_sensor_s2_[out_pin] = s2_pin;
         state_.color_sensor_s3_[out_pin] = s3_pin;
+    }
+
+    void inject_keypad_wiring(const std::vector<int>& col_pins, const std::vector<int>& row_pins) {
+        std::lock_guard<std::mutex> lock(state_.keypad_mtx_);
+        for (int col_pin : col_pins)
+            state_.keypad_col_rows_[col_pin] = row_pins;
+    }
+
+    void inject_keypad_press(int row_pin, int col_pin, bool pressed) {
+        std::lock_guard<std::mutex> lock(state_.keypad_mtx_);
+        if (pressed) state_.keypad_pressed_.insert({row_pin, col_pin});
+        else         state_.keypad_pressed_.erase({row_pin, col_pin});
     }
 
     void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {

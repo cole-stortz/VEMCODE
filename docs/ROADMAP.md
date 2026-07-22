@@ -262,7 +262,7 @@ Pull the component plugin architecture forward so that all new components added 
 **Step 5 — New complex components:**
 - [x] Joystick — two analog axes (X/Y, 0–1023) plus a digital button; canvas shows dual sliders and a clickable button; emits `AnalogValue` per axis and `DigitalPress` for the button; keywords: `JOYSTICK`, `JOY`, `VRX`, `VRY`
 - [x] Stepper motor — step count and direction tracked from STEP/DIR or IN1–IN4 pin patterns; canvas displays a position counter and rotation indicator; keywords: `STEP`, `DIR`, `STEPPER`
-- [ ] Keypad matrix — 4×4 or 3×4; detected from row/col define groups; clickable grid on canvas; keywords: `ROW`, `COL`, `KEYPAD`
+- [x] Keypad matrix — 4×4 or 4×3; detected from `rowPins[]`/`colPins[]` arrays (or `ROW1../COL1..` define groups) plus a `Keypad` usage guard; real injected `Keypad.h`-equivalent class does actual `pinMode`/`digitalWrite`/`digitalRead` row scanning (`CircuitDetector::detect_keypad_matrix`, `src/core/build/libs/keypad.inc`); clickable grid on canvas with the real 4x4/4x3 membrane-keypad silkscreen layout; keywords: `ROW`, `COL`, `KEYPAD`
 - [ ] DHT11 / DHT22 — temperature and humidity; `#include <DHT.h>` stripped and replaced with injected class; `dht.read()` returns canvas-injected values; canvas shows temperature + humidity input fields; detect pattern: `DHT(`; keywords: `DHT`, `DHTPIN`, `DHT_PIN`
 
 **Step 6 — New display components:**

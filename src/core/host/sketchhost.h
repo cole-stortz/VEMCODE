@@ -49,6 +49,14 @@ public:
         runtime_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
     }
 
+    void inject_keypad_wiring(const std::vector<int>& col_pins, const std::vector<int>& row_pins) {
+        runtime_.inject_keypad_wiring(col_pins, row_pins);
+    }
+
+    void inject_keypad_press(int row_pin, int col_pin, bool pressed) {
+        runtime_.inject_keypad_press(row_pin, col_pin, pressed);
+    }
+
     void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
         runtime_.inject_wire_device(address, bytes);
     }

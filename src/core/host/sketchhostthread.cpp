@@ -237,6 +237,16 @@ void SketchThread::injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g
     host_.inject_color(out_pin, s2_pin, s3_pin, r, g, b);
 }
 
+void SketchThread::injectKeypadWiring(const std::vector<int>& col_pins, const std::vector<int>& row_pins) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_keypad_wiring(col_pins, row_pins);
+}
+
+void SketchThread::injectKeypadPress(int row_pin, int col_pin, bool pressed) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_keypad_press(row_pin, col_pin, pressed);
+}
+
 void SketchThread::injectWireDevice(int address, const std::vector<uint8_t>& bytes) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_wire_device(address, bytes);

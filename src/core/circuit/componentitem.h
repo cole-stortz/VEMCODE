@@ -9,6 +9,8 @@ enum class ComponentEventType {
     AnalogValue,
     PulseUs,
     ColorRGB,
+    KeypadWiring,   // {rows, cols, row_pin_0.., col_pin_0..} -- registers the matrix once
+    KeypadPress,    // {rowIndex, colIndex, pressed(0/1)}
 };
 
 class ComponentItem : public QGraphicsObject {
@@ -23,6 +25,10 @@ public:
     virtual void onPinChanged(int pin, int value);
     virtual void updateText(int row, const QString& text);
     virtual void configureMultiPin(const std::vector<int>& pins);
+
+    // Keypad only: called once, right before configureMultiPin, so the item
+    // knows where to split its pins vector into row pins vs. column pins.
+    virtual void configureRowsCols(int rows, int cols);
 
     // Called once by CanvasWidget after inputChanged is connected. Emitting
     // from the constructor or configureMultiPin instead silently drops it --

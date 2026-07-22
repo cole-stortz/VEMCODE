@@ -14,6 +14,11 @@ struct DetectedComponent {
     std::string   label;        // human readable e.g. "LED (pin 13)"
     bool          confirmed;    // true once runtime pin_changed fires for this pin
 
+    // Keypad only: pins[0..rows-1] are row pins, pins[rows..rows+cols-1] are
+    // column pins. Zero for every other component type.
+    int rows = 0;
+    int cols = 0;
+
     // String return
     std::string to_string() const;
 };
@@ -48,6 +53,14 @@ private:
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
+
+    // Keypad matrix: one component whose row-pin count and col-pin count are
+    // independent and read straight from the sketch, so it can't go through
+    // the fixed-role-count MultiPinStrategy engine above -- handled on its own.
+    void detect_keypad_matrix(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        const std::map<std::string, std::vector<int>>& arrays,
+        std::set<int>& claimed);
 
     void detect_pattern_matches(const std::string& source,
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);

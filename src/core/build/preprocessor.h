@@ -8,6 +8,7 @@ extern const char* g_liquidcrystal_lib;
 extern const char* g_softwareserial_lib;
 extern const char* g_wire_lib;
 extern const char* g_spi_lib;
+extern const char* g_keypad_lib;
 
 // Transforms Arduino sketch syntax into DLL format before compilation.
 // Passes through unchanged if source already contains "vb_init".

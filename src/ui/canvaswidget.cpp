@@ -348,6 +348,8 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
             if (mp >= 0)
                 pinItems_[mp] = item;
         }
+        if (comp.rows > 0 && comp.cols > 0)
+            item->configureRowsCols(comp.rows, comp.cols);
         item->configureMultiPin(comp.pins);
     }
     item->emitInitialValue();
