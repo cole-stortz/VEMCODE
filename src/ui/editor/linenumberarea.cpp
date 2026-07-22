@@ -105,6 +105,12 @@ void EditorWithLines::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
+    if (event->text() == ".") {
+        QPlainTextEdit::keyPressEvent(event);
+        emit dotTyped();
+        return;
+    }
+
     QPlainTextEdit::keyPressEvent(event);
 }
 

@@ -24,6 +24,7 @@
 #include <QIcon>
 #include <QWheelEvent>
 #include <QMessageBox>
+#include <QRegularExpression>
 
 // Font size intentionally left out of the editor's styling -- it's set via
 // setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
@@ -194,6 +195,8 @@ MainWindow::MainWindow(QWidget* parent)
                                     keybinds_.value("comment_toggle"));
     connect(codeEditor_, &EditorWithLines::completionRequested,
             this, &MainWindow::showCompletionPopup);
+    connect(codeEditor_, &EditorWithLines::dotTyped,
+            this, &MainWindow::showMemberCompletionPopup);
 
     // Autosave every 30s, but only for a sketch with a real (non-scratch) path
     // and only if there are actually unsaved changes to write
@@ -400,13 +403,28 @@ QWidget* MainWindow::buildEditorPanel() {
             showCompletionPopup();
     });
     connect(codeEditor_, &QPlainTextEdit::textChanged, this, [this]() {
-        if (!codeEditor_->hasFocus() || completer_->popup()->isVisible()) {
+        if (!codeEditor_->hasFocus()) {
             idleCompletionTimer_->stop();
             return;
         }
         QTextCursor tc = codeEditor_->textCursor();
         tc.select(QTextCursor::WordUnderCursor);
-        if (tc.selectedText().length() >= 3)
+        QString word = tc.selectedText();
+
+        // Popup already open (either the flat list or a member-narrowed one from
+        // showMemberCompletionPopup) -- just refine its prefix as more is typed,
+        // rather than re-triggering the idle timer or resetting the model.
+        if (completer_->popup()->isVisible()) {
+            idleCompletionTimer_->stop();
+            completer_->setCompletionPrefix(word);
+            if (completer_->completionCount() == 0)
+                completer_->popup()->hide();
+            else
+                completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
+            return;
+        }
+
+        if (word.length() >= 3)
             idleCompletionTimer_->start();
         else
             idleCompletionTimer_->stop();
@@ -1159,7 +1177,7 @@ void MainWindow::showCompletionPopup() {
         "SPI.begin", "SPI.transfer", "SPI.beginTransaction", "SPI.endTransaction",
         "SPISettings", "MSBFIRST", "LSBFIRST", "SPI_MODE0", "SPI_MODE1", "SPI_MODE2", "SPI_MODE3",
         // Servo
-        "Servo", "attach", "write", "writeMicroseconds", "read", "detach", "attached",
+        "Servo", "attach", "write", "read", "detach", "attached",
         // LiquidCrystal
         "LiquidCrystal", "lcd.begin", "lcd.print", "lcd.setCursor", "lcd.clear",
         // SoftwareSerial
@@ -1198,6 +1216,52 @@ void MainWindow::showCompletionPopup() {
     QTextCursor tc = codeEditor_->textCursor();
     tc.select(QTextCursor::WordUnderCursor);
     completer_->setCompletionPrefix(tc.selectedText());
+    completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
+
+    QRect cr = codeEditor_->cursorRect();
+    cr.setWidth(completer_->popup()->sizeHintForColumn(0)
+                + completer_->popup()->verticalScrollBar()->sizeHint().width());
+    completer_->complete(cr);
+}
+
+void MainWindow::showMemberCompletionPopup() {
+    // Only the globals/objects VEMCODE actually implements in simulation --
+    // see Preprocessor::replace_api_calls (Serial/Serial1/Serial2/Wire/SPI/EEPROM)
+    // and src/core/build/libs/*.inc (Servo/LiquidCrystal/SoftwareSerial) --
+    // so this never suggests a real-Arduino method that would silently no-op here.
+    static const QStringList kFixedGlobals = {
+        "Serial", "Serial1", "Serial2", "Wire", "SPI", "EEPROM"
+    };
+    static const QMap<QString, QStringList> kMemberTables = {
+        {"Serial",         {"begin", "print", "println", "printf", "available", "read"}},
+        {"Serial1",        {"begin", "print", "println"}},
+        {"Serial2",        {"begin", "print", "println"}},
+        {"Wire",           {"begin", "beginTransmission", "write", "endTransmission",
+                             "requestFrom", "available", "read"}},
+        {"SPI",            {"begin", "beginTransaction", "endTransaction", "transfer"}},
+        {"EEPROM",         {"read", "write", "update"}},
+        {"Servo",          {"attach", "write", "read", "attached", "detach"}},
+        {"LiquidCrystal",  {"begin", "clear", "setCursor", "write", "print", "createChar"}},
+        {"SoftwareSerial", {"begin", "print", "println", "available", "read", "peek",
+                             "write", "listen", "isListening", "overflow"}},
+    };
+
+    QTextCursor tc = codeEditor_->textCursor();
+    QString before = tc.block().text().left(tc.positionInBlock());
+    static const QRegularExpression receiverRe(R"(\b(\w+)\.$)");
+    QRegularExpressionMatch m = receiverRe.match(before);
+    if (!m.hasMatch())
+        return;
+
+    QString receiver = m.captured(1);
+    QString type = kFixedGlobals.contains(receiver)
+        ? receiver
+        : SketchLinter::scanDeclaredTypes(codeEditor_->toPlainText()).value(receiver);
+    if (!kMemberTables.contains(type))
+        return;
+
+    completer_->setModel(new QStringListModel(kMemberTables.value(type), completer_));
+    completer_->setCompletionPrefix(QString());
     completer_->popup()->setCurrentIndex(completer_->completionModel()->index(0, 0));
 
     QRect cr = codeEditor_->cursorRect();

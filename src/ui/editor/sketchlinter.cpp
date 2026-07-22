@@ -303,4 +303,22 @@ QStringList scanSymbols(const QString& source) {
     return symbols;
 }
 
+QMap<QString, QString> scanDeclaredTypes(const QString& source) {
+    QMap<QString, QString> types;
+    std::string src = source.toStdString();
+
+    auto collect = [&](const std::regex& re, const QString& type_name) {
+        for (auto it = std::sregex_iterator(src.begin(), src.end(), re);
+            it != std::sregex_iterator(); ++it) {
+            types[QString::fromStdString((*it)[1].str())] = type_name;
+        }
+    };
+
+    collect(std::regex(R"(\bServo\s+(\w+)\s*;)"), "Servo");
+    collect(std::regex(R"(\bLiquidCrystal\s+(\w+)\s*\()"), "LiquidCrystal");
+    collect(std::regex(R"(\bSoftwareSerial\s+(\w+)\s*\()"), "SoftwareSerial");
+
+    return types;
+}
+
 } // namespace SketchLinter

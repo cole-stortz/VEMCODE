@@ -1,6 +1,7 @@
 #pragma once
 #include <QString>
 #include <QStringList>
+#include <QMap>
 #include "src/core/runtime/boardprofile.h"
 
 // Static analysis over sketch source text -- pin-range/PWM/ISR/etc. checks
@@ -17,6 +18,10 @@ bool isPinName(const std::string& name);
 
 // Names of #defines, functions, and variables in the source, for autocomplete.
 QStringList scanSymbols(const QString& source);
+
+// Maps declared variable name -> known type name (Servo/LiquidCrystal/SoftwareSerial)
+// for objects declared in the source, so dot-completion can look up that type's members.
+QMap<QString, QString> scanDeclaredTypes(const QString& source);
 
 // Rewrites cryptic GCC error messages to plain English.
 QString humanizeErrors(const QString& raw);

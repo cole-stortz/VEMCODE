@@ -82,6 +82,7 @@ private:
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
     void showCompletionPopup();
+    void showMemberCompletionPopup();
     void updateWindowTitle();
     void adjustEditorZoom(int steps);
     void resetEditorZoom();

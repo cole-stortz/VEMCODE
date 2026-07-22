@@ -36,6 +36,10 @@ signals:
     // QCompleter, so this just asks MainWindow to show the popup.
     void completionRequested();
 
+    // Fired right after a '.' is inserted, so MainWindow can look up the
+    // receiver's type and pop up just its members (no idle wait).
+    void dotTyped();
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
 
