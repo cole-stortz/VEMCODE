@@ -598,6 +598,8 @@ QWidget* MainWindow::buildDebugPanel() {
     debugTabs_->addTab(buildSerialPanel(), "Serial monitor");
     signalTimeline_ = new SignalTimeline();
     debugTabs_->addTab(signalTimeline_, "Signal timeline");
+    serialPlotter_ = new SerialPlotter();
+    debugTabs_->addTab(serialPlotter_, "Serial plotter");
     variableWatch_ = new VariableWatch();
     debugTabs_->addTab(variableWatch_, "Variable watch");
     devicesPanel_ = new DevicesPanel();
@@ -614,6 +616,7 @@ void MainWindow::onSerialOutput(QString text) {
     serialMonitor_->moveCursor(QTextCursor::End);
     serialMonitor_->insertPlainText(text);
     serialMonitor_->moveCursor(QTextCursor::End);
+    if (serialPlotter_) serialPlotter_->ingest(text, simTimer_.elapsed());
 }
 
 void MainWindow::onSerial1Output(QString text) {
@@ -860,6 +863,7 @@ void MainWindow::onRunClicked() {
 
     showCompileErrors(result); // paints warning lines only -- no errors on this path
     signalTimeline_->clear();
+    serialPlotter_->clear();
     variableWatch_->clearValues();
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
@@ -1339,6 +1343,7 @@ void MainWindow::setAppTheme(bool dark) {
     canvasWidget_->setDarkTheme(dark);
     if (highlighter_) highlighter_->setTheme(dark);
     if (signalTimeline_) signalTimeline_->setDarkTheme(dark);
+    if (serialPlotter_) serialPlotter_->setDarkTheme(dark);
     if (lineNumbers_) lineNumbers_->setDarkTheme(dark);
     if (findReplaceBar_) findReplaceBar_->setHighlightColor(highlightColors_.find_match_bg);
 }

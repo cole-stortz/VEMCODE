@@ -316,7 +316,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [ ] **In-app Arduino API reference** — a collapsible panel or right-click lookup showing the signature, parameter descriptions, and return value for any Arduino function; covers all functions VEMCODE supports
 
 **Serial Plotter:**
-- [ ] Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel alongside the serial monitor; multiple named variables supported via `Serial.print("label:"); Serial.println(value);` format, matching the Arduino IDE Serial Plotter protocol
+- [x] Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel (`SerialPlotter`, new "Serial plotter" tab in the debug panel); multiple named variables supported via `label:value` tokens separated by whitespace/commas, matching the Arduino IDE Serial Plotter protocol; unlabeled bare numbers default to "Value"/"Value 2"/...; auto-scaled shared Y axis, scroll/zoom via mouse wheel (Ctrl+wheel to zoom) same as the signal timeline
 
 **Settings panel:**
 - [x] **Compiler path** — auto-detect common g++ install locations on first run (MinGW on Windows, `/usr/bin/g++` on Linux); show a validation indicator (green tick / red cross) next to the path field

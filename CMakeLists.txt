@@ -121,6 +121,7 @@ set(SOURCES
     src/ui/editor/codehighlighter.cpp
     src/ui/editor/linenumberarea.cpp
     src/ui/panels/signaltimeline.cpp
+    src/ui/panels/serialplotter.cpp
     src/ui/panels/variablewatch.cpp
     src/ui/panels/devicespanel.cpp
     src/ui/panels/spipanel.cpp
@@ -157,6 +158,7 @@ set(HEADERS
     src/ui/editor/codehighlighter.h
     src/ui/editor/linenumberarea.h
     src/ui/panels/signaltimeline.h
+    src/ui/panels/serialplotter.h
     src/ui/panels/variablewatch.h
     src/ui/panels/devicespanel.h
     src/ui/panels/spipanel.h

@@ -26,6 +26,7 @@
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
 #include "src/ui/panels/signaltimeline.h"
+#include "src/ui/panels/serialplotter.h"
 #include "src/ui/editor/codehighlighter.h"
 #include "src/core/build/preprocessor.h"
 #include "src/ui/editor/linenumberarea.h"
@@ -49,6 +50,7 @@ public:
     VariableWatch* variableWatch_ = nullptr;
     DevicesPanel*  devicesPanel_  = nullptr;
     SpiPanel*      spiPanel_      = nullptr;
+    SerialPlotter* serialPlotter_ = nullptr;
 
 private slots:
     void onSerialOutput(QString text);
