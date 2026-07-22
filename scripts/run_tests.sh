@@ -12,7 +12,7 @@ TESTS_DIR="app/sketches/tests"
 TIMEOUT_SECS=5
 
 VEMCODE_BIN="./app/VEMCODE"
-[ -f "${VEMCODE_BIN}.exe" ] && VEMCODE_BIN="${VEMCODE_BIN}.exe"
+[ -f "$VEMCODE_BIN" ] || VEMCODE_BIN="${VEMCODE_BIN}.exe"
 
 TIMEOUT_BIN="timeout"
 [ -x "/usr/bin/timeout" ] && TIMEOUT_BIN="/usr/bin/timeout"
