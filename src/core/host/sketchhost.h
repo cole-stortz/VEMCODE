@@ -57,6 +57,10 @@ public:
         runtime_.inject_keypad_press(row_pin, col_pin, pressed);
     }
 
+    void inject_dht(int pin, float temp_c, float humidity) {
+        runtime_.inject_dht(pin, temp_c, humidity);
+    }
+
     void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
         runtime_.inject_wire_device(address, bytes);
     }

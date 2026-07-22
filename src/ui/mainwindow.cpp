@@ -694,6 +694,11 @@ void MainWindow::onComponentInput(int pin, int eventType, QVariant value) {
             sketchThread_->injectKeypadPress(k.value(0).toInt(), k.value(1).toInt(), k.value(2).toInt() != 0);
             break;
         }
+        case ComponentEventType::DhtReading: {
+            QVariantList d = value.toList();
+            sketchThread_->injectDht(pin, (float)d.value(0).toDouble(), (float)d.value(1).toDouble());
+            break;
+        }
     }
 }
 

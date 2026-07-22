@@ -247,6 +247,11 @@ void SketchThread::injectKeypadPress(int row_pin, int col_pin, bool pressed) {
     host_.inject_keypad_press(row_pin, col_pin, pressed);
 }
 
+void SketchThread::injectDht(int pin, float temp_c, float humidity) {
+    QMutexLocker lock(&inject_mutex_);
+    host_.inject_dht(pin, temp_c, humidity);
+}
+
 void SketchThread::injectWireDevice(int address, const std::vector<uint8_t>& bytes) {
     QMutexLocker lock(&inject_mutex_);
     host_.inject_wire_device(address, bytes);

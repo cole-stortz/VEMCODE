@@ -62,6 +62,13 @@ private:
         const std::map<std::string, std::vector<int>>& arrays,
         std::set<int>& claimed);
 
+    // DHT11/DHT22: "DHT dht(DHTPIN, DHTTYPE)" -- the second constructor arg is
+    // a sensor-type selector, not a pin, so detect_constructor_pattern's
+    // "every arg must resolve to a pin" rule can't be reused for it either.
+    void detect_dht(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        std::set<int>& claimed);
+
     void detect_pattern_matches(const std::string& source,
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);
     void detect_method_call_pattern(const ComponentDefinition& def, const std::string& pattern,

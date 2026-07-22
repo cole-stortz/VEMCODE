@@ -31,6 +31,7 @@ public:
     void injectColor(int out_pin, int s2_pin, int s3_pin, int r, int g, int b);
     void injectKeypadWiring(const std::vector<int>& col_pins, const std::vector<int>& row_pins);
     void injectKeypadPress(int row_pin, int col_pin, bool pressed);
+    void injectDht(int pin, float temp_c, float humidity);
     void injectWireDevice(int address, const std::vector<uint8_t>& bytes);
     void injectSpiBytes(const std::vector<uint8_t>& bytes);
     void setProfile(BoardProfile p);

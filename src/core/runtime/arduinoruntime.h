@@ -94,6 +94,10 @@ struct RuntimeState {
                              // GUI thread (inject_keypad_wiring/inject_keypad_press),
                              // read from the sketch thread (impl_digitalRead)
 
+    std::map<int, std::pair<float, float>> dht_readings_; // pin -> (tempC, humidity%)
+    std::mutex dht_mtx_; // guards dht_readings_ -- written from the GUI thread
+                          // (inject_dht), read from the sketch thread (impl_dht_read_*)
+
     std::mutex timer_mtx_; // guards timer1_/timer2_ -- written from the sketch
                             // thread (register writes), read from the timer thread (poll_timer)
     AvrTimerState timer1_{65536, 9, 10}; // Timer1: 16-bit, OC1A=pin9, OC1B=pin10
@@ -202,6 +206,11 @@ public:
         else         state_.keypad_pressed_.erase({row_pin, col_pin});
     }
 
+    void inject_dht(int pin, float temp_c, float humidity) {
+        std::lock_guard<std::mutex> lock(state_.dht_mtx_);
+        state_.dht_readings_[pin] = {temp_c, humidity};
+    }
+
     void inject_wire_device(int address, const std::vector<uint8_t>& bytes) {
         std::lock_guard<std::mutex> lock(state_.wire_mtx_);
         state_.wire_devices_[address] = bytes;
@@ -232,6 +241,8 @@ private:
     static void          impl_watch_variable (const char* name, int value);
     static unsigned long impl_pulseIn        (int pin, int value, unsigned long timeout);
     static void          impl_lcd_print      (int pin, int row, const char* text);
+    static float         impl_dht_read_temperature(int pin);
+    static float         impl_dht_read_humidity   (int pin);
     static int           impl_Serial_available();
     static int           impl_Serial_read    ();
     static void          impl_tone           (int pin, int frequency, int duration_ms);

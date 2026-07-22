@@ -45,6 +45,10 @@ struct ArduinoAPI {
     // LCD display
     void (*lcd_print)(int pin, int row, const char* text);
 
+    // DHT11/DHT22 -- canvas-injected readings, keyed by data pin
+    float (*dht_read_temperature)(int pin);
+    float (*dht_read_humidity)   (int pin);
+
     // Tone generation
     void (*tone)(int pin, int frequency, int duration_ms);
     void (*noTone)(int pin);

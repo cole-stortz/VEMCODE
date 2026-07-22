@@ -188,6 +188,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "Wire",            g_wire_lib },
         { "SPI",             g_spi_lib },
         { "Keypad",          g_keypad_lib },
+        { "DHT",             g_dht_lib },
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },

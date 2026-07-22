@@ -89,6 +89,8 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.pulseIn          = impl_pulseIn;
     api.delayMicroseconds = impl_delayMicroseconds;
     api.lcd_print        = impl_lcd_print;
+    api.dht_read_temperature = impl_dht_read_temperature;
+    api.dht_read_humidity    = impl_dht_read_humidity;
     api.tone             = impl_tone;
     api.noTone           = impl_noTone;
     api.attachInterrupt = impl_attachInterrupt;
@@ -330,6 +332,20 @@ void ArduinoRuntime::impl_watch_variable(const char* name, int value) {
         g_runtime->on_variable_changed(std::string(name), value);
     else
         std::cout << ts() << "  watch: " << name << " = " << value << "\n";
+}
+
+float ArduinoRuntime::impl_dht_read_temperature(int pin) {
+    if (!g_runtime) return 0.0f;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.dht_mtx_);
+    auto it = g_runtime->state_.dht_readings_.find(pin);
+    return it != g_runtime->state_.dht_readings_.end() ? it->second.first : 0.0f;
+}
+
+float ArduinoRuntime::impl_dht_read_humidity(int pin) {
+    if (!g_runtime) return 0.0f;
+    std::lock_guard<std::mutex> lock(g_runtime->state_.dht_mtx_);
+    auto it = g_runtime->state_.dht_readings_.find(pin);
+    return it != g_runtime->state_.dht_readings_.end() ? it->second.second : 0.0f;
 }
 
 void ArduinoRuntime::impl_lcd_print(int pin, int row, const char* text) {

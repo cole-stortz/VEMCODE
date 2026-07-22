@@ -11,6 +11,7 @@ enum class ComponentEventType {
     ColorRGB,
     KeypadWiring,   // {rows, cols, row_pin_0.., col_pin_0..} -- registers the matrix once
     KeypadPress,    // {rowIndex, colIndex, pressed(0/1)}
+    DhtReading,     // {temperatureC, humidityPercent}
 };
 
 class ComponentItem : public QGraphicsObject {
