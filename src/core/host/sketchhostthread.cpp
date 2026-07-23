@@ -105,8 +105,19 @@ void SketchThread::run() {
         emit sleepChanged(sleeping);
     };
 
-    // Load the sketch DLL
-    if (!host_.load(dll_path_.toStdString())) {
+    // Load the sketch DLL. setup() runs inside load(), on this same thread,
+    // before the while(running_) loop below ever locks exec_mutex() -- but
+    // setup() can itself call delay()/delayMicroseconds(), which
+    // unconditionally unlock/relock exec_mtx_ to let ISRs preempt them.
+    // Without holding the lock here first, that unlock() targets a mutex
+    // this thread doesn't actually own (undefined behavior, observed to
+    // hang later lock attempts).
+    bool loaded;
+    {
+        std::lock_guard<std::mutex> exec_lock(runtime.exec_mutex());
+        loaded = host_.load(dll_path_.toStdString());
+    }
+    if (!loaded) {
         emit loadFailed("Failed to load: " + dll_path_);
         return;
     }

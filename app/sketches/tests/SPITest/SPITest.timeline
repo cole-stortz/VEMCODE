@@ -1,0 +1,11 @@
+# Configures a 5-byte SPI response cycle before the first loop() call, then
+# checks the first transfer sequence: a/b consume bytes 0-1, the buf(3)
+# transfer consumes bytes 2-4. Assumes SPI.transfer(buf, len) makes one
+# impl_spi_transfer call per byte in order -- adjust if that's not how the
+# injected SPI.h overload actually cycles the response buffer.
+#
+# NOTE: timeline fields are "time, VERB, target, args..." -- SET_RESPONSE is
+# the verb, SPI is the target (matching dispatchAction's `target == "SPI"`
+# check), not the other way around.
+0,   SET_RESPONSE, SPI, 10, 20, 30, 40, 50
+0.6, ASSERT, SERIAL_CONTAINS, "a=10 b=20 buf=30,40,50"

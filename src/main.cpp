@@ -249,9 +249,18 @@ static int run_headless(int argc, char* argv[]) {
         std::cout << "  sleep: " << (sleeping ? "entering" : "woke") << "\n";
     };
 
-    if (!host.load(result.dll_path)) {
-        std::cerr << "Failed to load compiled sketch\n";
-        return 1;
+    {
+        // setup() runs inside load(), on this same thread, before the main
+        // loop below ever locks exec_mutex() -- but setup() can itself call
+        // delay()/delayMicroseconds(), which unconditionally unlock/relock
+        // exec_mtx_ to let ISRs preempt them. Without holding the lock here
+        // first, that unlock() targets a mutex this thread doesn't actually
+        // own (undefined behavior, observed to hang later lock attempts).
+        std::lock_guard<std::mutex> exec_lock(runtime.exec_mutex());
+        if (!host.load(result.dll_path)) {
+            std::cerr << "Failed to load compiled sketch\n";
+            return 1;
+        }
     }
 
     g_headless_runtime = &runtime;

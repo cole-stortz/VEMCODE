@@ -1,0 +1,7 @@
+# Exercises attachInterrupt(FALLING) via the Button on pin 2.
+#
+# NOTE: same PRESS/RELEASE inversion as ISRVectorTest.timeline -- BUTTON_PIN
+# idles HIGH (INPUT_PULLUP), and TestRunner's "RELEASE" is what actually
+# drives it LOW/FALLING given how timeline.cpp currently maps the two verbs.
+0.3, RELEASE, BUTTON_PIN
+0.4, ASSERT, SERIAL_CONTAINS, "ISR fired! isr_count = 1"

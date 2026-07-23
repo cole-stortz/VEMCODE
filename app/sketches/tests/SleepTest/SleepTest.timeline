@@ -1,0 +1,18 @@
+# The whole one-shot cycle (sleep_cpu() no-op check, real ~250ms watchdog-
+# woken sleep, post-disable no-op check) happens on the very first loop()
+# call, finishing around t=0.25-0.3s.
+# See EEPROMTest.timeline's note on normalize_call_whitespace -- these match
+# from "(" onward since the space before it in the sketch's own string
+# literal doesn't survive the preprocessor.
+#
+# Neither "elapsed" line's exact number is asserted -- both measure a
+# sleep_cpu() no-op that should take ~0ms, but that's really just a few
+# microseconds of real CPU/function-call overhead with no deliberate delay
+# at all. At higher `speed` values that overhead gets multiplied along with
+# everything else (millis() is real_time * speed), so it can intermittently
+# tip over a 1ms rounding boundary and print "1ms" instead of "0ms" -- not a
+# real bug, just not a safe thing to pin an exact value on.
+0.05, ASSERT, SERIAL_CONTAINS, "(expect ~0, proving it's a no-op when disabled)"
+0.1,  ASSERT, SERIAL_CONTAINS, "(watchdog will wake it in ~250ms)..."
+0.4,  ASSERT, SERIAL_CONTAINS, "(expect ~0)"
+0.45, ASSERT, SERIAL_CONTAINS, "=== cycle done ==="

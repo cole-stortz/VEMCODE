@@ -1,0 +1,45 @@
+# Exercises the simple single-pin input components. RotaryEncoder, Keypad-
+# style matrices, Joystick, and ColorSensor aren't in TestRunner's
+# dispatchAction type list (or, for the encoder, not injectable at all), so
+# ENC/JOY/COLOR fields are left unverified.
+#
+# DistanceSensor and ColorSensor are still SET at t=0 (before the sketch's
+# first loop()) purely for determinism: with nothing injected, their pulseIn()
+# calls fall back to reading a floating (undriven) pin, which returns a random
+# bit per poll and can make pulseIn() spin for up to its full timeout. Setting
+# them up front makes pulseIn() return immediately every iteration instead.
+0,    SET, DistanceSensor_PIN, 20
+0,    SET_COLOR, ColorSensor, 100, 150, 200
+#
+# NOTE: Button/ButtonClean PRESS/RELEASE are inverted in TestRunner relative
+# to their idle-HIGH (INPUT_PULLUP) wiring -- see InterruptTest.timeline.
+# RELEASE is what actually drives BUTTON_PIN/CLEAN_PIN LOW ("pressed").
+#
+# BTN/CLEAN are read via digitalRead() polling in InputTest.cpp's loop(),
+# which makes Button (not ButtonClean -- see timeline.cpp) subject to
+# inject_button_bounce()'s real, unscaled 10ms bounce window (digitalRead
+# returns a random bit while "bouncing", same as a real button). The gap
+# before its assert is widened to 2.0 sketch-seconds (vs. 0.1 elsewhere) so
+# it stays comfortably above that fixed 10ms regardless of `speed` -- even
+# the previous 1.0s margin (100ms real at speed=10) occasionally wasn't
+# enough, most likely Windows' ~15ms scheduler granularity eating into it
+# under load rather than the bounce simulation itself. Not needed for
+# InterruptTest/ISRVectorTest's button checks -- those read an
+# ISR-incremented counter, and the ISR fires synchronously at bounce-inject
+# time, before the bounce window applies at all.
+0.2,  RELEASE, BUTTON_PIN
+2.2,  ASSERT, SERIAL_CONTAINS, "BTN:1"
+2.3,  SET, SWITCH_PIN, 1
+2.4,  ASSERT, SERIAL_CONTAINS, "SW:1"
+2.5,  RELEASE, CLEAN_PIN
+2.6,  ASSERT, SERIAL_CONTAINS, "CLEAN:1"
+2.7,  SET, IR_SENSOR_PIN, 1
+2.8,  ASSERT, SERIAL_CONTAINS, "IR:1"
+2.9,  SET, POT_PIN, 777
+3.0,  ASSERT, SERIAL_CONTAINS, "POT:777"
+3.1,  SET, LDR_PIN, 300
+3.2,  ASSERT, SERIAL_CONTAINS, "LDR:300"
+3.3,  SET, TEMP_PIN, 450
+3.4,  ASSERT, SERIAL_CONTAINS, "TEMP:450"
+3.5,  SET, FORCE_PIN, 88
+3.6,  ASSERT, SERIAL_CONTAINS, "FORCE:88"

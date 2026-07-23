@@ -1,0 +1,11 @@
+# Regression fixture for EEPROMTest -- all output prints in setup() with no
+# delay, so every assertion is true from t=0 -- trimmed to 3 checkpoints
+# since each extra event costs a full ~1s loop() iteration (loop() here is
+# just delay(1000)).
+0.2, ASSERT, SERIAL_CONTAINS, "addr 0 = 42"
+0.4, ASSERT, SERIAL_CONTAINS, "addr 0 after update = 99"
+# NOTE: not "oob read (expect..." -- normalize_call_whitespace (preprocessor.cpp)
+# collapses "word (" -> "word(" across the whole source unconditionally, including
+# inside string literals, so the sketch's own space before "(expect" never survives.
+# Starting the match at "(" sidesteps that either way.
+0.6, ASSERT, SERIAL_CONTAINS, "(expect 255) = 255"

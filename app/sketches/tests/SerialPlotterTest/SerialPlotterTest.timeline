@@ -1,0 +1,4 @@
+# Wave values are computed from sin/cos so only the fixed labels are
+# assertable, not the numbers themselves.
+0.1, ASSERT, SERIAL_CONTAINS, "Wave1:"
+0.1, ASSERT, SERIAL_CONTAINS, "Wave2:"

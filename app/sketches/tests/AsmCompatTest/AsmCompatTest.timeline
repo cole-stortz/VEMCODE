@@ -1,0 +1,13 @@
+# Regression fixture for AsmCompatTest. All lines print in setup() with no
+# delay, so every assertion is safely true from t=0 -- trimmed to 4
+# checkpoints spanning the file rather than one per line, since each extra
+# event costs a full ~1s loop() iteration (loop() here is just delay(1000)).
+#
+# These start the match at "(" rather than at "cli"/"sei"/etc -- see the
+# normalize_call_whitespace note in EEPROMTest.timeline; the space before each
+# "(" here doesn't survive the preprocessor, so matching from "(" onward
+# works regardless of whether that gets fixed later.
+0.2, ASSERT, SERIAL_CONTAINS, "__asm__(nop): ok"
+0.4, ASSERT, SERIAL_CONTAINS, "(interrupts): ok"
+0.6, ASSERT, SERIAL_CONTAINS, "(unknown -- WARNING above): ok"
+0.8, ASSERT, SERIAL_CONTAINS, "=== done ==="

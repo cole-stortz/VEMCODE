@@ -1,0 +1,8 @@
+# tone(9, 440, 300)'s initial HIGH-frequency state can't actually be observed
+# here: ASSERT PIN only checks state at loop()-call boundaries (once per full
+# ~500ms loop() call, since loop() itself is delay(500) + a print), and the
+# 300ms tone duration has already elapsed and cleared the pin back to 0 by
+# the time the very first boundary check is possible. Only the post-clear
+# state is meaningfully assertable -- which is also the actual regression
+# this sketch exists for (the duration thread correctly clearing the pin).
+0.5, ASSERT, PIN, 9, 0

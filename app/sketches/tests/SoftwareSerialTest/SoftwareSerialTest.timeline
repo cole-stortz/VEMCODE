@@ -1,0 +1,8 @@
+# Only the hardware Serial output is checked -- SoftwareSerial's own prints go
+# through ArduinoRuntime::on_soft_serial_output, which run_headless doesn't
+# wire to anything (main.cpp has no on_soft_serial_output callback), so that
+# text is invisible to TestRunner's serial buffer entirely.
+0.2, ASSERT, SERIAL_CONTAINS, "=== SoftwareSerialTest ==="
+0.3, ASSERT, SERIAL_CONTAINS, "available() with nothing injected: 0"
+0.4, ASSERT, SERIAL_CONTAINS, "read() with nothing injected: -1"
+0.5, ASSERT, SERIAL_CONTAINS, "peek() with nothing injected: -1"

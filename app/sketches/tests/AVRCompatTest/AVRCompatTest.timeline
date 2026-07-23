@@ -1,0 +1,9 @@
+# Regression fixture for AVRCompatTest. Everything asserted here is printed
+# during setup() with no meaningful delay before it (only ~50ms/1ms), so all
+# assertions are true from t=0 -- trimmed to 4 checkpoints spanning the file
+# rather than one per line, since each extra event costs a full ~1s loop()
+# iteration (loop() here is just delay(1000)).
+0.2, ASSERT, SERIAL_CONTAINS, "F() macro: ok"
+0.4, ASSERT, SERIAL_CONTAINS, "F_CPU: 16000000"
+0.6, ASSERT, SERIAL_CONTAINS, "ARDUINO defined: 100"
+0.8, ASSERT, SERIAL_CONTAINS, "=== done ==="

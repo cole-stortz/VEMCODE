@@ -1,0 +1,12 @@
+# One-shot cycle on the first loop() call: feeds the watchdog for 2s (should
+# not fire), then stops feeding and sleeps, letting the watchdog wake it after
+# roughly the remaining ~250ms of its 500ms timeout.
+# See EEPROMTest.timeline's note on normalize_call_whitespace -- matching
+# from "(" onward since the space before it doesn't survive the preprocessor.
+#
+# Trimmed to 2 checkpoints: the real ~2.3s+ first loop() call already
+# dominates the cost here, and every event past that only adds another full
+# ~1s trivial call (loop() is a no-op after the one-shot "done" flag is set),
+# so fewer checkpoints buys real margin without losing coverage.
+0.1, ASSERT, SERIAL_CONTAINS, "(should NOT reset)..."
+2.6, ASSERT, SERIAL_CONTAINS, "=== done ==="

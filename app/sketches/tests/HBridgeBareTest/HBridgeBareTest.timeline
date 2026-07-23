@@ -1,0 +1,4 @@
+# Bare ENA/IN1/IN2 wiring is set once in setup() and never changes.
+0.2, ASSERT, PIN, 6, HIGH
+0.2, ASSERT, PIN, 7, LOW
+0.2, ASSERT, PIN, 5, 200

@@ -1,0 +1,5 @@
+# TestRunner's dispatchAction has no Keypad case (keypad presses are only
+# injectable through inject_keypad_press, which no timeline verb reaches), so
+# this can only confirm the sketch loads and starts cleanly -- it can't
+# exercise an actual key press headlessly.
+0.2, ASSERT, SERIAL_CONTAINS, "Keypad ready"

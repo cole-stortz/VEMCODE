@@ -1,0 +1,8 @@
+# Configures the virtual I2C device at 0x68 with a 2-byte response before the
+# first loop() call, then checks the requestFrom()/read() round trip.
+#
+# NOTE: timeline fields are "time, VERB, target, args..." -- SET_RESPONSE is
+# the verb, WIRE is the target (matching dispatchAction's `target == "WIRE"`
+# check), not the other way around.
+0,   SET_RESPONSE, WIRE, 0x68, 7, 8
+0.6, ASSERT, SERIAL_CONTAINS, "endTransmission status=0  bytes=7,8"

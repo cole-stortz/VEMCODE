@@ -1,0 +1,8 @@
+# Regression test for the cross-thread ISR dispatch bug: confirms the timer1
+# COMPA ISR actually fires and its Serial/digitalWrite/millis side effects
+# work from the background timer thread. OCR1A=100 with prescaler 8 fires
+# roughly every 32.7ms, so the first fire is safely within 200ms -- exact
+# pin13 state isn't asserted since it flips on every fire and is sensitive to
+# real-time scheduling jitter relative to the loop's own 200ms print cadence.
+0.15, ASSERT, SERIAL_CONTAINS, "ISR fired, count=1"
+0.25, ASSERT, SERIAL_CONTAINS, "loop: digitalRead(13)="

@@ -1,0 +1,5 @@
+# Confirms sleep_cpu() can be woken by a registered WDT_vect ISR handler
+# (rather than the no-handler on_watchdog_reset callback path). wdt_enable
+# (WDTO_250MS) means the first wake happens ~250ms in.
+0.1, ASSERT, SERIAL_CONTAINS, "sleeping..."
+0.35, ASSERT, SERIAL_CONTAINS, "WDT ISR fired, count=1"

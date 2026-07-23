@@ -1,0 +1,9 @@
+# Trimmed to a handful of checks -- TestRunner fires at most one event per
+# full loop() call, and this sketch's loop() is just delay(1000), so each
+# extra assertion costs a full additional ~1s iteration. All the output is
+# setup()-only and already true from t=0, so keeping the count low is purely
+# about staying well inside the timeout, not about ordering or correctness.
+0.2, ASSERT, SERIAL_CONTAINS, "concat: Hello, VEMCODE!"
+0.4, ASSERT, SERIAL_CONTAINS, "length(): 23"
+0.6, ASSERT, SERIAL_CONTAINS, "toInt(): 42"
+0.8, ASSERT, SERIAL_CONTAINS, "=== done ==="

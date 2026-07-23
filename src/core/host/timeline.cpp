@@ -266,10 +266,23 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
 
     const std::string& type = comp->type_name;
 
-    if (type == "Button" || type == "ButtonClean") {
+    if (type == "Button") {
         if (verb == "PRESS")        host_.inject_button_bounce(comp->pin, 1);
         else if (verb == "RELEASE") host_.inject_button_bounce(comp->pin, 0);
         else throw std::runtime_error("Button only supports PRESS/RELEASE");
+        return;
+    }
+
+    if (type == "ButtonClean") {
+        // Unlike Button, ButtonCleanItem emits DigitalPress, not BouncePress
+        // (button.cpp) -- the whole point of the "Clean"/"Ideal" variant is
+        // that it's exempt from bounce simulation. Routing it through
+        // inject_button_bounce() here would give it the same real,
+        // unscaled 10ms random-bounce window Button gets, which it should
+        // never see.
+        if (verb == "PRESS")        host_.inject_pin(comp->pin, 1);
+        else if (verb == "RELEASE") host_.inject_pin(comp->pin, 0);
+        else throw std::runtime_error("ButtonClean only supports PRESS/RELEASE");
         return;
     }
 

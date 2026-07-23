@@ -1,0 +1,10 @@
+# All setup()-only, deterministic integer math -- exact substrings copied
+# from the sketch's own string literals (including its double-space typos).
+0.2, ASSERT, SERIAL_CONTAINS, "map(512, 0, 1023, 0, 100) = 50"
+0.3, ASSERT, SERIAL_CONTAINS, "constrain(-5,  0, 100) = 0"
+0.4, ASSERT, SERIAL_CONTAINS, "constrain(50,  0, 100) = 50"
+0.5, ASSERT, SERIAL_CONTAINS, "constrain(150, 0, 100) = 100"
+0.6, ASSERT, SERIAL_CONTAINS, "abs(-42) = 42"
+0.7, ASSERT, SERIAL_CONTAINS, "abs(42)  = 42"
+0.8, ASSERT, SERIAL_CONTAINS, "min(10, 20) = 10"
+0.9, ASSERT, SERIAL_CONTAINS, "max(10, 20) = 20"

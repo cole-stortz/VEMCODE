@@ -1,0 +1,9 @@
+# ASSERT PIN can only observe state at loop()-call boundaries (TestRunner
+# checks pin state once per full run_loop() call, not mid-call) -- and pin 13
+# is always LOW by the time any single loop() call returns here (it's
+# toggled HIGH then back LOW earlier in the same call). So the HIGH half of
+# the toggle is unobservable via ASSERT PIN and is checked via the sketch's
+# own printed digitalRead/PINB readout instead, which is a cumulative-buffer
+# check and isn't subject to that boundary limitation.
+0.3, ASSERT, SERIAL_CONTAINS, "pin13 via digitalRead=1 PINB bit5=1"
+0.3, ASSERT, SERIAL_CONTAINS, "pin13 via digitalRead=0 PINB bit5=0"

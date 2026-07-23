@@ -1,0 +1,6 @@
+# DhtTest has no DHT-value injection verb in TestRunner (dispatchAction has no
+# "DHT" case), so this only confirms the ready message and the default (0.0)
+# reading format -- it can't exercise the canvas-driven temp/humidity input.
+0.2, ASSERT, SERIAL_CONTAINS, "DHT ready"
+0.4, ASSERT, SERIAL_CONTAINS, "Temp: 0.00"
+0.4, ASSERT, SERIAL_CONTAINS, "Humidity: 0.00"

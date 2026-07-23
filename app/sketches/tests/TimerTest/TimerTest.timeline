@@ -1,0 +1,6 @@
+# Overflow/compare-match counts (ovf1/compA/ovf2) climb continuously and are
+# too real-time-sensitive to assert an exact count for. OCR1A/OCR2A's direct
+# PWM side effect on pins 9/11 is applied synchronously in setup() the moment
+# the register is written, though, so that part is fully deterministic.
+0.2, ASSERT, PIN, 9, 128
+0.2, ASSERT, PIN, 11, 64
