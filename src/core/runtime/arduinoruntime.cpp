@@ -446,8 +446,16 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
             elapsed += chunk;
         }
         if (!rt->stop_requested_) {
+            // Unlike the watchdog/timer threads' ISR dispatch, this write and
+            // callback used to fire with no lock at all -- a race against the
+            // main thread's own on_pin_changed calls (and against
+            // tone_frequencies_ itself) for any pin activity happening around
+            // the same moment. exec_mtx_ is what every other background
+            // thread already serializes sketch-state mutation through.
+            rt->state_.exec_mtx_.lock();
             rt->state_.tone_frequencies_[pin] = 0;
             if (rt->on_pin_changed) rt->on_pin_changed(pin, 0);
+            rt->state_.exec_mtx_.unlock();
         }
     });
     std::lock_guard<std::mutex> lock(rt->tone_threads_mtx_);

@@ -1,14 +1,9 @@
 # Exercises both ISR() vector transforms: USART_RX_vect (serial input) and
 # INT0_vect (pin 2 FALLING edge).
 #
-# NOTE: TestRunner's Button dispatch (timeline.cpp) maps PRESS -> value 1 and
-# RELEASE -> value 0, which is inverted from button.cpp's own mouse-press
-# semantics (press=0/LOW, release=1/HIGH, matching INPUT_PULLUP idle-high
-# wiring). BUTTON_PIN starts HIGH (pinMode(INPUT_PULLUP) auto-inits it), so
-# "RELEASE" is what actually drives it LOW and fires the FALLING-triggered
-# ISR here -- "PRESS" would be a same-value no-op edge. Worth fixing in
-# timeline.cpp; using RELEASE below to match current behavior.
+# BUTTON_PIN idles HIGH (INPUT_PULLUP); PRESS drives it LOW, firing the
+# FALLING-triggered ISR.
 0.3, SEND, SERIAL, "x"
 0.4, ASSERT, SERIAL_CONTAINS, "USART_RX_vect fired! rx_count = 1"
-0.5, RELEASE, BUTTON_PIN
+0.5, PRESS, BUTTON_PIN
 0.6, ASSERT, SERIAL_CONTAINS, "INT0_vect fired!    int0_count = 1"

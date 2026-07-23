@@ -267,8 +267,11 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
     const std::string& type = comp->type_name;
 
     if (type == "Button") {
-        if (verb == "PRESS")        host_.inject_button_bounce(comp->pin, 1);
-        else if (verb == "RELEASE") host_.inject_button_bounce(comp->pin, 0);
+        // 0/LOW on PRESS, 1/HIGH on RELEASE -- matches button.cpp's own
+        // mousePressEvent/mouseReleaseEvent (BouncePress, 0 / BouncePress, 1),
+        // i.e. idle-HIGH INPUT_PULLUP wiring where pressing pulls the pin low.
+        if (verb == "PRESS")        host_.inject_button_bounce(comp->pin, 0);
+        else if (verb == "RELEASE") host_.inject_button_bounce(comp->pin, 1);
         else throw std::runtime_error("Button only supports PRESS/RELEASE");
         return;
     }
@@ -279,9 +282,11 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
         // that it's exempt from bounce simulation. Routing it through
         // inject_button_bounce() here would give it the same real,
         // unscaled 10ms random-bounce window Button gets, which it should
-        // never see.
-        if (verb == "PRESS")        host_.inject_pin(comp->pin, 1);
-        else if (verb == "RELEASE") host_.inject_pin(comp->pin, 0);
+        // never see. Same 0-on-PRESS/1-on-RELEASE polarity as Button, just
+        // via inject_pin() instead -- matches ButtonCleanItem's own
+        // mousePressEvent/mouseReleaseEvent (DigitalPress, 0 / DigitalPress, 1).
+        if (verb == "PRESS")        host_.inject_pin(comp->pin, 0);
+        else if (verb == "RELEASE") host_.inject_pin(comp->pin, 1);
         else throw std::runtime_error("ButtonClean only supports PRESS/RELEASE");
         return;
     }

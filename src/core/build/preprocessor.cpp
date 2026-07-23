@@ -88,7 +88,28 @@ bool Preprocessor::is_already_transformed(const std::string& source) {
 }
 
 std::string Preprocessor::normalize_call_whitespace(const std::string& source) {
-    return std::regex_replace(source, std::regex(R"((\w)\s+\()"), "$1(");
+    // Mask-aware like replace_token below -- a blind regex_replace here would
+    // also collapse "word (" inside string literals and comments (e.g. a
+    // Serial.print("oob read (expect...") debug string), not just real call
+    // sites.
+    std::vector<bool> masked = mask_non_code(source);
+    static const std::regex pattern(R"((\w)\s+\()");
+    std::string result;
+    result.reserve(source.size());
+    size_t pos = 0;
+    auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
+    auto end   = std::sregex_iterator();
+    for (auto it = begin; it != end; ++it) {
+        std::smatch m = *it;
+        size_t match_pos = (size_t)m.position(0);
+        if (masked[match_pos]) continue;
+        result.append(source, pos, match_pos - pos);
+        result.append(m[1].str());
+        result.append("(");
+        pos = match_pos + (size_t)m.length(0);
+    }
+    result.append(source, pos, std::string::npos);
+    return result;
 }
 
 std::string Preprocessor::replace_api_calls(const std::string& source) {

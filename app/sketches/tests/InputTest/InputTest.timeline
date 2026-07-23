@@ -11,10 +11,6 @@
 0,    SET, DistanceSensor_PIN, 20
 0,    SET_COLOR, ColorSensor, 100, 150, 200
 #
-# NOTE: Button/ButtonClean PRESS/RELEASE are inverted in TestRunner relative
-# to their idle-HIGH (INPUT_PULLUP) wiring -- see InterruptTest.timeline.
-# RELEASE is what actually drives BUTTON_PIN/CLEAN_PIN LOW ("pressed").
-#
 # BTN/CLEAN are read via digitalRead() polling in InputTest.cpp's loop(),
 # which makes Button (not ButtonClean -- see timeline.cpp) subject to
 # inject_button_bounce()'s real, unscaled 10ms bounce window (digitalRead
@@ -27,11 +23,11 @@
 # InterruptTest/ISRVectorTest's button checks -- those read an
 # ISR-incremented counter, and the ISR fires synchronously at bounce-inject
 # time, before the bounce window applies at all.
-0.2,  RELEASE, BUTTON_PIN
+0.2,  PRESS, BUTTON_PIN
 2.2,  ASSERT, SERIAL_CONTAINS, "BTN:1"
 2.3,  SET, SWITCH_PIN, 1
 2.4,  ASSERT, SERIAL_CONTAINS, "SW:1"
-2.5,  RELEASE, CLEAN_PIN
+2.5,  PRESS, CLEAN_PIN
 2.6,  ASSERT, SERIAL_CONTAINS, "CLEAN:1"
 2.7,  SET, IR_SENSOR_PIN, 1
 2.8,  ASSERT, SERIAL_CONTAINS, "IR:1"
