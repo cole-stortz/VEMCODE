@@ -5,7 +5,8 @@ ComponentItem::ComponentItem(int pin, QGraphicsItem* parent)
 
 void ComponentItem::onPinChanged(int, int) {}
 void ComponentItem::updateText(int, const QString&) {}
-void ComponentItem::updateMatrixRow(int, int) {}
+void ComponentItem::updateMatrixRow(int, int, int) {}
 void ComponentItem::configureMultiPin(const std::vector<int>&) {}
 void ComponentItem::configureRowsCols(int, int) {}
+void ComponentItem::configureDeviceCount(int) {}
 void ComponentItem::emitInitialValue() {}

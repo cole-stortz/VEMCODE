@@ -534,6 +534,61 @@ void CircuitDetector::detect_dht(
     claimed.insert(pin);
 }
 
+void CircuitDetector::detect_max7219(
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    if (!ComponentRegistry::instance().find_by_type("Max7219")) return;
+
+    // Matches both "LedControl lc(a, b, c[, d]);" and
+    // "LedControl lc = LedControl(a, b, c[, d]);" -- real usage almost always
+    // takes the assignment form. Args are positional per the real LedControl
+    // API: (dataPin, clkPin, csPin, numDevices).
+    static const std::regex ctor_re(
+        R"(\bLedControl\s+(\w+)\s*(?:=\s*LedControl\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
+
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+         it != std::sregex_iterator(); ++it) {
+        std::string obj_name = (*it)[1].str();
+        int dinPin = resolve_pin((*it)[2].str(), defines);
+        int clkPin = resolve_pin((*it)[3].str(), defines);
+        int csPin  = resolve_pin((*it)[4].str(), defines);
+        if (dinPin < 0 || clkPin < 0 || csPin < 0) continue;
+        if (claimed.count(csPin) || pin_already_added(csPin)) continue;
+
+        int num_devices = 1;
+        if (it->size() > 5 && (*it)[5].matched) {
+            std::string tok = (*it)[5].str();
+            try {
+                num_devices = std::stoi(tok);
+            } catch (...) {
+                auto dit = defines.find(tok);
+                if (dit != defines.end()) {
+                    try { num_devices = std::stoi(dit->second); } catch (...) {}
+                }
+            }
+        }
+        num_devices = std::max(1, std::min(8, num_devices));
+
+        DetectedComponent comp;
+        comp.type_name   = "Max7219";
+        comp.pin         = csPin;
+        comp.pins        = {csPin, clkPin, dinPin};
+        comp.pin_name    = obj_name;
+        comp.confirmed   = false;
+        comp.num_devices = num_devices;
+        comp.label = "Max7219 " + obj_name + " (CS=" + std::to_string(csPin) +
+                     ", CLK=" + std::to_string(clkPin) + ", DIN=" + std::to_string(dinPin) +
+                     (num_devices > 1 ? ", devices=" + std::to_string(num_devices) : "") + ")";
+
+        components_.push_back(comp);
+        claimed.insert(csPin);
+        claimed.insert(clkPin);
+        claimed.insert(dinPin);
+    }
+}
+
 std::string CircuitDetector::regex_escape(const std::string& s) {
     static const std::string special = ".()[]{}+*?^$|\\";
     std::string out;
@@ -680,6 +735,7 @@ std::set<int> CircuitDetector::detect_multipin(
     detect_pattern_matches(source, defines, claimed);
     detect_keypad_matrix(source, defines, arrays, claimed);
     detect_dht(source, defines, claimed);
+    detect_max7219(source, defines, claimed);
 
     return claimed;
 }

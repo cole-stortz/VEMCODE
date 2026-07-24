@@ -25,12 +25,19 @@ public:
 
     virtual void onPinChanged(int pin, int value);
     virtual void updateText(int row, const QString& text);
-    virtual void updateMatrixRow(int row, int bits);
+    virtual void updateMatrixRow(int addr, int row, int bits);
     virtual void configureMultiPin(const std::vector<int>& pins);
 
     // Keypad only: called once, right before configureMultiPin, so the item
     // knows where to split its pins vector into row pins vs. column pins.
     virtual void configureRowsCols(int rows, int cols);
+
+    // Max7219 only: called once, right after construction and before the
+    // layout phase queries boundingRect() -- device count changes the
+    // item's rendered size (N stacked 8x8 squares), so it must be known
+    // before layout math runs, unlike configureRowsCols/configureMultiPin
+    // which only affect pin wiring.
+    virtual void configureDeviceCount(int count);
 
     // Called once by CanvasWidget after inputChanged is connected. Emitting
     // from the constructor or configureMultiPin instead silently drops it --

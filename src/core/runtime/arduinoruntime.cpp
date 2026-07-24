@@ -354,9 +354,9 @@ void ArduinoRuntime::impl_lcd_print(int pin, int row, const char* text) {
         g_runtime->on_lcd_print(pin, row, std::string(text ? text : ""));
 }
 
-void ArduinoRuntime::impl_matrix_set_row(int pin, int row, int bits) {
+void ArduinoRuntime::impl_matrix_set_row(int pin, int addr, int row, int bits) {
     if (g_runtime && g_runtime->on_matrix_row)
-        g_runtime->on_matrix_row(pin, row, bits);
+        g_runtime->on_matrix_row(pin, addr, row, bits);
 }
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {

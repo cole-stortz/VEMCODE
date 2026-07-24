@@ -19,6 +19,10 @@ struct DetectedComponent {
     int rows = 0;
     int cols = 0;
 
+    // Max7219 only: number of daisy-chained 8x8 devices (LedControl's 4th
+    // constructor arg). 1 for every other component type.
+    int num_devices = 1;
+
     // String return
     std::string to_string() const;
 };
@@ -66,6 +70,16 @@ private:
     // a sensor-type selector, not a pin, so detect_constructor_pattern's
     // "every arg must resolve to a pin" rule can't be reused for it either.
     void detect_dht(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        std::set<int>& claimed);
+
+    // MAX7219: "LedControl lc(dataPin, clkPin, csPin[, numDevices])" or
+    // "LedControl lc = LedControl(...)" -- pins are almost always passed as
+    // raw literals or plain const ints straight into the constructor rather
+    // than named/keyword-matched #defines, so the generic MultiPinStrategy
+    // engine above can't find them; same "read the constructor call, not the
+    // pin names" pattern as Keypad/DHT.
+    void detect_max7219(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 

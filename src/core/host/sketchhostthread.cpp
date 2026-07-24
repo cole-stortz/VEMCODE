@@ -96,8 +96,8 @@ void SketchThread::run() {
     };
 
     // LED Matrix (MAX7219) row output
-    runtime.on_matrix_row = [this](int pin, int row, int bits) {
-        emit matrixRowChanged(pin, row, bits);
+    runtime.on_matrix_row = [this](int pin, int addr, int row, int bits) {
+        emit matrixRowChanged(pin, addr, row, bits);
     };
 
     // Watchdog

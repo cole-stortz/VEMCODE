@@ -204,6 +204,10 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         if (!def) continue;
 
         ComponentItem* item = def->create_item(comp.pin, nullptr);
+        // Must happen before boundingRect() below -- device count changes
+        // the item's rendered size, and this is the only phase where
+        // boundingRect() gets queried for layout math.
+        item->configureDeviceCount(comp.num_devices);
         QRectF box = item->boundingRect();
         int comp_w = (int)box.width();
         int comp_h = (int)box.height();
@@ -267,10 +271,10 @@ void CanvasWidget::updateLcdText(int pin, int row, const QString& text) {
     it.value()->updateText(row, text);
 }
 
-void CanvasWidget::updateMatrixRow(int pin, int row, int bits) {
+void CanvasWidget::updateMatrixRow(int pin, int addr, int row, int bits) {
     auto it = pinItems_.find(pin);
     if (it == pinItems_.end()) return;
-    it.value()->updateMatrixRow(row, bits);
+    it.value()->updateMatrixRow(addr, row, bits);
 }
 
 void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {

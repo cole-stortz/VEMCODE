@@ -45,8 +45,9 @@ struct ArduinoAPI {
     // LCD display
     void (*lcd_print)(int pin, int row, const char* text);
 
-    // LED Matrix (MAX7219) -- keyed by CS pin; one call per fully-latched row byte
-    void (*matrix_set_row)(int pin, int row, int bits);
+    // LED Matrix (MAX7219) -- keyed by CS pin; addr selects which daisy-chained
+    // device (0 for a single module); one call per fully-latched row byte
+    void (*matrix_set_row)(int pin, int addr, int row, int bits);
 
     // DHT11/DHT22 -- canvas-injected readings, keyed by data pin
     float (*dht_read_temperature)(int pin);
