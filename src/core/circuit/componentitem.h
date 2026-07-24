@@ -25,6 +25,7 @@ public:
 
     virtual void onPinChanged(int pin, int value);
     virtual void updateText(int row, const QString& text);
+    virtual void updateMatrixRow(int row, int bits);
     virtual void configureMultiPin(const std::vector<int>& pins);
 
     // Keypad only: called once, right before configureMultiPin, so the item

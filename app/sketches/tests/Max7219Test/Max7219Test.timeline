@@ -1,0 +1,6 @@
+# No canvas-injection verb exercises matrix state headlessly, same as
+# DhtTest/KeypadTest -- this only confirms the sketch loads, LedControl.h's
+# setLed calls run without crashing, and the row/col scan advances correctly.
+0.2, ASSERT, SERIAL_CONTAINS, "Max7219 ready"
+0.4, ASSERT, SERIAL_CONTAINS, "Max7219 lit row 0 col 0"
+0.6, ASSERT, SERIAL_CONTAINS, "Max7219 lit row 0 col 1"

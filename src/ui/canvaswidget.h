@@ -20,6 +20,7 @@ public:
     void refresh(const std::vector<DetectedComponent>& components);
     void updatePin(int pin, int value);
     void updateLcdText(int pin, int row, const QString& text);
+    void updateMatrixRow(int pin, int row, int bits);
     void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
 
     // Layout mode: components become draggable instead of receiving their

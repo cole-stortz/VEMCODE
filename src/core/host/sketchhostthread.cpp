@@ -93,7 +93,12 @@ void SketchThread::run() {
     // LCD text output
     runtime.on_lcd_print = [this](int pin, int row, const std::string& text) {
         emit lcdPrint(pin, row, QString::fromStdString(text));
-    };  
+    };
+
+    // LED Matrix (MAX7219) row output
+    runtime.on_matrix_row = [this](int pin, int row, int bits) {
+        emit matrixRowChanged(pin, row, bits);
+    };
 
     // Watchdog
     runtime.on_watchdog_reset = [this](){

@@ -53,6 +53,7 @@ signals:
     void sketchCrashed(QString reason);
     void variableChanged(QString name, QString value);
     void lcdPrint(int pin, int row, QString text);
+    void matrixRowChanged(int pin, int row, int bits);
     void watchdogReset();
     void sleepChanged(bool sleeping);
 

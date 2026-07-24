@@ -24,6 +24,10 @@ This document covers a more in depth viewpoint about how VEMCODE actually works 
       - [Watchdog Timer](#watchdog-timer)
       - [Sleep Modes](#sleep-modes)
       - [Misc](#misc)
+      - [Wire / I2C](#wire--i2c)
+      - [SPI](#spi)
+      - [AVR GPIO Registers](#avr-gpio-registers)
+      - [AVR Timer Registers](#avr-timer-registers)
     - [Circuit Detector](#circuit-detector)
     - [Error UX](#error-ux)
     - [Library Injection Files](#library-injection-files)
@@ -40,6 +44,11 @@ This document covers a more in depth viewpoint about how VEMCODE actually works 
   - [Data Flow](#data-flow)
   - [Board Profiles](#board-profiles)
   - [Adding Components](#adding-components)
+  - [Headless Mode](#headless-mode)
+  - [Building & Testing](#building--testing)
+    - [Build Scripts](#build-scripts)
+    - [Test Suite](#test-suite)
+    - [Windows Cross-Build](#windows-cross-build)
 
 ## System Architecture
 ```
@@ -282,6 +291,14 @@ void ArduinoRuntime::impl_sleep_cpu() {
 	- (wait for idle >> wait for pulse start >> measure pulse end).
 
 `watch_variable()` fires `on_variable_changed` which routes to the Variable Watch panel, or falls back to stdout.
+#### Wire / I2C
+TODO:
+#### SPI
+TODO:
+#### AVR GPIO Registers
+TODO:
+#### AVR Timer Registers
+TODO:
 ### Circuit Detector
 How component detection works, the three detection tiers (after 7b)
 TODO: need to finish 7b
@@ -702,3 +719,14 @@ You can select a different board from default by two ways:
 - Using Settings to select from a list of supported boards.
 ## Adding Components
 See [ADDING_COMPONENTS.md](ADDING_COMPONENTS.md) for adding components/api functions.
+
+## Headless Mode
+TODO:
+
+## Building & Testing
+### Build Scripts
+TODO:
+### Test Suite
+TODO:
+### Windows Cross-Build
+TODO:

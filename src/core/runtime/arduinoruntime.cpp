@@ -89,6 +89,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.pulseIn          = impl_pulseIn;
     api.delayMicroseconds = impl_delayMicroseconds;
     api.lcd_print        = impl_lcd_print;
+    api.matrix_set_row   = impl_matrix_set_row;
     api.dht_read_temperature = impl_dht_read_temperature;
     api.dht_read_humidity    = impl_dht_read_humidity;
     api.tone             = impl_tone;
@@ -351,6 +352,11 @@ float ArduinoRuntime::impl_dht_read_humidity(int pin) {
 void ArduinoRuntime::impl_lcd_print(int pin, int row, const char* text) {
     if (g_runtime && g_runtime->on_lcd_print)
         g_runtime->on_lcd_print(pin, row, std::string(text ? text : ""));
+}
+
+void ArduinoRuntime::impl_matrix_set_row(int pin, int row, int bits) {
+    if (g_runtime && g_runtime->on_matrix_row)
+        g_runtime->on_matrix_row(pin, row, bits);
 }
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {

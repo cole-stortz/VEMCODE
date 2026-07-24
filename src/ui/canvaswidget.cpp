@@ -267,6 +267,12 @@ void CanvasWidget::updateLcdText(int pin, int row, const QString& text) {
     it.value()->updateText(row, text);
 }
 
+void CanvasWidget::updateMatrixRow(int pin, int row, int bits) {
+    auto it = pinItems_.find(pin);
+    if (it == pinItems_.end()) return;
+    it.value()->updateMatrixRow(row, bits);
+}
+
 void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {
     emit inputChanged(pin, eventType, value);
 }

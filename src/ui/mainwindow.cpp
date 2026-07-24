@@ -119,6 +119,8 @@ MainWindow::MainWindow(QWidget* parent)
             variableWatch_, &VariableWatch::onVariableChanged);
     connect(sketchThread_, &SketchThread::lcdPrint,
             canvasWidget_, &CanvasWidget::updateLcdText);
+    connect(sketchThread_, &SketchThread::matrixRowChanged,
+            canvasWidget_, &CanvasWidget::updateMatrixRow);
     connect(devicesPanel_, &DevicesPanel::deviceChanged,
             this, [this](int address, std::vector<uint8_t> bytes) {
                 sketchThread_->injectWireDevice(address, bytes);

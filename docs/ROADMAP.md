@@ -267,7 +267,7 @@ Pull the component plugin architecture forward so that all new components added 
 
 **Step 6 — New display components:**
 - [x] 7-segment display — single and multi-digit, segment-accurate rendering
-- [ ] MAX7219 LED matrix — `LedControl.h` injection (`.inc` file); renders an 8×8 grid toggled by `setLed`/`setRow`/`setColumn`; `setIntensity` and `shutdown` stubbed; CS/CLK/DIN multi-pin role map
+- [x] MAX7219 LED matrix — `LedControl.h` injection (`src/core/build/libs/ledcontrol.inc`) buffers rows locally and flushes each through a new dedicated `matrix_set_row(pin, row, bits)` runtime hook (keyed by CS pin), same shape as the LCD's `lcd_print` hook; renders an 8×8 grid toggled by `setLed`/`setRow`/`setColumn`; `setIntensity`/`shutdown` stubbed; CS/CLK/DIN multi-pin role map via both `Prefix` and bare `Singleton` strategies (`src/components/max7219.cpp`); canvas renders as a 100x100 square (matching other components' long side) with a circle dot grid rather than the standard rectangle; single device only, no daisy-chain
 - [ ] Basic OLED — text and simple graphics (SSD1306-compatible); `Adafruit_SSD1306.h` or `U8g2` injection
 - [ ] NeoPixel / WS2812B strip — individually addressable RGB LEDs, single-pin protocol, configurable strip length; `Adafruit_NeoPixel.h` injection
 

@@ -119,6 +119,7 @@ public:
     std::function<void(int pin, int value)> on_pin_changed;
     std::function<void(const std::string&, int)> on_variable_changed;
     std::function<void(int pin, int row, const std::string&)> on_lcd_print;
+    std::function<void(int pin, int row, int bits)> on_matrix_row;
     std::function<void(const std::string&)> on_serial1_output;
     std::function<void(const std::string&)> on_serial2_output;
     std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
@@ -241,6 +242,7 @@ private:
     static void          impl_watch_variable (const char* name, int value);
     static unsigned long impl_pulseIn        (int pin, int value, unsigned long timeout);
     static void          impl_lcd_print      (int pin, int row, const char* text);
+    static void          impl_matrix_set_row (int pin, int row, int bits);
     static float         impl_dht_read_temperature(int pin);
     static float         impl_dht_read_humidity   (int pin);
     static int           impl_Serial_available();
