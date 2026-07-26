@@ -28,6 +28,9 @@ public:
     virtual void updateMatrixRow(int addr, int row, int bits);
     virtual void configureMultiPin(const std::vector<int>& pins);
 
+    virtual void configureRotation(int degrees);
+    virtual bool supportsRotation() const { return false; }
+
     // Keypad only: called once, right before configureMultiPin, so the item
     // knows where to split its pins vector into row pins vs. column pins.
     virtual void configureRowsCols(int rows, int cols);

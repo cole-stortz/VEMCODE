@@ -10,3 +10,4 @@ void ComponentItem::configureMultiPin(const std::vector<int>&) {}
 void ComponentItem::configureRowsCols(int, int) {}
 void ComponentItem::configureDeviceCount(int) {}
 void ComponentItem::emitInitialValue() {}
+void ComponentItem::configureRotation(int) {}

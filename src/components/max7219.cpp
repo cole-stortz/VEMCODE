@@ -18,6 +18,29 @@ class Max7219Item : public ComponentItem {
     int dinPin_ = -1;
     int numDevices_ = 1;
     bool lit_[MAX_DEVICES][8][8] = {};
+    int rotation_ = 0; // 0, 90, 180, 270 for rotation values
+
+    void rotatedSource(int dispRow, int dispCol, int& srcRow, int& srcCol) const {
+        constexpr int N = 8;
+        switch (rotation_) {
+            case 90:
+                srcRow = N - 1 - dispCol;
+                srcCol = dispRow;
+                break;
+            case 180:
+                srcRow = N - 1 - dispRow;
+                srcCol = N - 1 - dispCol;
+                break;
+            case 270:
+                srcRow = dispCol;
+                srcCol = N - 1 - dispRow;
+                break;
+            default: // 0
+                srcRow = dispRow;
+                srcCol = dispCol;
+                break;
+        }
+    }
 
 public:
     Max7219Item(int pin, QGraphicsItem* parent) : ComponentItem(pin, parent) {}
@@ -44,7 +67,10 @@ public:
             p->setPen(Qt::NoPen);
             for (int row = 0; row < N; ++row) {
                 for (int col = 0; col < N; ++col) {
-                    p->setBrush(lit_[dev][row][col] ? MATRIX_LIT : MATRIX_UNLIT);
+                    int srcRow, srcCol;
+                    rotatedSource(row, col, srcRow, srcCol);   // <-- add this
+
+                    p->setBrush(lit_[dev][srcRow][srcCol] ? MATRIX_LIT : MATRIX_UNLIT); // <-- use srcRow/srcCol, not row/col
                     float cx = MARGIN + col * cell + cell / 2.0f;
                     float cy = bandY + MARGIN + row * cell + cell / 2.0f;
                     p->drawEllipse(QPointF(cx, cy), dotD / 2.0f, dotD / 2.0f);
@@ -69,6 +95,13 @@ public:
             lit_[addr][row][col] = (bits >> (7 - col)) & 1;
         update();
     }
+
+    void configureRotation(int degrees) override {
+        rotation_ = ((degrees % 360) + 360) % 360;
+        update();
+    }
+    int rotation() const { return rotation_; }
+    bool supportsRotation() const override { return true; }
 };
 
 static bool registered_max7219 = []() {

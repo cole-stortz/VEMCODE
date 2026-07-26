@@ -12,8 +12,13 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QBoxLayout>
+#include <QLabel>
+#include <QInputDialog>
 #include <algorithm>
 #include <map>
+#include <qmessagebox.h>
+#include <qnamespace.h>
 
 // Chip/pin/component chrome -- static regardless of app theme, same as every
 // component's own body/fill colors (LED_ACTIVE, wire_color, etc. in
@@ -72,6 +77,28 @@ void CanvasWidget::setLayoutMode(bool on) {
 }
 
 void CanvasWidget::mousePressEvent(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton && event->modifiers().testFlag(Qt::ControlModifier)) {
+        QGraphicsItem* hit = itemAt(event->pos());
+        ComponentItem* comp = nullptr;
+        while (hit) {
+            comp = dynamic_cast<ComponentItem*>(hit);
+            if (comp) break;
+            hit = hit->parentItem();
+        }
+
+        if (comp && comp->supportsRotation()) {
+            bool ok = false;
+            QStringList options = {"0", "90", "180", "270"};
+            QString choice = QInputDialog::getItem(
+                this, "Rotation", "Degrees clockwise:", options, 0, false, &ok);
+            if (ok) {
+                comp->configureRotation(choice.toInt());
+            }
+        }
+        event->accept();
+        return;
+    }
+
     if (layoutMode_ && event->button() == Qt::LeftButton) {
         QGraphicsItem* hit = itemAt(event->pos());
         ComponentItem* comp = nullptr;
@@ -364,21 +391,20 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     }
     item->emitInitialValue();
 
-    
-    QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
-    typeText->setPlainText(QString::fromStdString(comp.label));
-    typeText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
-    typeText->setFont(QFont("Courier New", 8));
-    typeText->setPos(6, -16);
+    // Removed to clean bloat off of the canvas    
+    // QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
+    // typeText->setPlainText(QString::fromStdString(comp.label));
+    // typeText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
+    // typeText->setFont(QFont("Courier New", 8));
+    // typeText->setPos(6, -16);
 
-    // Removed temporarily to remove bloat on the canvas
-    // if (!comp.pin_name.empty()) {
-    //     QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
-    //     nameText->setPlainText(QString::fromStdString(comp.pin_name));
-    //     nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
-    //     nameText->setFont(QFont("Courier New", 7));
-    //     nameText->setPos(6, -16);
-    // }
+    if (!comp.pin_name.empty()) {
+        QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
+        nameText->setPlainText(QString::fromStdString(comp.pin_name));
+        nameText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
+        nameText->setFont(QFont("Courier New", 7));
+        nameText->setPos(6, -16);
+    }
 
     std::vector<int> wire_pins;
     if (!comp.pins.empty())
