@@ -17,6 +17,8 @@
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
+cmake --build build
+
 TESTS_DIR="app/sketches/tests"
 # Raised from the original 5s -- a couple of the timeline fixtures (real
 # watchdog/sleep delays, several sequential loop() iterations) need more than

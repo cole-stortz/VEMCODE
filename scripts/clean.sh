@@ -15,10 +15,12 @@ PATTERNS=(
 
 count=0
 for pattern in "${PATTERNS[@]}"; do
+    echo "Using find: $(type -P find)"
+    find --version | head -1
     while IFS= read -r -d '' f; do
         rm -f -- "$f"
         count=$((count + 1))
-    done < <(find app/sketches -name "$pattern" -type f -print0)
+    done < <(/usr/bin/find app/sketches -name "$pattern" -type f -print0)
 done
 
 echo "Removed $count generated file(s) under app/sketches/"
