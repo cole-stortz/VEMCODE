@@ -98,6 +98,7 @@ private:
     // within the running session so re-running the sketch doesn't undo a drag.
     QMap<int, QPointF> manualPositions_;
     std::vector<DetectedComponent> lastComponents_; // cached for resetLayout()
+    QHash<int, int> manualRotations_; // pin -> rotation degrees 
 
     qreal zoomLevel_ = 1.0;
     static constexpr qreal ZOOM_MIN = 0.25;

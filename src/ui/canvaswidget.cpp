@@ -92,7 +92,12 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
             QString choice = QInputDialog::getItem(
                 this, "Rotation", "Degrees clockwise:", options, 0, false, &ok);
             if (ok) {
-                comp->configureRotation(choice.toInt());
+                int degrees = choice.toInt();
+                comp->configureRotation(degrees);
+
+                auto it = componentInfo_.find(comp);
+                if (it != componentInfo_.end())
+                    manualRotations_[it->primary_pin] = degrees;
             }
         }
         event->accept();
@@ -151,6 +156,7 @@ void CanvasWidget::zoomOut() { setZoom(zoomLevel_ / 1.15); }
 
 void CanvasWidget::resetLayout() {
     manualPositions_.clear();
+    manualRotations_.clear();
     refresh(lastComponents_);
 }
 
@@ -165,9 +171,15 @@ void CanvasWidget::saveLayout(const QString& sketchPath) const {
         positions[QString::number(it.key())] = pos;
     }
 
+    QJsonObject rotations;
+    for (auto it = manualRotations_.constBegin(); it != manualRotations_.constEnd(); ++it) {
+        rotations[QString::number(it.key())] = it.value();
+    }
+
     QJsonObject root;
     root["zoom"] = zoomLevel_;
     root["positions"] = positions;
+    root["rotations"] = rotations;
 
     QFile file(sketchPath + ".vblayout");
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
@@ -195,6 +207,14 @@ void CanvasWidget::loadLayout(const QString& sketchPath) {
         if (!ok) continue;
         QJsonObject pos = it.value().toObject();
         manualPositions_[pin] = QPointF(pos.value("x").toDouble(), pos.value("y").toDouble());
+    }
+
+    QJsonObject rotations = root.value("rotations").toObject();
+    for (auto it = rotations.constBegin(); it != rotations.constEnd(); ++it) {
+        bool ok = false;
+        int pin = it.key().toInt(&ok);
+        if (!ok) continue;
+        manualRotations_[pin] = it.value().toInt();
     }
 }
 
@@ -390,6 +410,12 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
         item->configureMultiPin(comp.pins);
     }
     item->emitInitialValue();
+
+    if (item->supportsRotation()) {
+        auto rot = manualRotations_.find(comp.pin);
+        if (rot != manualRotations_.end())
+            item->configureRotation(rot.value());
+    }
 
     // Removed to clean bloat off of the canvas    
     // QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
