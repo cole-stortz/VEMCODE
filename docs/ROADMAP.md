@@ -331,13 +331,6 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] Positions saved to `sketch_name.vblayout` next to `.cpp` file; use saved positions on load, auto-generate otherwise
 - [x] Canvas zoom — Alt+= / Alt+- to zoom in/out; zoom level saved per sketch in the `.vblayout` file
 
-**Signal timeline protocol decoder:**
-The signal timeline already records every `(timestamp_µs, pin, level)` transition — the same data a logic analyzer captures. Add a decoder layer that runs over this stream:
-- [ ] Auto-threshold decoder — measures pulse widths, clusters them into two groups (short = 0, long = 1), and emits a decoded bitstream; handles any NRZ or pulse-width-encoded protocol without knowing the specific protocol in advance
-- [ ] Decoded bytes panel — displays the recovered bitstream and byte values alongside the waveform
-- [ ] Component routing — decoded bytes from a known pin are routed to that component's virtual RX buffer so it can respond
-- [ ] Known protocol hints — `CircuitDetector` can annotate pins with the expected protocol (e.g. NeoPixel data pin → WS2812B decoder, DHT data pin → DHT decoder) so the right decoder is applied automatically
-
 > **Milestone:** The editor feels complete for day-to-day sketch writing; serial plotter graphs live data; canvas layout can be saved and restored; bit-banged protocols are decoded in the signal timeline.
 
 ---
@@ -377,3 +370,4 @@ Run any number of sketches simultaneously in one window, each in its own tab, ra
 - Hardware Bridge — per-pin mixing of virtual and real: some pins stay canvas-driven, others wire to a real board over USB serial, same running sketch, no code changes either way (e.g. a virtual OLED/button UI paired with a real sensor under test). Native desktop app avoids the WebSerial/browser-permission friction a webUI sim would have doing the same thing
 - MicroPython / CircuitPython support — Python execution path on Pico and compatible boards using the same runtime, canvas, and signal timeline
 - ESP32 + Network Simulation — WiFi stubs and a mock HTTP server; deterministic, offline, and repeatable responses for firmware testing. Must avoid real sockets entirely (no actual `bind`/`connect`/`listen` to a real port) to preserve VEMCODE's "no network code" trust claim — same virtual-panel pattern as Wire/SPI: a configurable fake response the sketch reads, not an actual HTTP client/server
+- Signal timeline protocol decoder: The signal timeline already records every `(timestamp_µs, pin, level)` transition — the same data a logic analyzer captures. Add a decoder layer that runs over this stream.
