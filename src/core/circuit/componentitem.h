@@ -31,6 +31,14 @@ public:
     virtual void configureRotation(int degrees);
     virtual bool supportsRotation() const { return false; }
 
+    virtual bool supportsColorConfig() const { return false; }
+    virtual QColor baseColor() const { return QColor(); }
+    virtual void configureColor(const QColor& color) {}
+
+    virtual bool supportsPolarity() const { return false; }
+    virtual bool isCommonAnode() const { return false; }
+    virtual void configurePolarity(bool commonAnode) {}
+
     // Keypad only: called once, right before configureMultiPin, so the item
     // knows where to split its pins vector into row pins vs. column pins.
     virtual void configureRowsCols(int rows, int cols);

@@ -100,6 +100,10 @@ private:
     std::vector<DetectedComponent> lastComponents_; // cached for resetLayout()
     QHash<int, int> manualRotations_; // pin -> rotation degrees 
 
+    QHash<int, QColor> manualColors_; // pin -> base LED color
+
+    QHash<int, bool> manualPolarities_; // pin -> isCommonAnode
+
     qreal zoomLevel_ = 1.0;
     static constexpr qreal ZOOM_MIN = 0.25;
     static constexpr qreal ZOOM_MAX = 3.0;

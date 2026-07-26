@@ -28,7 +28,7 @@ public:
         bool active = fourPhase_
             ? (phaseState_[0] || phaseState_[1] || phaseState_[2] || phaseState_[3])
             : stepHigh_;
-        QColor fill = active ? STEPPER_ACTIVE : STEPPER_INACTIVE;
+        QColor fill = STEPPER_ACTIVE;
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());

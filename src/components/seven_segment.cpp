@@ -14,6 +14,7 @@ static const QColor SEVENSEG_DIGIT("#dc4a4a");
 class SevenSegItem : public ComponentItem {
     int  segPins_[7]  = {-1, -1, -1, -1, -1, -1, -1}; // A..G
     bool segState_[7] = {false, false, false, false, false, false, false};
+    bool commonAnode_ = false;
 
 public:
     SevenSegItem(int pin, QGraphicsItem* parent) : ComponentItem(pin, parent) {}
@@ -37,17 +38,24 @@ public:
     void onPinChanged(int pin, int value) override {
         for (int i = 0; i < 7; ++i) {
             if (segPins_[i] == pin) {
-                segState_[i] = value != 0;
+                bool raw = value != 0;
+                segState_[i] = commonAnode_ ? !raw : raw; // anode: LOW == lit
                 update();
                 return;
             }
         }
     }
 
+    bool supportsPolarity() const override { return true; }
+    bool isCommonAnode() const override { return commonAnode_; }
+    void configurePolarity(bool commonAnode) override {
+        commonAnode_ = commonAnode;
+        update();
+    }
+
 private:
-    // Bit order A=0 B=1 C=2 D=3 E=4 F=5 G=6, HIGH = segment lit. Assumes
-    // common-cathode wiring; a common-anode sketch (segment ON = LOW) will
-    // render inverted.
+    // Bit order A=0 B=1 C=2 D=3 E=4 F=5 G=6, HIGH = segment lit (before
+    // polarity correction in onPinChanged -- see commonAnode_).
     QChar decodeDigit() const {
         uint8_t mask = 0;
         for (int i = 0; i < 7; ++i)

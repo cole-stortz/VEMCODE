@@ -7,6 +7,13 @@ static const QColor LED_INACTIVE("#323710");
 
 class LedItem : public ComponentItem {
     bool active_;
+    QColor baseColor_ = LED_ACTIVE; // configurable -- the "on" color
+
+    // Derives a dimmed "off" color from the current base color, same
+    // proportions as the original hardcoded LED_ACTIVE/LED_INACTIVE pair.
+    static QColor dimmed(const QColor& c) {
+        return c.darker(400);
+    }
 
 public:
     LedItem(int pin, QGraphicsItem* parent)
@@ -15,7 +22,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = active_ ? LED_ACTIVE : LED_INACTIVE;
+        QColor fill = active_ ? baseColor_ : dimmed(baseColor_);
         p->setPen(QPen(fill.darker(150), 1));
         p->setBrush(fill);
         p->drawRect(boundingRect());
@@ -27,6 +34,13 @@ public:
 
     void onPinChanged(int, int value) override {
         active_ = (value > 0);
+        update();
+    }
+
+    bool supportsColorConfig() const override { return true; }
+    QColor baseColor() const override { return baseColor_; }
+    void configureColor(const QColor& color) override {
+        baseColor_ = color;
         update();
     }
 };

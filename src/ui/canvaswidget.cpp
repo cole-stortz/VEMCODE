@@ -15,6 +15,7 @@
 #include <QBoxLayout>
 #include <QLabel>
 #include <QInputDialog>
+#include <QColorDialog>
 #include <algorithm>
 #include <map>
 #include <qmessagebox.h>
@@ -100,6 +101,33 @@ void CanvasWidget::mousePressEvent(QMouseEvent* event) {
                     manualRotations_[it->primary_pin] = degrees;
             }
         }
+
+        if (comp && comp->supportsColorConfig()) {
+            QColor chosen = QColorDialog::getColor(comp->baseColor(), this, "Color: ");
+            if (chosen.isValid()) {
+                comp->configureColor(chosen);
+
+                auto it = componentInfo_.find(comp);
+                if (it != componentInfo_.end())
+                    manualColors_[it->primary_pin] = chosen;
+            }
+        }
+
+        if (comp && comp->supportsPolarity()) {
+            QStringList options = {"Common Cathode", "Common Anode"};
+            int current = comp->isCommonAnode() ? 1 : 0;
+            bool ok = false;
+            QString choice = QInputDialog::getItem(
+                this, "Polarity", "Wiring type:", options, current, false, &ok);
+            if (ok) {
+                bool commonAnode = (choice == "Common Anode");
+                comp->configurePolarity(commonAnode);
+
+                auto it = componentInfo_.find(comp);
+                if (it != componentInfo_.end())
+                    manualPolarities_[it->primary_pin] = commonAnode;
+            }
+        }
         event->accept();
         return;
     }
@@ -157,6 +185,8 @@ void CanvasWidget::zoomOut() { setZoom(zoomLevel_ / 1.15); }
 void CanvasWidget::resetLayout() {
     manualPositions_.clear();
     manualRotations_.clear();
+    manualColors_.clear();
+    manualPolarities_.clear();
     refresh(lastComponents_);
 }
 
@@ -176,10 +206,22 @@ void CanvasWidget::saveLayout(const QString& sketchPath) const {
         rotations[QString::number(it.key())] = it.value();
     }
 
+    QJsonObject colors;
+    for (auto it = manualColors_.constBegin(); it != manualColors_.constEnd(); ++it) {
+        colors[QString::number(it.key())] = it.value().name(QColor::HexArgb);
+    }
+
+    QJsonObject polarities;
+    for (auto it = manualPolarities_.constBegin(); it != manualPolarities_.constEnd(); ++it) {
+        polarities[QString::number(it.key())] = it.value();
+    }
+
     QJsonObject root;
     root["zoom"] = zoomLevel_;
     root["positions"] = positions;
     root["rotations"] = rotations;
+    root["colors"] = colors;
+    root["polarities"] = polarities;
 
     QFile file(sketchPath + ".vblayout");
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
@@ -188,6 +230,9 @@ void CanvasWidget::saveLayout(const QString& sketchPath) const {
 
 void CanvasWidget::loadLayout(const QString& sketchPath) {
     manualPositions_.clear();
+    manualRotations_.clear();
+    manualColors_.clear();
+    manualPolarities_.clear();
     setZoom(1.0);
     if (sketchPath.isEmpty()) return;
 
@@ -215,6 +260,24 @@ void CanvasWidget::loadLayout(const QString& sketchPath) {
         int pin = it.key().toInt(&ok);
         if (!ok) continue;
         manualRotations_[pin] = it.value().toInt();
+    }
+
+    QJsonObject colors = root.value("colors").toObject();
+    for (auto it = colors.constBegin(); it != colors.constEnd(); ++it) {
+        bool ok = false;
+        int pin = it.key().toInt(&ok);
+        if (!ok) continue;
+        QColor c(it.value().toString());
+        if (c.isValid())
+            manualColors_[pin] = c;
+    }
+
+    QJsonObject polarities = root.value("polarities").toObject();
+    for (auto it = polarities.constBegin(); it != polarities.constEnd(); ++it)  {
+        bool ok = false;
+        int pin = it.key().toInt(&ok);
+        if (!ok) continue;
+        manualPolarities_[pin] = it.value().toBool();
     }
 }
 
@@ -415,6 +478,18 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
         auto rot = manualRotations_.find(comp.pin);
         if (rot != manualRotations_.end())
             item->configureRotation(rot.value());
+    }
+
+    if (item->supportsColorConfig()) {
+        auto col = manualColors_.find(comp.pin);
+        if (col != manualColors_.end())
+            item->configureColor(col.value());
+    }
+
+    if (item->supportsPolarity()) {
+        auto pol = manualPolarities_.find(comp.pin);
+        if (pol != manualPolarities_.end())
+            item->configurePolarity(pol.value());
     }
 
     // Removed to clean bloat off of the canvas    

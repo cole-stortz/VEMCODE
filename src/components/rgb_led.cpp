@@ -12,6 +12,12 @@ class RGBLedItem : public ComponentItem {
     int greenval_ = 0;
     int blueval_ = 0;
 
+    bool commonAnode_ = false;
+
+    int applyPolarity(int value) const {
+        return commonAnode_ ? (255 - value) : value;
+    }
+
 public:
     RGBLedItem(int pin, QGraphicsItem* parent)
         : ComponentItem(pin, parent), redpin_(pin) {}
@@ -35,9 +41,17 @@ public:
     }
 
     void onPinChanged(int pin, int value) override {
-        if (pin == redpin_)        redval_   = qBound(0, value, 255);
-        else if (pin == greenpin_) greenval_ = qBound(0, value, 255);
-        else if (pin == bluepin_)  blueval_  = qBound(0, value, 255);
+        int v = applyPolarity(qBound(0, value, 255));
+        if (pin == redpin_)        redval_   = v;
+        else if (pin == greenpin_) greenval_ = v;
+        else if (pin == bluepin_)  blueval_  = v;
+        update();
+    }
+
+    bool supportsPolarity() const override { return true; }
+    bool isCommonAnode() const override { return commonAnode_; }
+    void configurePolarity(bool commonAnode) override {
+        commonAnode_ = commonAnode;
         update();
     }
 };
