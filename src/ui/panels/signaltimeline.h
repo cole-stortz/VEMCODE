@@ -4,26 +4,32 @@
 #include <QMap>
 #include <QColor>
 
+class QLineEdit;
+
 // A single recorded pin event
 struct PinEvent {
-    int           pin;
-    int           value;      // HIGH=1 LOW=0
-    qint64        time_ms;    // milliseconds since simulation started
+    int    pin;
+    int    value;      // HIGH=1 LOW=0
+    qint64 time_ms;    // milliseconds since simulation started
 };
 
-// SignalTimeline renders a logic analyzer style waveform for each pin.
-// Call addEvent() whenever a pin changes state.
-// Call clear() when a new sketch starts.
+// SignalTimeline renders a logic analyzer style waveform for each pin the
+// user has explicitly added to watch (via the pin-number input at the top).
+// addEvent() silently ignores pins that haven't been added -- it's called
+// unconditionally for every pin change from MainWindow::onPinChanged, so all
+// filtering happens here rather than upstream.
+// Call clear() when a new sketch starts -- this resets recorded event data
+// only, the watched pin list survives across runs.
 class SignalTimeline : public QWidget {
     Q_OBJECT
 
 public:
     explicit SignalTimeline(QWidget* parent = nullptr);
 
-    // Record a pin state change
+    // Record a pin state change -- no-op if pin isn't currently watched
     void addEvent(int pin, int value, qint64 time_ms);
 
-    // Clear all recorded data
+    // Clear recorded event data for all watched pins (keeps the watch list)
     void clear();
 
     // Set the visible time window in milliseconds (default 5000ms)
@@ -38,11 +44,18 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    // One track per pin -- ordered list of events
+    void onAddPinClicked();
+    void onRemovePinClicked();
+
+    // One track per watched pin -- ordered list of events. A pin present
+    // as a key here (even with an empty vector) counts as "watched".
     QMap<int, QVector<PinEvent>> tracks_;
 
-    // Ordered list of pins seen (for consistent track order)
+    // Ordered list of watched pins (for consistent track order, and doubles
+    // as "is anything being watched at all" for the empty-state message)
     QVector<int> pin_order_;
+
+    QLineEdit* pinInput_ = nullptr;
 
     qint64 time_window_ms_ = 5000;  // visible window width
     qint64 scroll_offset_ms_ = 0;   // horizontal scroll position
@@ -50,6 +63,7 @@ private:
     static constexpr int TRACK_HEIGHT  = 36;
     static constexpr int TRACK_PADDING = 8;
     static constexpr int LABEL_WIDTH   = 60;
+    static constexpr int HEADER_HEIGHT = 30; // reserved for the pin input row
 
     bool dark_ = true;
 

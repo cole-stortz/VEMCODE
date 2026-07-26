@@ -2,20 +2,80 @@
 #include <QPainter>
 #include <QPen>
 #include <QWheelEvent>
-#include <algorithm>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QIntValidator>
 
 SignalTimeline::SignalTimeline(QWidget* parent)
     : QWidget(parent)
 {
-    setMinimumHeight(80);
+    setMinimumHeight(80 + HEADER_HEIGHT);
+
+    QWidget*     headerRow    = new QWidget(this);
+    QHBoxLayout* headerLayout = new QHBoxLayout(headerRow);
+    headerRow->setFixedHeight(HEADER_HEIGHT);
+    headerLayout->setContentsMargins(6, 2, 6, 2);
+    headerLayout->setSpacing(4);
+
+    pinInput_ = new QLineEdit(headerRow);
+    pinInput_->setPlaceholderText("Pin number...");
+    pinInput_->setValidator(new QIntValidator(0, 999, pinInput_));
+    pinInput_->setFixedWidth(90);
+    headerLayout->addWidget(pinInput_);
+
+    QPushButton* addButton = new QPushButton("+ Add pin", headerRow);
+    addButton->setProperty("role", "outline");
+    connect(addButton, &QPushButton::clicked, this, &SignalTimeline::onAddPinClicked);
+    connect(pinInput_, &QLineEdit::returnPressed, this, &SignalTimeline::onAddPinClicked);
+    headerLayout->addWidget(addButton);
+
+    QPushButton* removeButton = new QPushButton("- Remove pin", headerRow);
+    removeButton->setProperty("role", "outline");
+    connect(removeButton, &QPushButton::clicked, this, &SignalTimeline::onRemovePinClicked);
+    headerLayout->addWidget(removeButton);
+
+    headerLayout->addStretch();
+
+    // No child widget below the header -- the waveform area is left empty in
+    // the layout on purpose, so paintEvent (below) can draw directly onto
+    // that region of `this` starting at HEADER_HEIGHT.
+    QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(headerRow);
+    layout->addStretch();
 }
 
-void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
+void SignalTimeline::onAddPinClicked() {
+    bool ok = false;
+    int pin = pinInput_->text().trimmed().toInt(&ok);
+    if (!ok) return;
+
     if (!tracks_.contains(pin)) {
         tracks_[pin] = QVector<PinEvent>();
         pin_order_.append(pin);
     }
-    tracks_[pin].append({pin, value, time_ms}); 
+    pinInput_->clear();
+    update();
+}
+
+void SignalTimeline::onRemovePinClicked() {
+    bool ok = false;
+    int pin = pinInput_->text().trimmed().toInt(&ok);
+    if (!ok) return;
+
+    tracks_.remove(pin);
+    pin_order_.removeAll(pin);
+    pinInput_->clear();
+    update();
+}
+
+void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
+    if (!tracks_.contains(pin)) return; // not watched -- ignore
+
+    tracks_[pin].append({pin, value, time_ms});
 
     // Auto-scroll to keep latest events visible
     qint64 latest = time_ms;
@@ -26,8 +86,8 @@ void SignalTimeline::addEvent(int pin, int value, qint64 time_ms) {
 }
 
 void SignalTimeline::clear() {
-    tracks_.clear();
-    pin_order_.clear();
+    for (auto& track : tracks_)
+        track.clear();
     scroll_offset_ms_ = 0;
     update();
 }
@@ -36,8 +96,9 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
 
-    int w = width();
-    int h = height();
+    int w   = width();
+    int h   = height();
+    int top = HEADER_HEIGHT; // waveform area starts below the pin input row
 
     QColor bg           = dark_ ? QColor("#1a1a1a") : QColor("#eeeef2");
     QColor no_data_text  = dark_ ? QColor("#444")    : QColor("#999999");
@@ -46,11 +107,12 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
     QColor track_sep     = dark_ ? QColor("#333")    : QColor("#ccccd2");
     QColor time_label    = dark_ ? QColor("#555")    : QColor("#888888");
 
-    p.fillRect(rect(), bg);
+    p.fillRect(0, top, w, h - top, bg);
 
     if (pin_order_.isEmpty()) {
         p.setPen(no_data_text);
-        p.drawText(rect(), Qt::AlignCenter, "No signal data yet — run a sketch");
+        p.drawText(QRect(0, top, w, h - top), Qt::AlignCenter,
+                   "No pins tracked — add a pin number above");
         return;
     }
 
@@ -58,12 +120,12 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
     int grid_steps = 10;
     for (int i = 0; i <= grid_steps; i++) {
         int x = LABEL_WIDTH + (w - LABEL_WIDTH) * i / grid_steps;
-        p.drawLine(x, 0, x, h);
+        p.drawLine(x, top, x, h);
     }
 
     int track_index = 0;
     for (int pin : pin_order_) {
-        int track_y = track_index * (TRACK_HEIGHT + TRACK_PADDING);
+        int track_y = top + track_index * (TRACK_HEIGHT + TRACK_PADDING);
         if (track_y + TRACK_HEIGHT > h) break;
 
         QColor color = trackColor(pin);
@@ -81,7 +143,6 @@ void SignalTimeline::paintEvent(QPaintEvent*) {
         int signal_w = w - LABEL_WIDTH;
         int y_high   = track_y + TRACK_PADDING;
         int y_low    = track_y + TRACK_HEIGHT - TRACK_PADDING;
-        int y_mid    = (y_high + y_low) / 2;
 
         p.setPen(QPen(color, 1.5));
 
