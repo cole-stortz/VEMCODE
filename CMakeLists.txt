@@ -204,6 +204,10 @@ target_link_libraries(VEMCODE PRIVATE
     Qt6::Widgets
 )
 
+target_compile_definitions(VEMCODE PRIVATE
+    PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
 # Linux: link against dl for dlopen/dlsym used by SketchHost
 if(UNIX AND NOT APPLE)
     target_link_libraries(VEMCODE PRIVATE dl)

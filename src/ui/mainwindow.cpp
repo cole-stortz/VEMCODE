@@ -25,6 +25,9 @@
 #include <QWheelEvent>
 #include <QMessageBox>
 #include <QRegularExpression>
+#include <QMenuBar>
+#include <QTextBrowser>
+#include <QDialog>
 
 // Font size intentionally left out of the editor's styling -- it's set via
 // setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
@@ -217,6 +220,8 @@ MainWindow::MainWindow(QWidget* parent)
     });
     autosaveTimer_->start();
 
+    setupMenuBar();
+
     statusBar()->showMessage("Ready");
 }
 
@@ -234,6 +239,84 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     if (has_real_path && !codeEditor_->document()->isModified())
         QFile::remove(currentSketchPath_ + ".autosave");
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::setupMenuBar() {
+    QMenuBar* menuBar = new QMenuBar(this);
+
+    // File
+    QMenu* fileMenu = menuBar->addMenu("&File");
+    fileMenu->addAction("New Sketch", this, &MainWindow::onNewSketch);
+    fileMenu->addAction("Open Sketch...", this, &MainWindow::onOpenClicked);
+    fileMenu->addAction("Recent Sketches", this, &MainWindow::onRecentSketches);
+    fileMenu->addSeparator();
+    fileMenu->addAction("Save", this, &MainWindow::onSaveClicked);
+    fileMenu->addAction("Save As...", this, &MainWindow::onSaveAsClicked);
+    fileMenu->addSeparator();
+    fileMenu->addAction("Settings...", this, &MainWindow::onSettingsClicked);
+    fileMenu->addSeparator();
+    fileMenu->addAction("Exit", this, &QWidget::close);
+
+    // Edit -- codeEditor_ is a QPlainTextEdit subclass, so undo/redo/cut/copy/
+    // paste/selectAll are free via QPlainTextEdit's own slots, no new handlers needed
+    QMenu* editMenu = menuBar->addMenu("&Edit");
+    editMenu->addAction("Undo", QKeySequence::Undo, codeEditor_, &QPlainTextEdit::undo);
+    editMenu->addAction("Redo", QKeySequence::Redo, codeEditor_, &QPlainTextEdit::redo);
+    editMenu->addSeparator();
+    editMenu->addAction("Cut", QKeySequence::Cut, codeEditor_, &QPlainTextEdit::cut);
+    editMenu->addAction("Copy", QKeySequence::Copy, codeEditor_, &QPlainTextEdit::copy);
+    editMenu->addAction("Paste", QKeySequence::Paste, codeEditor_, &QPlainTextEdit::paste);
+    editMenu->addSeparator();
+    editMenu->addAction("Select All", QKeySequence::SelectAll, codeEditor_, &QPlainTextEdit::selectAll);
+    editMenu->addSeparator();
+    editMenu->addAction("Find", findReplaceBar_, &FindReplaceBar::showBar);
+
+    // View
+    QMenu* viewMenu = menuBar->addMenu("&View");
+    QAction* darkThemeAction = viewMenu->addAction("Dark Theme");
+    darkThemeAction->setCheckable(true);
+    darkThemeAction->setChecked(darkTheme_);
+    connect(darkThemeAction, &QAction::toggled, this, &MainWindow::setAppTheme);
+    viewMenu->addSeparator();
+    viewMenu->addAction(QString("Zoom In (Editor)\t%1").arg(keybinds_.value("editor_zoom_in").toString()),
+        this, [this]() { adjustEditorZoom(1); });
+    viewMenu->addAction(QString("Zoom Out (Editor)\t%1").arg(keybinds_.value("editor_zoom_out").toString()),
+        this, [this]() { adjustEditorZoom(-1); });
+    viewMenu->addAction(QString("Reset Zoom (Editor)\t%1").arg(keybinds_.value("editor_zoom_reset").toString()),
+        this, &MainWindow::resetEditorZoom);
+    viewMenu->addSeparator();
+    viewMenu->addAction(QString("Zoom In (Canvas)\t%1").arg(keybinds_.value("canvas_zoom_in").toString()),
+        this, [this]() { canvasWidget_->zoomIn(); });
+    viewMenu->addAction(QString("Zoom Out (Canvas)\t%1").arg(keybinds_.value("canvas_zoom_out").toString()),
+        this, [this]() { canvasWidget_->zoomOut(); });
+    viewMenu->addSeparator();
+    QAction* layoutModeAction = viewMenu->addAction("Layout Mode");
+    layoutModeAction->setCheckable(true);
+    connect(layoutModeAction, &QAction::toggled, layoutButton_, &QPushButton::setChecked);
+    connect(layoutButton_, &QPushButton::toggled, layoutModeAction, &QAction::setChecked);
+
+    // Run
+    QMenu* runMenu = menuBar->addMenu("&Run");
+    runMenu->addAction("Run", this, [this]() { if (runButton_->isEnabled()) onRunClicked(); });
+    runMenu->addAction("Stop", this, &MainWindow::onStopClicked);
+    runMenu->addSeparator();
+    runMenu->addAction("Reset Canvas Layout", this, [this]() { canvasWidget_->resetLayout(); });
+
+    // Help
+    QMenu* helpMenu = menuBar->addMenu("&Help");
+    helpMenu->addAction("About VEMCODE", this, [this]() {
+        QMessageBox::about(this, "About VEMCODE",
+            "VEMCODE — Virtual Embedded Machine Code Development Environment\n\n"
+            "An Arduino/Teensy firmware simulator.");
+    });
+    helpMenu->addSeparator();
+    helpMenu->addAction("Architecture", this, [this]() { showDocViewer("Architecture", "ARCHITECTURE.md"); });
+    helpMenu->addAction("Sketch Guide", this, [this]() { showDocViewer("Sketch Guide", "SKETCH_GUIDE.md"); });
+    helpMenu->addAction("Adding Components", this, [this]() { showDocViewer("Adding Components", "ADDING_COMPONENTS.md"); });
+    helpMenu->addAction("API Reference", this, [this]() { showDocViewer("API Reference", "API_REFERENCE.md"); });
+    helpMenu->addAction("Roadmap", this, [this]() { showDocViewer("Roadmap", "ROADMAP.md"); });
+
+    setMenuBar(menuBar);
 }
 
 // Toolbar -- Run, Stop, Open, Save, board label
@@ -297,24 +380,6 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     recentButton->setProperty("role", "outline");
     connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
     toolbarLayout->addWidget(recentButton);
-
-    QPushButton* saveButton = new QPushButton("Save", toolbar);
-    saveButton->setFixedHeight(26);
-    saveButton->setProperty("role", "outline");
-    connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
-    toolbarLayout->addWidget(saveButton);
-
-    QPushButton* saveAsButton = new QPushButton("Save As", toolbar);
-    saveAsButton->setFixedHeight(26);
-    saveAsButton->setProperty("role", "outline");
-    connect(saveAsButton, &QPushButton::clicked, this, &MainWindow::onSaveAsClicked);
-    toolbarLayout->addWidget(saveAsButton);
-
-    QPushButton* settingsButton = new QPushButton("Settings", toolbar);
-    settingsButton->setFixedHeight(26);
-    settingsButton->setProperty("role", "outline");
-    connect(settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
-    toolbarLayout->addWidget(settingsButton);
 
     toolbarLayout->addStretch();
 
@@ -1494,4 +1559,30 @@ void MainWindow::onSerialSend() {
     sketchThread_->injectSerial(text + "\n");
     serialMonitor_->appendPlainText("> " + text);
     serialInput_->clear();
+}
+
+void MainWindow::showDocViewer(const QString& title, const QString& filename) {
+    QString path = QString(projectRoot_) + "/docs/" + filename;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Doc not found: " + path);
+        return;
+    }
+    QString markdown = QString::fromUtf8(file.readAll());
+    file.close();
+
+    QDialog* dialog = new QDialog(this);
+    dialog->setWindowTitle(title);
+    dialog->resize(800, 600);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    QTextBrowser* browser = new QTextBrowser(dialog);
+    browser->setOpenExternalLinks(true); // so links *within* the doc still work normally
+    browser->setMarkdown(markdown);
+    layout->addWidget(browser);
+
+    dialog->show();
 }

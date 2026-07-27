@@ -77,10 +77,13 @@ private slots:
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
+    void setupMenuBar();
     void setupMainArea(QWidget* parent, QVBoxLayout* layout);
     bool eventFilter(QObject* obj, QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     
+    void showDocViewer(const QString& title, const QString& filename);
+
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();
     void showCompletionPopup();
