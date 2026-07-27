@@ -425,13 +425,14 @@ long long avr_count_crossings(long long prevRaw, long long currRaw, long long ta
 }
 ```
 ### Circuit Detector
-`CircuitDetector::detect()` runs a fixed pipeline over the sketch source: parse `#define`/`const int` symbols and pin arrays, then run three detection tiers in priority order, then fall back to scanning remaining `analogRead()`/`Serial.begin()` calls for anything not already claimed.
+`CircuitDetector::detect()` runs a fixed pipeline over the sketch source: parse `#define`/`const int` symbols and pin arrays, then run detection in this exact priority order (a pin claimed by an earlier step is skipped by every later one), then fall back to scanning remaining `analogRead()`/`Serial.begin()` calls for anything not already claimed.
 
-- **Tier 1, `detect_pattern`**: source-pattern matching (`.method(`, plain `func(`, or `ClassName ctor(` shapes) via `detect_method_call_pattern`/`detect_wrapper_function_pattern`/`detect_constructor_pattern`.
-- **Tier 2, `detect_multi`**: pin-role grouping for multi-pin components, dispatched by a `MultiPinStrategy` enum (`Suffix`, `Prefix`, `Array`, `Singleton`, `None`) on each `ComponentDefinition`.
-- **Tier 3, `detect_single`**: keyword fallback against remaining `pinMode()` calls, via `ComponentRegistry::find_by_single_keyword()`, falling back further to a generic `"GenericOutput"`/`"GenericInput"` if nothing matches.
-- Keypad matrices, DHT sensors, and MAX7219 chains are hand-written detectors that sit alongside the three generic tiers rather than fitting their strategy enums (independent row/col counts, a non-pin second constructor argument, positional-literal constructor args).
-- Conflicts are resolved by tier priority and first-claim.
+1. **`detect_multi`**: pin-role grouping for multi-pin components, dispatched by a `MultiPinStrategy` enum (`Suffix`, `Prefix`, `Array`, `Singleton`, `None`) on each `ComponentDefinition`.
+2. **`detect_pattern`**: source-pattern matching (`.method(`, plain `func(`, or `ClassName ctor(` shapes) via `detect_method_call_pattern`/`detect_wrapper_function_pattern`/`detect_constructor_pattern`; each of these explicitly checks the `claimed` set before matching, so a pin the multi-pin pass already grabbed is skipped here.
+3. **Hand-written special cases**: Keypad matrices, DHT sensors, and MAX7219 chains, these sit alongside the two generic tiers above rather than fitting their strategy enums (independent row/col counts, a non-pin second constructor argument, positional-literal constructor args).
+4. **`detect_single`**: keyword fallback against remaining `pinMode()` calls, via `ComponentRegistry::find_by_single_keyword()`, falling back further to a generic `"GenericOutput"`/`"GenericInput"` if nothing matches.
+
+- Conflicts are resolved by this priority order and first-claim.
 	- Pins are tracked in a `claimed` set; if a lower-priority match targets an already-claimed pin, it's dropped.
 	- A `"Pin N is used by both 'X' and 'Y'"` warning is surfaced in the UI rather than silently overwriting the claim.
 
