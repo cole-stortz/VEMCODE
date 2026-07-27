@@ -1,7 +1,7 @@
 # VEMCODE : API Reference
 
 **Overview:**
-This is a reference for what Arduino API surface VEMCODE actually implements: exact signatures, valid ranges, and where the simulation quietly diverges from real hardware. It's not a tutorial, see [SKETCH_GUIDE.md](SKETCH_GUIDE.md) for that, this doc is for looking up "does X work, and what exactly does it do here."
+This is a reference for what Arduino API surface VEMCODE actually implements: exact signatures, valid ranges, and where the simulation quietly diverges from real hardware. It's not a tutorial, see [SKETCH_GUIDE.md](SKETCH_GUIDE.md) for that, this doc is for looking up "does X work, and what exactly does it do here." A condensed version of the core entries here is also available by right-clicking a function directly in the editor.
 
 ## Table of Contents
 - [VEMCODE : API Reference](#vemcode--api-reference)

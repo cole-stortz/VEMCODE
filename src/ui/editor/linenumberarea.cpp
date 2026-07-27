@@ -1,6 +1,11 @@
 #include "src/ui/editor/linenumberarea.h"
+#include "src/ui/editor/apireference.h"
 #include <QKeyEvent>
 #include <QTextCursor>
+#include <QMenu>
+#include <QRegularExpression>
+#include <QLabel>
+#include <QVBoxLayout>
 
 void EditorWithLines::keyPressEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Tab) {
@@ -149,4 +154,67 @@ void EditorWithLines::toggleCommentSelection() {
         if (b == endBlock) break;
     }
     cursor.endEditBlock();
+}
+
+// Right-click API reference lookup -- tries "Receiver.word" first (Serial.print,
+// Wire.begin, ...) since those share plain names with unrelated identifiers,
+// then falls back to the bare word (pinMode, delay, ...).
+void EditorWithLines::contextMenuEvent(QContextMenuEvent* event) {
+    QMenu* menu = createStandardContextMenu();
+
+    QTextCursor wordCursor = cursorForPosition(event->pos());
+    wordCursor.select(QTextCursor::WordUnderCursor);
+    QString word = wordCursor.selectedText();
+
+    const ApiFunctionDoc* doc = nullptr;
+    if (!word.isEmpty()) {
+        QString textBeforeWord = wordCursor.block().text().left(
+            wordCursor.selectionStart() - wordCursor.block().position());
+        static const QRegularExpression receiverRe(R"((\w+)\.\s*$)");
+        auto match = receiverRe.match(textBeforeWord);
+        if (match.hasMatch())
+            doc = lookupApiFunction(match.captured(1) + "." + word);
+        if (!doc)
+            doc = lookupApiFunction(word);
+    }
+
+    if (doc) {
+        menu->addSeparator();
+        QAction* action = menu->addAction(QString("API Reference: %1").arg(doc->signature));
+        QPoint globalPos = event->globalPos();
+        connect(action, &QAction::triggered, this, [this, globalPos, doc]() {
+            QString html = QString("<b>%1</b><br>%2")
+                .arg(doc->signature.toHtmlEscaped(), doc->summary.toHtmlEscaped());
+            if (!doc->params.isEmpty()) {
+                html += "<br><br><b>Params:</b><ul style='margin-left:-20px;'>";
+                for (const QString& p : doc->params)
+                    html += "<li>" + p.toHtmlEscaped() + "</li>";
+                html += "</ul>";
+            }
+            if (!doc->returns.isEmpty())
+                html += QString("<b>Returns:</b> %1").arg(doc->returns.toHtmlEscaped());
+
+            // A self-owned Qt::Popup instead of QToolTip -- QToolTip's
+            // mouse-hover-tracking visibility logic doesn't play well with
+            // being shown from a QAction that just closed a QMenu (it flashed
+            // and vanished immediately). Qt::Popup is the same window type
+            // QMenu itself uses, so it behaves predictably here: closes on
+            // any outside click or Escape, no hover-tracking involved.
+            auto* popup = new QWidget(this, Qt::Popup);
+            popup->setAttribute(Qt::WA_DeleteOnClose);
+            popup->setStyleSheet("background:#2d2d30; color:#dcdcdc; border:1px solid #555555;");
+            auto* layout = new QVBoxLayout(popup);
+            auto* label = new QLabel(html, popup);
+            label->setTextFormat(Qt::RichText);
+            label->setWordWrap(true);
+            label->setMaximumWidth(360);
+            layout->addWidget(label);
+            popup->adjustSize();
+            popup->move(globalPos);
+            popup->show();
+        });
+    }
+
+    menu->exec(event->globalPos());
+    delete menu;
 }

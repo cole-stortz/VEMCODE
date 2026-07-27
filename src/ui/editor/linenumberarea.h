@@ -4,6 +4,7 @@
 #include <QPainter>
 #include <QTextBlock>
 #include <QKeySequence>
+#include <QContextMenuEvent>
 
 // The sketch editor widget. Exposes protected QPlainTextEdit methods needed
 // by LineNumberArea, and owns editor-only key handling (tab-insert,
@@ -42,6 +43,7 @@ signals:
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
 
 private:
     // Toggles "// " on every line touched by the selection (or just the

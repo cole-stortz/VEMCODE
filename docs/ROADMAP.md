@@ -313,7 +313,7 @@ Polish the editor into a first-class coding environment, consolidate settings, a
 - [x] **Compile warnings** — compiler warnings surfaced in the editor alongside errors; yellow line backgrounds for warning lines with corrected line numbers
 - [ ] **Sketch templates** — "New Sketch" dialog offers built-in starters (Blink, Button, Serial Echo, etc.); selected template copied into the new sketch folder
 - [ ] **Example sketch library** — a browsable panel of complete working sketches organized by component type (LED, Servo, LCD, Distance Sensor, etc.); selecting one opens it as a new sketch ready to run
-- [ ] **In-app Arduino API reference** — a collapsible panel or right-click lookup showing the signature, parameter descriptions, and return value for any Arduino function; covers all functions VEMCODE supports
+- [x] **In-app Arduino API reference** — right-click a known function in the editor for a popup showing its signature, parameter descriptions, and return value; covers the core global API plus library methods unique enough to identify without ambiguity (`src/ui/editor/apireference.h`)
 
 **Serial Plotter:**
 - [x] Numeric values printed via `Serial.println()` graphed over time in a scrolling plot panel (`SerialPlotter`, new "Serial plotter" tab in the debug panel); multiple named variables supported via `label:value` tokens separated by whitespace/commas, matching the Arduino IDE Serial Plotter protocol; unlabeled bare numbers default to "Value"/"Value 2"/...; auto-scaled shared Y axis, scroll/zoom via mouse wheel (Ctrl+wheel to zoom) same as the signal timeline

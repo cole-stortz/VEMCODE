@@ -554,6 +554,11 @@ The editor panel is a simple text editor with some added features to make it mor
 	- Auto-closes `(`, `[`, `{`, `"` and skips over an already-typed closing character instead of doubling it.
 	- Configurable keybindings for duplicate-line and comment-toggle (single-line `//` or block-selection wrapping).
 	- Typing `.` emits `dotTyped()` to trigger member autocompletion.
+- **API reference lookup** (`EditorWithLines::contextMenuEvent()`):
+	- Right-click builds the standard context menu, then checks the word under the click against a static lookup table (`src/ui/editor/apireference.h`), trying a `Receiver.word` match first (e.g. `Serial.print`) before falling back to the bare word, so generic names like `print`/`begin` resolve to the right entry when qualified.
+	- A match adds an "API Reference: ..." action; triggering it shows a small `Qt::Popup` widget with the signature/params/return, positioned at the click point.
+	- Deliberately not `QToolTip::showText()`, its mouse-hover-tracking visibility logic flashes and immediately hides when shown from a `QAction` that just closed a `QMenu`. `Qt::Popup` is the same window type `QMenu` itself uses, so it behaves predictably here: closes on outside click or Escape, no hover-tracking involved.
+	- The table only keys library methods (Servo, Keypad, DHT, LedControl, LiquidCrystal, SoftwareSerial) by names unique enough to identify their class unambiguously, generic verbs shared across several classes (`write`, `read`, `begin`, ...) are deliberately omitted rather than risk showing the wrong class's docs, since the receiver is a user-chosen variable name for these, not a fixed keyword like `Serial`/`Wire`/`SPI`.
 #### Canvas Panel
 The canvas panel is the space where the generated circuit is drawn from detected components. When it calls `new CanvasWidget()`, it builds the circuit from `canvaswidget.cpp/h` which draws the board and components.
 

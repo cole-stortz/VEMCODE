@@ -336,3 +336,4 @@ These are lint warnings VEMCODE prints to the Serial Monitor before running your
 - Use `watch_variable("LABEL", value);` liberally while debugging, it's cheap and shows up live in the Variable Watch tab.
 - Check the Serial Monitor for warnings even when the sketch compiles fine, several of the checks above only ever show up there, not as editor highlights.
 - If a component isn't showing up on the canvas, check that its pin isn't hardcoded or defined as an expression (see [Hardcoded Pin Numbers](#hardcoded-pin-numbers) and [Pins Defined as Expressions](#pins-defined-as-expressions)).
+- Right-click a function in the editor (`digitalWrite`, `Serial.print`, etc.) for a quick signature/params/return-value popup instead of switching over to [API_REFERENCE.md](API_REFERENCE.md).

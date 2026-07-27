@@ -94,6 +94,8 @@ Adds line numbers to the left of each line of code for error tracking and debugg
 - Enter: continues indentation from previous line, adds an extra indent after {.
 - }: automatically dedents to match the opening {
 
+#### API Reference Lookup
+Right-click a known Arduino function (`digitalWrite`, `Serial.print`, `attachInterrupt`, etc.) for a popup showing its signature, parameters, and return value, no need to leave the editor or open a separate doc.
 
 ### Circuit Canvas
 The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
