@@ -99,22 +99,26 @@ Adds line numbers to the left of each line of code for error tracking and debugg
 The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
 
 #### Supported Components
-- Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, LCD, Generic Output
-- Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Joystick, Generic Input
-- Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, IR Sensor, Generic Analog Sensor
+- Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, Stepper Motor, LCD, MAX7219 LED Matrix, Seven-Segment Display, Generic Output
+- Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Joystick, Keypad, Generic Input
+- Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Force Sensor, DHT (temp/humidity), IR Sensor, Generic Analog Sensor
 
 ### Supported Libraries
 VEMCODE does not support standard Arduino libraries directly. Instead, each supported library is a custom implementation injected at compile time by the preprocessor, replacing the original `#include`.
 
 - **Servo** — `attach()`, `write()`, `read()`, `attached()`, `detach()`; angle tracked and displayed live on the canvas
-- **LiquidCrystal** — `begin()`, `print()`, `println()`, `setCursor()`, `clear()`, `write()`, `createChar()`; text displayed on the canvas LCD component in real time
+- **LiquidCrystal** — `begin()`, `print()`, `setCursor()`, `clear()`, `write()`, `createChar()`; text displayed on the canvas LCD component in real time (always modeled as 16x2 regardless of the size passed to `begin()`)
 - **SoftwareSerial** — `begin()`, `print()`, `println()`, `available()`, `read()`, `peek()`, `write()`; output routed to the serial monitor prefixed with `[SW:RX_PIN]`
 - **EEPROM** — `read()`, `write()`, `update()`; backed by a 1024-byte array in the runtime; does not persist between sessions
 - **avr/wdt.h** — `wdt_enable()`, `wdt_disable()`, `wdt_reset()`; simulates watchdog timeout with a virtual reset if `wdt_reset()` is not called in time
 - **avr/sleep.h** — `set_sleep_mode()`, `sleep_enable()`, `sleep_cpu()`, `sleep_disable()`; suspends the sketch thread until a watchdog timeout or interrupt fires
 - **Wire (I2C)** — `Wire.begin()`, `Wire.beginTransmission()`, `Wire.write()`, `Wire.endTransmission()`, `Wire.requestFrom()`, `Wire.available()`, `Wire.read()`; backed by a virtual I2C device panel (the "I2C" debug tab) — configure an address and a response byte sequence, and `requestFrom()` returns those bytes
 - **SPI** — `SPI.begin()`, `SPI.beginTransaction()`, `SPI.endTransaction()`, `SPI.transfer()`; backed by a virtual SPI panel similar to I2C — a single configurable byte sequence that `transfer()` cycles through one byte per call; `SPISettings`/`MSBFIRST`/`LSBFIRST`/`SPI_MODE0..3` are accepted as no-ops
-- **AVR GPIO registers** — `DDRB`/`PORTB`/`PINB`, `DDRC`/`PORTC`/`PINC`, `DDRD`/`PORTD`/`PIND`; direct register access (no library call needed) — bit-mask writes to `DDRx`/`PORTx` route to the same `pinMode`/`digitalWrite` calls as the normal API, `PINx` reads route to `digitalRead`, and writing to `PINx` toggles the corresponding `PORTx` bit like real AVR hardware; ATmega328P (Uno/Nano) port layout only
+- **AVR GPIO registers** — `DDRB`/`PORTB`/`PINB`, `DDRC`/`PORTC`/`PINC`, `DDRD`/`PORTD`/`PIND`; direct register access (no library call needed) — bit-mask writes to `DDRx`/`PORTx` route to the same `pinMode`/`digitalWrite` calls as the normal API, `PINx` reads route to `digitalRead`, and writing to `PINx` toggles the corresponding `PORTx` bit like real AVR hardware; ATmega328P (Uno/Nano) port layout only, regardless of the selected board
+- **AVR Timer registers** — Timer1 (`TCCR1A/B`, `TCNT1`, `OCR1A`/`OCR1B`, `TIMSK1`) and Timer2 (`TCCR2A/B`, `TCNT2`, `OCR2A`/`OCR2B`, `TIMSK2`) direct register access; OCR writes also drive `analogWrite()` on that timer's PWM pin, and overflow/compare-match ISRs fire on a real prescaler-driven schedule; Timer0 is not simulated
+- **Keypad** — `Keypad(makeKeymap(keys), rowPins, colPins, rows, cols)`, `getKey()`; does a real row/col electrical scan against the canvas keypad component
+- **DHT** — `DHT(pin, type)`, `begin()`, `readTemperature()`, `readHumidity()`; reads come from the canvas DHT sensor's configured values
+- **LedControl (MAX7219)** — `LedControl(dataPin, clkPin, csPin, numDevices)`, `setLed()`, `setRow()`, `setColumn()`, `clearDisplay()`; drives the canvas LED matrix component, `setIntensity()`/`shutdown()` are accepted as no-ops
 
 
 ### Simulation
@@ -127,13 +131,16 @@ VEMCODE compiles your sketch to a native shared library and runs it directly on 
 - EEPROM state does not persist between sessions
 
 ### Debug Panel
-The debug panel includes the tabs serial monitor(s), signal timeline, and variable watch panel. It is located on the bottom right side and each of the tabs can be navigated independently.
+The debug panel includes the tabs serial monitor(s), serial plotter, signal timeline, and variable watch panel, plus the I2C and SPI virtual device panels. It is located on the bottom right side and each of the tabs can be navigated independently.
 
 #### Serial Monitor
 Displays all `Serial.print()` and `Serial.println()` output from your sketch. Boards with multiple hardware serial ports (Mega, Due, Teensy 4.1) show a separate monitor for each port displayed side by side.
 
+#### Serial Plotter
+A separate tab from the Serial Monitor for graphing numeric values printed over Serial instead of reading them as raw text.
+
 #### Signal Timeline
-Displays a logic analyzer style view of digital pin activity. When a pin changes state it is automatically added to the timeline and shown as a scrollable square wave.
+Displays a logic analyzer style view of digital pin activity. Pins aren't added automatically, type a pin number and click "+ Add pin" to start tracking it.
 
 #### Variable Watch
 Displays a three column table where you can add variables by typing in the name to start tracking the value and type in real time. 
@@ -294,7 +301,7 @@ Your sketch (.cpp)
 
 Hot-reload works by watching the sketch file for changes and reloading the shared library while the simulation is running.
 
-The board profile (selected in Settings or set through the sketch) drives pin count, analog mapping, PWM resolution, and the canvas graphic.
+The board profile (selected in Settings or set through the sketch) drives pin count, analog mapping, and the canvas graphic.
 
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for more information about how VEMCODE actually works.
 
