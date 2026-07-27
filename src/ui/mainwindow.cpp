@@ -248,7 +248,10 @@ void MainWindow::setupMenuBar() {
     QMenu* fileMenu = menuBar->addMenu("&File");
     fileMenu->addAction("New Sketch", this, &MainWindow::onNewSketch);
     fileMenu->addAction("Open Sketch...", this, &MainWindow::onOpenClicked);
-    fileMenu->addAction("Recent Sketches", this, &MainWindow::onRecentSketches);
+    QMenu* recentMenu = fileMenu->addMenu("Recent Sketches");
+    connect(recentMenu, &QMenu::aboutToShow, this, [this, recentMenu]() {
+        populateRecentMenu(recentMenu);
+    });
     fileMenu->addSeparator();
     fileMenu->addAction("Save", this, &MainWindow::onSaveClicked);
     fileMenu->addAction("Save As...", this, &MainWindow::onSaveAsClicked);
@@ -362,24 +365,6 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     speedSlider_->setToolTip("Simulation speed (5 = normal)");
     connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
     toolbarLayout->addWidget(speedSlider_);
-
-    QPushButton* newsketchButton = new QPushButton("New Sketch", toolbar);
-    newsketchButton->setFixedHeight(26);
-    newsketchButton->setProperty("role", "outline");
-    connect(newsketchButton, &QPushButton::clicked, this, &MainWindow::onNewSketch);
-    toolbarLayout->addWidget(newsketchButton);
-
-    QPushButton* openButton = new QPushButton("Open Sketch", toolbar);
-    openButton->setFixedHeight(26);
-    openButton->setProperty("role", "outline");
-    connect(openButton, &QPushButton::clicked, this, &MainWindow::onOpenClicked);
-    toolbarLayout->addWidget(openButton);
-
-    QPushButton* recentButton = new QPushButton("Recent", toolbar);
-    recentButton->setFixedHeight(26);
-    recentButton->setProperty("role", "outline");
-    connect(recentButton, &QPushButton::clicked, this, &MainWindow::onRecentSketches);
-    toolbarLayout->addWidget(recentButton);
 
     toolbarLayout->addStretch();
 
@@ -1500,18 +1485,20 @@ void MainWindow::onNewSketch() {
     addToRecentSketches(file_path);
 }
 
-void MainWindow::onRecentSketches() {
+void MainWindow::populateRecentMenu(QMenu* menu) {
+    menu->clear();
+
     QSettings settings = appSettings();
     QStringList recent = settings.value("recent/sketches").toStringList();
 
     if (recent.isEmpty()) {
-        statusBar()->showMessage("No recent sketches");
+        QAction* empty = menu->addAction("No recent sketches");
+        empty->setEnabled(false);
         return;
     }
 
-    QMenu menu(this);
     for (const QString& path : recent) {
-        QAction* action = menu.addAction(QFileInfo(path).fileName());
+        QAction* action = menu->addAction(QFileInfo(path).fileName());
         action->setToolTip(path);
         connect(action, &QAction::triggered, this, [this, path]() {
             if (!QFile::exists(path)) {
@@ -1533,7 +1520,6 @@ void MainWindow::onRecentSketches() {
             addToRecentSketches(path);
         });
     }
-    menu.exec(QCursor::pos());
 }
 
 void MainWindow::addToRecentSketches(const QString& path) {

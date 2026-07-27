@@ -68,7 +68,6 @@ private slots:
     void onSaveClicked();
     void onSaveAsClicked();
     void onNewSketch();
-    void onRecentSketches();
     void addToRecentSketches(const QString& path);
     void onSpeedChanged(int value);
     void onSerialSend();
@@ -101,6 +100,8 @@ private:
     QWidget* buildDebugPanel();
     QWidget* buildSerialPanel();
     void     rebuildSerialMonitors();
+
+    void populateRecentMenu(QMenu* menu);
 
     // Toolbar
     QPushButton*    runButton_      = nullptr;

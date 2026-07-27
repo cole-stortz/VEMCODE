@@ -7,18 +7,25 @@
             "label": "RunTests",
             "type": "shell",
             "command": "./scripts/run_tests.sh",
-            "group": "test",
+            "group": "test"
         },
         {
             "label": "TestLambo",
             "type": "shell",
             "command": "./app/VEMCODE LamboWallFollow.cpp timeline=true speed=5",
             "group": "test",
+            "problemMatcher": []
         },
         {
             "label": "CleanFiles",
             "type": "shell",
-            "command": "./scripts/clean.sh",
+            "command": "./scripts/clean.sh"
+        },
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "cmake --build build && ./app/VEMCODE",
+            "group": "build",
         }
     ]
 }
