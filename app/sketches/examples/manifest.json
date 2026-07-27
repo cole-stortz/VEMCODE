@@ -1,0 +1,109 @@
+[
+    { "name": "Blink", "folder": "blink", "file": "blink.cpp", "category": "LED",
+      "description": "Blinks an LED with Serial status logging." },
+    { "name": "Non-Blocking Blink", "folder": "NonBlockingBlink", "file": "NonBlockingBlink.cpp", "category": "LED",
+      "description": "Blinks an LED without delay(), using millis() timing instead." },
+
+    { "name": "Button", "folder": "Button", "file": "Button.cpp", "category": "Button",
+      "description": "Bouncy button read, settles after the ~10ms bounce window." },
+    { "name": "Clean Button", "folder": "ButtonClean", "file": "ButtonClean.cpp", "category": "Button",
+      "description": "A CLEAN/IDEAL-named button, exempt from bounce simulation." },
+
+    { "name": "Switch", "folder": "Switch", "file": "Switch.cpp", "category": "Switch",
+      "description": "A toggle switch that stays flipped until clicked again." },
+
+    { "name": "Buzzer Tone", "folder": "BuzzerTone", "file": "BuzzerTone.cpp", "category": "Buzzer",
+      "description": "tone()/noTone() on a buzzer, visualized as active on the canvas." },
+
+    { "name": "Servo Sweep", "folder": "Servo", "file": "Servo.cpp", "category": "Servo",
+      "description": "Sweeps a servo back and forth between 0 and 180 degrees." },
+
+    { "name": "H-Bridge Motor (bare pins)", "folder": "HBridgeBare", "file": "HBridgeBare.cpp", "category": "H-Bridge Motor",
+      "description": "L298N/L293D-style motor driver, bare ENA/IN1/IN2 pin names." },
+    { "name": "H-Bridge Motor (named pins)", "folder": "HBridgeMotorNamed", "file": "HBridgeMotorNamed.cpp", "category": "H-Bridge Motor",
+      "description": "Same motor driver, using a shared MOTOR_ prefix naming style." },
+
+    { "name": "Stepper Motor", "folder": "Stepper", "file": "Stepper.cpp", "category": "Stepper",
+      "description": "STEP/DIR driver style stepper motor control." },
+
+    { "name": "Potentiometer", "folder": "Potentiometer", "file": "Potentiometer.cpp", "category": "Potentiometer",
+      "description": "Reads an analog potentiometer, drag it on the canvas." },
+
+    { "name": "Rotary Encoder", "folder": "RotaryEncoder", "file": "RotaryEncoder.cpp", "category": "Rotary Encoder",
+      "description": "CLK/DT quadrature encoder, direction resolved via an interrupt." },
+
+    { "name": "Joystick", "folder": "Joystick", "file": "Joystick.cpp", "category": "Joystick",
+      "description": "Two-axis analog joystick with a digital press switch." },
+
+    { "name": "Light Sensor", "folder": "LightSensor", "file": "LightSensor.cpp", "category": "Light Sensor",
+      "description": "An LDR read as a plain analog input." },
+
+    { "name": "Temperature Sensor", "folder": "TemperatureSensor", "file": "TemperatureSensor.cpp", "category": "Temperature Sensor",
+      "description": "An analog temperature sensor (thermistor/TMP36-style)." },
+
+    { "name": "Force Sensor", "folder": "ForceSensor", "file": "ForceSensor.cpp", "category": "Force Sensor",
+      "description": "A force-sensitive resistor (FSR) as an analog input." },
+
+    { "name": "Generic Analog Sensor", "folder": "GenericAnalogSensor", "file": "GenericAnalogSensor.cpp", "category": "Generic Analog Sensor",
+      "description": "A pin named with a generic sensor/analog/ADC keyword." },
+
+    { "name": "Generic Input", "folder": "GenericInput", "file": "GenericInput.cpp", "category": "Generic Input",
+      "description": "A pin name that doesn't match any known keyword still works, just with no special canvas visualization." },
+
+    { "name": "IR Sensor", "folder": "IRSensor", "file": "IRSensor.cpp", "category": "IR Sensor",
+      "description": "A simple digital IR obstacle-detection sensor." },
+
+    { "name": "Distance Sensor", "folder": "DistanceSensor", "file": "DistanceSensor.cpp", "category": "Distance Sensor",
+      "description": "Reads an ultrasonic distance sensor and lights an LED when something is within 10cm." },
+
+    { "name": "Color Sensor", "folder": "ColorSensor", "file": "ColorSensor.cpp", "category": "Color Sensor",
+      "description": "TCS3200-style color sensor, using array-declared pins." },
+
+    { "name": "Keypad", "folder": "Keypad", "file": "Keypad.cpp", "category": "Keypad",
+      "description": "4x4 membrane keypad, click cells on the canvas grid." },
+
+    { "name": "DHT Sensor", "folder": "DHT", "file": "DHT.cpp", "category": "DHT",
+      "description": "DHT11/DHT22 temperature + humidity sensor." },
+
+    { "name": "MAX7219 LED Matrix", "folder": "Max7219", "file": "Max7219.cpp", "category": "MAX7219",
+      "description": "8x8 LED matrix driven via setLed/setRow/setColumn." },
+
+    { "name": "Seven-Segment Display", "folder": "SevenSegment", "file": "SevenSegment.cpp", "category": "Seven-Segment Display",
+      "description": "One pin per segment (A-G), no decimal point." },
+
+    { "name": "RGB LED", "folder": "RGBLED", "file": "RGBLED.cpp", "category": "RGB LED",
+      "description": "Three PWM pins cycling through red, green, and blue." },
+
+    { "name": "LCD Serial Echo", "folder": "SerialEcho", "file": "SerialEcho.cpp", "category": "LCD",
+      "description": "Echoes Serial input back out to both the Serial Monitor and a 16x2 LCD." },
+
+    { "name": "Wire (I2C)", "folder": "Wire", "file": "Wire.cpp", "category": "Wire / I2C",
+      "description": "beginTransmission/write/endTransmission/requestFrom against the virtual I2C device panel." },
+
+    { "name": "SPI", "folder": "SPI", "file": "SPI.cpp", "category": "SPI",
+      "description": "transfer() against the virtual SPI byte-sequence panel." },
+
+    { "name": "SoftwareSerial", "folder": "SoftwareSerial", "file": "SoftwareSerial.cpp", "category": "SoftwareSerial",
+      "description": "begin/print/println on a software serial port, routed to the Serial Monitor." },
+
+    { "name": "EEPROM", "folder": "EEPROM", "file": "EEPROM.cpp", "category": "EEPROM",
+      "description": "read/write/update against the 1024-byte EEPROM." },
+
+    { "name": "AVR GPIO Registers", "folder": "GPIORegisters", "file": "GPIORegisters.cpp", "category": "AVR GPIO Registers",
+      "description": "Direct DDRx/PORTx/PINx register access instead of pinMode/digitalWrite/digitalRead." },
+
+    { "name": "AVR Timer Registers", "folder": "TimerRegisters", "file": "TimerRegisters.cpp", "category": "AVR Timer Registers",
+      "description": "Direct Timer1/Timer2 register access -- prescaler, PWM duty, and overflow/compare-match ISRs." },
+
+    { "name": "Interrupts", "folder": "Interrupt", "file": "Interrupt.cpp", "category": "Interrupts",
+      "description": "attachInterrupt on a button press, counted in an ISR." },
+
+    { "name": "Watchdog Timer", "folder": "Watchdog", "file": "Watchdog.cpp", "category": "Watchdog Timer",
+      "description": "wdt_enable/wdt_reset/wdt_disable, and a watchdog waking the CPU from sleep." },
+
+    { "name": "Sleep Modes", "folder": "Sleep", "file": "Sleep.cpp", "category": "Sleep Modes",
+      "description": "sleep_enable/sleep_cpu/sleep_disable, woken by the watchdog." },
+
+    { "name": "Serial Plotter", "folder": "SerialPlotter", "file": "SerialPlotter.cpp", "category": "Serial Plotter",
+      "description": "Two named values on one line, graphed as separate traces in the Serial Plotter tab." }
+]

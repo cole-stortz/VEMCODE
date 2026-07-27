@@ -68,6 +68,7 @@ private slots:
     void onSaveClicked();
     void onSaveAsClicked();
     void onNewSketch();
+    void onOpenExample();
     void addToRecentSketches(const QString& path);
     void onSpeedChanged(int value);
     void onSerialSend();
@@ -82,6 +83,9 @@ private:
     void closeEvent(QCloseEvent* event) override;
     
     void showDocViewer(const QString& title, const QString& filename);
+    // Creates <defaultSketchLocation_>/<name>/<name>.cpp with the given starting
+    // content and loads it, the shared tail of onNewSketch()/onOpenExample().
+    void createSketchFromContent(const QString& name, const QString& content);
 
     void showCompileErrors(const CompileResult& result);
     void clearCompileErrors();

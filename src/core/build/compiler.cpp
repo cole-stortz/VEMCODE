@@ -92,6 +92,17 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         << " -shared"
         << " -fPIC"
         << " -Wall"
+        // Without this, an ordinary sketch global whose name happens to
+        // collide with a weak symbol already loaded in the process (e.g.
+        // glibc's internal `step` from its legacy random() implementation)
+        // can get resolved to that library's definition instead of the
+        // sketch's own -- writing to it then corrupts whatever that other
+        // symbol actually is (observed: a plain `int step` global writing
+        // into glibc's read-only .text and segfaulting). -Bsymbolic forces
+        // the sketch's own references to bind to its own definitions first,
+        // without hiding the symbols -- Variable Watch's dlsym-by-name still
+        // needs them visible in the dynamic symbol table.
+        << " -Wl,-Bsymbolic"
 #ifdef _WIN32
         << " -static-libgcc"
         << " -static-libstdc++"

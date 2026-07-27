@@ -28,6 +28,10 @@
 #include <QMenuBar>
 #include <QTextBrowser>
 #include <QDialog>
+#include <QListWidget>
+#include <QTreeWidget>
+#include <QDialogButtonBox>
+#include "src/ui/sketchmanifest.h"
 
 // Font size intentionally left out of the editor's styling -- it's set via
 // setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
@@ -248,6 +252,7 @@ void MainWindow::setupMenuBar() {
     QMenu* fileMenu = menuBar->addMenu("&File");
     fileMenu->addAction("New Sketch", this, &MainWindow::onNewSketch);
     fileMenu->addAction("Open Sketch...", this, &MainWindow::onOpenClicked);
+    fileMenu->addAction("Open Example...", this, &MainWindow::onOpenExample);
     QMenu* recentMenu = fileMenu->addMenu("Recent Sketches");
     connect(recentMenu, &QMenu::aboutToShow, this, [this, recentMenu]() {
         populateRecentMenu(recentMenu);
@@ -1444,27 +1449,11 @@ void MainWindow::onSettingsClicked() {
     }
 }
 
-void MainWindow::onNewSketch() {
-    bool ok;
-    QString name = QInputDialog::getText(
-        this, "New sketch", "Sketch name:",
-        QLineEdit::Normal, "my_sketch", &ok
-    );
-    if (!ok || name.trimmed().isEmpty()) return;
-
-    name = name.trimmed().replace(" ", "_");
-
-    QString sketches_root = defaultSketchLocation_;
-    QString sketch_dir    = sketches_root + "/" + name;
+// Shared tail of onNewSketch()/onOpenExample() -- writes <name>/<name>.cpp
+// under the configured save location and loads it as the current sketch.
+void MainWindow::createSketchFromContent(const QString& name, const QString& content) {
+    QString sketch_dir = defaultSketchLocation_ + "/" + name;
     QDir().mkpath(sketch_dir);
-
-    QString default_sketch =
-        "#define LED_PIN 13\n\n"
-        "void setup() {\n"
-        "    Serial.begin(9600);\n"
-        "}\n\n"
-        "void loop() {\n"
-        "}\n";
 
     QString file_path = sketch_dir + "/" + name + ".cpp";
     QFile file(file_path);
@@ -1472,10 +1461,10 @@ void MainWindow::onNewSketch() {
         statusBar()->showMessage("Failed to create: " + file_path);
         return;
     }
-    file.write(default_sketch.toUtf8());
+    file.write(content.toUtf8());
     file.close();
 
-    codeEditor_->setPlainText(default_sketch);
+    codeEditor_->setPlainText(content);
     codeEditor_->document()->setModified(false);
     currentSketchPath_ = file_path;
     canvasWidget_->loadLayout(file_path);
@@ -1483,6 +1472,129 @@ void MainWindow::onNewSketch() {
     updateWindowTitle();
     statusBar()->showMessage("Created: " + file_path);
     addToRecentSketches(file_path);
+}
+
+void MainWindow::onNewSketch() {
+    static const QString kBlankSketch =
+        "#define LED_PIN 13\n\n"
+        "void setup() {\n"
+        "    Serial.begin(9600);\n"
+        "}\n\n"
+        "void loop() {\n"
+        "}\n";
+
+    // Shipped starters live next to the executable, not the user's (possibly
+    // relocated) default save folder -- that folder is where new sketches get
+    // written, not where the app's own bundled content lives.
+    QString templatesDir = QCoreApplication::applicationDirPath() + "/sketches/templates";
+    QList<SketchManifestEntry> templates = loadSketchManifest(templatesDir + "/manifest.json");
+
+    QDialog dialog(this);
+    dialog.setWindowTitle("New Sketch");
+    auto* layout = new QVBoxLayout(&dialog);
+
+    layout->addWidget(new QLabel("Sketch name:", &dialog));
+    auto* nameEdit = new QLineEdit("my_sketch", &dialog);
+    layout->addWidget(nameEdit);
+
+    layout->addWidget(new QLabel("Start from:", &dialog));
+    auto* list = new QListWidget(&dialog);
+    list->addItem("Blank");
+    for (const auto& t : templates) {
+        auto* item = new QListWidgetItem(t.name, list);
+        item->setToolTip(t.description);
+    }
+    list->setCurrentRow(0);
+    layout->addWidget(list);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    QString name = nameEdit->text().trimmed().replace(" ", "_");
+    if (name.isEmpty()) return;
+
+    int row = list->currentRow();
+    QString content = kBlankSketch;
+    if (row > 0 && row - 1 < templates.size()) {
+        const auto& t = templates[row - 1];
+        QFile f(templatesDir + "/" + t.folder + "/" + t.file);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text))
+            content = QString::fromUtf8(f.readAll());
+    }
+
+    createSketchFromContent(name, content);
+}
+
+void MainWindow::onOpenExample() {
+    QString examplesDir = QCoreApplication::applicationDirPath() + "/sketches/examples";
+    QList<SketchManifestEntry> examples = loadSketchManifest(examplesDir + "/manifest.json");
+    if (examples.isEmpty()) {
+        statusBar()->showMessage("No examples found.");
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle("Open Example");
+    dialog.resize(420, 360);
+    auto* layout = new QVBoxLayout(&dialog);
+
+    auto* tree = new QTreeWidget(&dialog);
+    tree->setHeaderHidden(true);
+    QMap<QString, QTreeWidgetItem*> categories;
+    for (const auto& ex : examples) {
+        QString category = ex.category.isEmpty() ? "Other" : ex.category;
+        QTreeWidgetItem*& catItem = categories[category];
+        if (!catItem) catItem = new QTreeWidgetItem(tree, {category});
+        auto* item = new QTreeWidgetItem(catItem, {ex.name});
+        item->setToolTip(0, ex.description);
+        item->setData(0, Qt::UserRole, ex.folder + "|" + ex.file);
+    }
+    tree->expandAll();
+    layout->addWidget(tree);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Open)->setEnabled(false);
+    connect(tree, &QTreeWidget::itemSelectionChanged, &dialog, [tree, buttons]() {
+        auto items = tree->selectedItems();
+        bool leaf = !items.isEmpty() && items.first()->childCount() == 0 && items.first()->parent();
+        buttons->button(QDialogButtonBox::Open)->setEnabled(leaf);
+    });
+    connect(tree, &QTreeWidget::itemDoubleClicked, &dialog, [&dialog](QTreeWidgetItem* item, int) {
+        if (item->childCount() == 0 && item->parent()) dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    auto selected = tree->selectedItems();
+    if (selected.isEmpty()) return;
+    QTreeWidgetItem* item = selected.first();
+    if (item->childCount() > 0 || !item->parent()) return;
+
+    QStringList parts = item->data(0, Qt::UserRole).toString().split("|");
+    if (parts.size() != 2) return;
+
+    QFile f(examplesDir + "/" + parts[0] + "/" + parts[1]);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        statusBar()->showMessage("Failed to open example.");
+        return;
+    }
+    QString content = QString::fromUtf8(f.readAll());
+
+    bool ok;
+    QString name = QInputDialog::getText(
+        this, "New sketch from example", "Sketch name:",
+        QLineEdit::Normal, item->text(0).replace(" ", "_"), &ok
+    );
+    if (!ok || name.trimmed().isEmpty()) return;
+
+    createSketchFromContent(name.trimmed().replace(" ", "_"), content);
 }
 
 void MainWindow::populateRecentMenu(QMenu* menu) {

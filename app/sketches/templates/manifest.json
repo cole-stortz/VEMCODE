@@ -1,0 +1,20 @@
+[
+    {
+        "name": "Blink",
+        "folder": "Blink",
+        "file": "Blink.cpp",
+        "description": "Blinks an LED on pin 13."
+    },
+    {
+        "name": "Button",
+        "folder": "Button",
+        "file": "Button.cpp",
+        "description": "Reads a pull-up button and lights an LED while it's held."
+    },
+    {
+        "name": "Serial Echo",
+        "folder": "SerialEcho",
+        "file": "SerialEcho.cpp",
+        "description": "Echoes whatever you type into the Serial Monitor back out."
+    }
+]
