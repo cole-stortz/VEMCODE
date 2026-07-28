@@ -1,6 +1,7 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QLinearGradient>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 #include <QVariantList>
@@ -65,19 +66,38 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (rows_ <= 0 || cols_ <= 0) return;
+
+        p->setPen(QPen(QColor("#000"), 1));
+        p->setBrush(QColor("#111"));
+        p->drawRoundedRect(boundingRect(), 4, 4);
+
         p->setFont(QFont("Courier New", 9));
         for (int r = 0; r < rows_; ++r) {
             for (int c = 0; c < cols_; ++c) {
                 bool active = (r == pressedRow_ && c == pressedCol_);
                 QRectF cell(4 + c * CELL, 4 + r * CELL, CELL - 2, CELL - 2);
                 QColor fill = active ? KEY_ACTIVE : KEY_INACTIVE;
-                p->setPen(QPen(fill.darker(150), 1));
-                p->setBrush(fill);
-                p->drawRect(cell);
+                QLinearGradient g(cell.topLeft(), cell.bottomLeft());
+                g.setColorAt(0.0, fill.lighter(130));
+                g.setColorAt(1.0, fill.darker(120));
+                p->setPen(QPen(fill.darker(160), 1));
+                p->setBrush(g);
+                p->drawRoundedRect(cell, 3, 3);
                 int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
                 p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
                 p->drawText(cell, Qt::AlignCenter, keyLabelFor(rows_, cols_, r, c));
             }
+        }
+
+        // Straight leads on the right edge, one per row/col pin slot -- the
+        // same [row_0..row_{rows-1}, col_0..col_{cols-1}] order configureMultiPin
+        // uses. Keypads are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        QRectF r = boundingRect();
+        for (int i = 0; i < rows_ + cols_; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 10, ly), QPointF(r.width(), ly));
         }
     }
 

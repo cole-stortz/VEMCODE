@@ -1,6 +1,7 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QRadialGradient>
 
 
 class RGBLedItem : public ComponentItem {
@@ -26,13 +27,40 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QColor fill(redval_, greenval_, blueval_);
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "RGB LED");
+        bool lit = redval_ > 0 || greenval_ > 0 || blueval_ > 0;
+
+        QRectF r = boundingRect();
+        QPointF c = r.center();
+        qreal rad = qMin(r.width(), r.height()) * 0.30;
+
+        if (lit) {
+            QRadialGradient glow(c, rad * 2.6);
+            QColor g1 = fill; g1.setAlpha(140);
+            QColor g2 = fill; g2.setAlpha(0);
+            glow.setColorAt(0.0, g1);
+            glow.setColorAt(1.0, g2);
+            p->setPen(Qt::NoPen);
+            p->setBrush(glow);
+            p->drawEllipse(c, rad * 2.6, rad * 2.6);
+        }
+
+        QColor body = lit ? fill : QColor("#2a2a2a");
+        QRadialGradient bulb(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.6);
+        bulb.setColorAt(0.0, body.lighter(lit ? 170 : 140));
+        bulb.setColorAt(0.6, body);
+        bulb.setColorAt(1.0, body.darker(140));
+        p->setPen(QPen(body.darker(200), 1.2));
+        p->setBrush(bulb);
+        p->drawEllipse(c, rad, rad);
+
+        // Straight leads on the left edge, one per R/G/B pin slot -- RGB LEDs
+        // are outputs, so CanvasWidget::updateWires attaches wire i at local
+        // (0, 15 + i*5), same spacing as WIRE_SPACING in canvaswidget.h.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal y = 15 + i * 5;
+            p->drawLine(QPointF(10, y), QPointF(0, y));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

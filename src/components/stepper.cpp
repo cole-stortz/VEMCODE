@@ -1,9 +1,11 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QRadialGradient>
+#include <QtMath>
+#include <cmath>
 
-static const QColor STEPPER_ACTIVE  ("#dcb574");
-static const QColor STEPPER_INACTIVE("#372a10");
+static const QColor STEPPER_ACTIVE("#dcb574");
 
 // Handles two real-world wiring styles with the same class: STEP+DIR (driver
 // boards like A4988/DRV8825) and IN1-IN4 (ULN2003 + 28BYJ-48 style, driven by
@@ -25,18 +27,45 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        bool active = fourPhase_
-            ? (phaseState_[0] || phaseState_[1] || phaseState_[2] || phaseState_[3])
-            : stepHigh_;
-        QColor fill = STEPPER_ACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
-                    QString("Stepper\npos: %1  %2").arg(position_).arg(dirCW_ ? "CW" : "CCW"));
+        QRectF r = boundingRect();
+        QRectF flange = r.adjusted(r.width() * 0.2, 4, -r.width() * 0.2, -r.height() * 0.28);
+        p->setPen(QPen(QColor("#222"), 1));
+        p->setBrush(QColor("#3a3a3a"));
+        p->drawRoundedRect(flange, 4, 4);
+        for (const auto& pt : {flange.topLeft(), flange.topRight(), flange.bottomLeft(), flange.bottomRight()}) {
+            p->setPen(Qt::NoPen);
+            p->setBrush(QColor("#111"));
+            p->drawEllipse(pt, 3, 3);
+        }
+
+        QPointF c = flange.center();
+        qreal rad = qMin(flange.width(), flange.height()) * 0.38;
+        QRadialGradient g(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.5);
+        g.setColorAt(0.0, STEPPER_ACTIVE.lighter(130));
+        g.setColorAt(1.0, STEPPER_ACTIVE.darker(140));
+        p->setPen(QPen(QColor("#000"), 1));
+        p->setBrush(g);
+        p->drawEllipse(c, rad, rad);
+
+        qreal a = qDegreesToRadians((double)(position_ * 15));
+        p->setPen(QPen(QColor("#1a1a1a"), 2));
+        p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
+
+        p->setPen(STEPPER_ACTIVE);
+        p->setFont(QFont("Courier New", 7));
+        p->drawText(QRectF(r.left(), r.bottom() - 14, r.width(), 14), Qt::AlignCenter,
+                    QString("pos:%1 %2").arg(position_).arg(dirCW_ ? "CW" : "CCW"));
+
+        // Straight leads on the left edge, one per wired pin slot (STEP+DIR
+        // or 4-phase IN1-IN4) -- steppers are outputs, so
+        // CanvasWidget::updateWires attaches wire i at local (0, 15 + i*5),
+        // same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        int leadCount = fourPhase_ ? 4 : 2;
+        for (int i = 0; i < leadCount; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

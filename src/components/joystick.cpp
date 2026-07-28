@@ -1,13 +1,12 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QLinearGradient>
+#include <QRadialGradient>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
-#include <cmath>
 
-static const QColor JOY_ACTIVE  ("#74dcb5");
-static const QColor JOY_INACTIVE("#103729");
-static const QColor JOY_PRESSED_BORDER("#2555e6");
+static const QColor JOY_ACTIVE("#74dcb5");
 
 class JoystickItem : public ComponentItem {
     bool dragging_ = false;
@@ -44,19 +43,44 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         qreal dx = (vrx_ - 512) / 512.0;
         qreal dy = (vry_ - 512) / 512.0;
-        qreal ratio = qBound(0.0, std::sqrt(dx * dx + dy * dy), 1.0);
-        int r = JOY_INACTIVE.red()   + ratio * (JOY_ACTIVE.red()   - JOY_INACTIVE.red());
-        int g = JOY_INACTIVE.green() + ratio * (JOY_ACTIVE.green() - JOY_INACTIVE.green());
-        int b = JOY_INACTIVE.blue()  + ratio * (JOY_ACTIVE.blue()  - JOY_INACTIVE.blue());
-        QColor fill(r, g, b);
-        p->setPen(QPen(pressed_ ? JOY_PRESSED_BORDER : fill.darker(150), pressed_ ? 2 : 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
-                    QString("Joy: %1,%2").arg(vrx_).arg(vry_));
+
+        QRectF r = boundingRect();
+        QRectF body = r.adjusted(6, 6, -6, -6);
+        QColor housing("#1c2b26");
+        QLinearGradient bg(body.topLeft(), body.bottomLeft());
+        bg.setColorAt(0.0, housing.lighter(130));
+        bg.setColorAt(0.5, housing);
+        bg.setColorAt(1.0, housing.darker(120));
+        p->setPen(QPen(housing.darker(180), 1.2));
+        p->setBrush(bg);
+        p->drawRoundedRect(body, 6, 6);
+
+        QPointF c = body.center();
+        qreal travel = qMin(body.width(), body.height()) * 0.28;
+        p->setPen(QPen(QColor("#000"), 1));
+        p->setBrush(QColor("#0a0a0a"));
+        p->drawEllipse(c, travel * 1.4, travel * 1.4);
+
+        QPointF stick = c + QPointF(dx * travel, -dy * travel);
+        p->setPen(QPen(QColor("#333"), 3));
+        p->drawLine(c, stick);
+
+        QColor cap = pressed_ ? QColor("#e63946") : JOY_ACTIVE;
+        QRadialGradient g(stick - QPointF(4, 4), 14);
+        g.setColorAt(0.0, cap.lighter(150));
+        g.setColorAt(1.0, cap.darker(130));
+        p->setPen(QPen(cap.darker(160), pressed_ ? 2 : 1));
+        p->setBrush(g);
+        p->drawEllipse(stick, 10, 10);
+
+        // Straight leads on the right edge, one per VRX/VRY/SW pin slot --
+        // joysticks are inputs, so CanvasWidget::updateWires attaches wire i
+        // at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal y = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 10, y), QPointF(r.width(), y));
+        }
     }
 
     // Right-click simulates pressing the stick down (SW); left-drag moves X/Y.

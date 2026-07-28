@@ -48,6 +48,11 @@ public:
             p->setBrush(pixels_[i]);
             p->drawEllipse(QPointF(cx, cy), dotD / 2.0f, dotD / 2.0f);
         }
+
+        // Straight lead on the left edge -- NeoPixel is an output, so
+        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(10, 15), QPointF(0, 15));
     }
 
     // Whole-strip update, sent once per show() -- rgb is pixelCount_*3

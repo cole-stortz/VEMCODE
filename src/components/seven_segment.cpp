@@ -22,12 +22,40 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 54); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
+        QRectF r = boundingRect();
         p->setPen(QPen(QColor("#000000"), 1));
         p->setBrush(SEVENSEG_FILL);
-        p->drawRect(boundingRect());
-        p->setPen(SEVENSEG_DIGIT);
-        p->setFont(QFont("Courier New", 28, QFont::Bold));
-        p->drawText(boundingRect(), Qt::AlignCenter, QString(decodeDigit()));
+        p->drawRect(r);
+
+        QRectF area = r.adjusted(r.width() * 0.3, r.height() * 0.12, -r.width() * 0.3, -r.height() * 0.12);
+        qreal w = area.width(), h = area.height();
+        qreal t = w * 0.28;
+        qreal x = area.left(), y = area.top();
+        QColor unlit = SEVENSEG_DIGIT.darker(600);
+
+        auto drawSeg = [&](const QRectF& rect, bool on) {
+            p->setPen(Qt::NoPen);
+            p->setBrush(on ? SEVENSEG_DIGIT : unlit);
+            p->drawRoundedRect(rect, t * 0.35, t * 0.35);
+        };
+
+        qreal midY = y + h / 2 - t / 2;
+        drawSeg(QRectF(x + t * 0.3, y, w - t * 0.6, t * 0.6), segState_[0]);                          // A top
+        drawSeg(QRectF(x + w - t * 0.6, y + t * 0.2, t * 0.6, h / 2 - t * 0.4), segState_[1]);         // B top-right
+        drawSeg(QRectF(x + w - t * 0.6, y + h / 2 + t * 0.2, t * 0.6, h / 2 - t * 0.4), segState_[2]); // C bottom-right
+        drawSeg(QRectF(x + t * 0.3, y + h - t * 0.6, w - t * 0.6, t * 0.6), segState_[3]);             // D bottom
+        drawSeg(QRectF(x, y + h / 2 + t * 0.2, t * 0.6, h / 2 - t * 0.4), segState_[4]);               // E bottom-left
+        drawSeg(QRectF(x, y + t * 0.2, t * 0.6, h / 2 - t * 0.4), segState_[5]);                       // F top-left
+        drawSeg(QRectF(x + t * 0.3, midY, w - t * 0.6, t * 0.6), segState_[6]);                        // G middle
+
+        // Straight leads on the left edge, one per A-G segment pin slot --
+        // seven-segment displays are outputs, so CanvasWidget::updateWires
+        // attaches wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 7; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {
@@ -51,31 +79,6 @@ public:
     void configurePolarity(bool commonAnode) override {
         commonAnode_ = commonAnode;
         update();
-    }
-
-private:
-    // Bit order A=0 B=1 C=2 D=3 E=4 F=5 G=6, HIGH = segment lit (before
-    // polarity correction in onPinChanged -- see commonAnode_).
-    QChar decodeDigit() const {
-        uint8_t mask = 0;
-        for (int i = 0; i < 7; ++i)
-            if (segState_[i]) mask |= (1 << i);
-
-        switch (mask) {
-            case 0b0111111: return '0';
-            case 0b0000110: return '1';
-            case 0b1011011: return '2';
-            case 0b1001111: return '3';
-            case 0b1100110: return '4';
-            case 0b1101101: return '5';
-            case 0b1111101: return '6';
-            case 0b0000111: return '7';
-            case 0b1111111: return '8';
-            case 0b1101111: return '9';
-            case 0b1000000: return '-';
-            case 0:         return ' ';
-            default:        return '?';
-        }
     }
 };
 

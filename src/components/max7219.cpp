@@ -77,6 +77,15 @@ public:
                 }
             }
         }
+
+        // Straight leads on the left edge, one per CS/CLK/DIN pin slot --
+        // MAX7219 is an output, so CanvasWidget::updateWires attaches wire i
+        // at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            float ly = 15.0f + i * 5.0f;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

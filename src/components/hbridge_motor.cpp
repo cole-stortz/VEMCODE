@@ -1,9 +1,9 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QRadialGradient>
 
-static const QColor HBRIDGE_ACTIVE  ("#dc7474");
-static const QColor HBRIDGE_INACTIVE("#371010");
+static const QColor HBRIDGE_ACTIVE("#dc7474");
 
 class HBridgeMotorItem : public ComponentItem {
     int pwmPin_;
@@ -21,21 +21,45 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 54); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        bool active = (cwise_ || antiCwise_) && pwm_ > 0;
-        QColor fill = active ? HBRIDGE_ACTIVE : HBRIDGE_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-
         QString dir = (cwise_ && antiCwise_) ? "BRAKE"
                     : cwise_                 ? "CW"
                     : antiCwise_              ? "CCW"
                     :                           "STOP";
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
-                    dir + QString("\nPWM: %1").arg(pwm_));
+
+        QRectF r = boundingRect();
+        QPointF c(r.left() + r.width() * 0.32, r.center().y() - 4);
+        qreal rad = qMin(r.width(), r.height()) * 0.28;
+        QColor body = QColor("#888").lighter(pwm_ > 0 ? 110 : 80);
+        QRadialGradient g(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.6);
+        g.setColorAt(0.0, body.lighter(140));
+        g.setColorAt(1.0, body.darker(140));
+        p->setPen(QPen(QColor("#333"), 1));
+        p->setBrush(g);
+        p->drawEllipse(c, rad, rad);
+        p->setPen(Qt::NoPen);
+        p->setBrush(QColor("#555"));
+        p->drawRect(QRectF(c.x() + rad * 0.7, c.y() - 3, rad * 0.6, 6));
+
+        if (dir == "CW" || dir == "CCW") {
+            p->setPen(QPen(HBRIDGE_ACTIVE, 2));
+            QRectF arcRect(c.x() - rad * 0.7, c.y() - rad * 0.7, rad * 1.4, rad * 1.4);
+            int span = dir == "CW" ? -270 * 16 : 270 * 16;
+            p->drawArc(arcRect, 0, span);
+        }
+
+        p->setPen(HBRIDGE_ACTIVE);
+        p->setFont(QFont("Courier New", 7));
+        p->drawText(QRectF(r.left(), r.bottom() - 16, r.width(), 16), Qt::AlignCenter,
+                    QString("%1 pwm:%2").arg(dir).arg(pwm_));
+
+        // Straight leads on the left edge, one per PWM/ANTI_CWISE/CWISE pin
+        // slot -- h-bridge motors are outputs, so CanvasWidget::updateWires
+        // attaches wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

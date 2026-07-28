@@ -1,11 +1,12 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QRadialGradient>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 #include <cmath>
 
-static const QColor DISTANCE_SENSOR_FILL("#74b5dc");
+static const QColor DISTANCE_SENSOR_ACCENT("#74ffff");
 
 class DistanceSensorItem : public ComponentItem {
     QLineEdit* input_;
@@ -19,7 +20,7 @@ public:
         input_->setStyleSheet("background:#001a1a; color:#44ffff; border:1px solid #44ffff;");
         auto* proxy = new QGraphicsProxyWidget(this);
         proxy->setWidget(input_);
-        proxy->setPos(34, 18);
+        proxy->setPos(34, 40);
         connect(input_, &QLineEdit::textChanged, this, [this](const QString& text) {
             bool ok;
             float cm = text.toFloat(&ok);
@@ -30,17 +31,40 @@ public:
         });
     }
 
-    QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
+    QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = DISTANCE_SENSOR_FILL;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Distance");
+        QRectF r = boundingRect();
+        p->setPen(QPen(QColor("#0a1f14"), 1));
+        p->setBrush(QColor("#0f3a24"));
+        p->drawRoundedRect(r, 4, 4);
+
+        // "Eyes" live in the top band only -- the bottom is reserved for the
+        // cm QLineEdit proxy, which is the actual human-readable readout.
+        qreal eyeR = 9.0;
+        QPointF c1(r.center().x() - eyeR * 1.3, r.top() + 20);
+        QPointF c2(r.center().x() + eyeR * 1.3, r.top() + 20);
+        for (const auto& c : {c1, c2}) {
+            QRadialGradient g(c - QPointF(eyeR * 0.3, eyeR * 0.3), eyeR * 1.4);
+            g.setColorAt(0.0, QColor("#e8e8e8"));
+            g.setColorAt(0.5, QColor("#9a9a9a"));
+            g.setColorAt(1.0, QColor("#4a4a4a"));
+            p->setPen(QPen(QColor("#222"), 1));
+            p->setBrush(g);
+            p->drawEllipse(c, eyeR, eyeR);
+            p->setPen(QPen(QColor("#333"), 1));
+            p->setBrush(Qt::NoBrush);
+            p->drawEllipse(c, eyeR * 0.6, eyeR * 0.6);
+        }
+
+        // Straight leads on the right edge, one per TRIG/ECHO pin slot --
+        // distance sensors are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 2; ++i) {
+            qreal y = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 10, y), QPointF(r.width(), y));
+        }
     }
 
     // Called by CanvasWidget after inputChanged is connected -- setting this
@@ -67,7 +91,7 @@ static bool registered = []() {
         MultiPinStrategy::Suffix,
         "ECHO"
     };
-    def.wire_color = DISTANCE_SENSOR_FILL;
+    def.wire_color = DISTANCE_SENSOR_ACCENT;
     ComponentRegistry::instance().register_component(def);
     return true;
 }();

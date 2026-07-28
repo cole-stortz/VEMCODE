@@ -1,6 +1,7 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QLinearGradient>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
@@ -33,16 +34,33 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = DHT_FILL;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "DHT");
-        p->drawText(QRectF(4, 24, 44, 16), Qt::AlignLeft, "°C");
-        p->drawText(QRectF(52, 24, 44, 16), Qt::AlignLeft, "%RH");
+        QRectF r = boundingRect();
+        QColor base = DHT_FILL;
+        QLinearGradient bg(r.topLeft(), r.bottomLeft());
+        bg.setColorAt(0.0, base.lighter(130));
+        bg.setColorAt(0.5, base);
+        bg.setColorAt(1.0, base.darker(120));
+        p->setPen(QPen(base.darker(180), 1.2));
+        p->setBrush(bg);
+        p->drawRoundedRect(r, 5, 5);
+
+        // Grille fills the top band only -- the bottom third is left clear for
+        // the temp_in_/humid_in_ QLineEdit proxies, which double as the
+        // human-readable readout (no point painting a duplicate screen
+        // underneath widgets that would just cover it).
+        QRectF grille = r.adjusted(6, 6, -6, -r.height() * 0.42);
+        p->setPen(QPen(base.darker(160), 1));
+        p->setBrush(Qt::NoBrush);
+        int cols = 6, rows = 3;
+        qreal cw = grille.width() / cols, ch = grille.height() / rows;
+        for (int row = 0; row < rows; ++row)
+            for (int col = 0; col < cols; ++col)
+                p->drawRect(QRectF(grille.x() + col * cw + 1, grille.y() + row * ch + 1, cw - 2, ch - 2));
+
+        // Straight lead on the right edge -- DHT is an input, so
+        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
     }
 
     void emitInitialValue() override { emitReading(); }
