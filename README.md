@@ -365,7 +365,7 @@ VEMCODE/
 
 ## Project Status
 
-VEMCODE is currently in **Alpha**. Core functionality is operational, but bugs, incomplete features, and breaking changes should be expected.
+VEMCODE is currently in **Beta**. Core functionality is operational, but bugs, incomplete features, and breaking changes should be expected.
 
 ### Known limitations
 - Real electrical behavior (voltage, current, short circuits) — not in scope; VEMCODE simulates firmware logic, not analog electronics; use SimulIDE or LTspice for SPICE-level modeling
