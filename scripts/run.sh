@@ -9,4 +9,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 cmake --build build -j"$(nproc)" || exit 1
 
-./app/VEMCODE "$@"
+VEMCODE_BIN="./app/VEMCODE"
+[ -f "$VEMCODE_BIN" ] || VEMCODE_BIN="${VEMCODE_BIN}.exe"
+
+"$VEMCODE_BIN" "$@"
