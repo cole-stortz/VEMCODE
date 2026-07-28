@@ -46,6 +46,7 @@ struct DebugTabEntry {
     QString  label;
     QWidget* widget = nullptr;
     QString  settingsKey;
+    QAction* action = nullptr;  // set once setupMenuBar() builds the Window menu
 };
 
 class MainWindow : public QMainWindow {
@@ -124,6 +125,11 @@ private:
     void setDebugTabVisible(DebugTabEntry& entry, bool visible);
     int  debugTabInsertIndex(const DebugTabEntry& entry) const;
 
+    // Re-checks every Window menu toggle (routes through the same QActions
+    // users click, so it stays a single source of truth) and restores the
+    // default splitter sizes.
+    void resetWindowLayout();
+
     void populateRecentMenu(QMenu* menu);
 
     // Toolbar
@@ -131,6 +137,16 @@ private:
     QPushButton*    stopButton_     = nullptr;
     QLabel*         boardLabel_     = nullptr;
     QPushButton*    layoutButton_   = nullptr;
+
+    // Splitters -- top-level (editor | rest) and right side (canvas / debug)
+    QSplitter* mainSplitter_  = nullptr;
+    QSplitter* rightSplitter_ = nullptr;
+
+    // Window menu panel-visibility actions, kept so resetWindowLayout() can
+    // re-check them (and let their own toggled() handler do the work).
+    QAction* editorPanelAction_ = nullptr;
+    QAction* canvasPanelAction_ = nullptr;
+    QAction* debugPanelAction_  = nullptr;
 
     // Editor panel (left)
     QWidget* editorPanel_ = nullptr;

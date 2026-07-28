@@ -329,10 +329,11 @@ void MainWindow::setupMenuBar() {
             QSettings settings = appSettings();
             settings.setValue(key, visible);
         });
+        return action;
     };
-    addPanelToggle("Editor", editorPanel_, "window/panel_editor");
-    addPanelToggle("Canvas", canvasPanel_, "window/panel_canvas");
-    addPanelToggle("Debug Panel", debugPanel_, "window/panel_debug");
+    editorPanelAction_ = addPanelToggle("Editor", editorPanel_, "window/panel_editor");
+    canvasPanelAction_ = addPanelToggle("Canvas", canvasPanel_, "window/panel_canvas");
+    debugPanelAction_  = addPanelToggle("Debug Panel", debugPanel_, "window/panel_debug");
 
     windowMenu->addSeparator();
     for (DebugTabEntry& entry : debugTabToggles_) {
@@ -342,7 +343,11 @@ void MainWindow::setupMenuBar() {
         connect(action, &QAction::toggled, this, [this, &entry](bool visible) {
             setDebugTabVisible(entry, visible);
         });
+        entry.action = action;
     }
+
+    windowMenu->addSeparator();
+    windowMenu->addAction("Reset Layout", this, &MainWindow::resetWindowLayout);
 
     // Board -- quick switch without opening the full Settings dialog
     QMenu* boardMenu = menuBar->addMenu("&Board");
@@ -442,23 +447,23 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 
 // Main area -- horizontal splitter: editor | (canvas + debug)
 void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
-    QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, parent);
-    mainSplitter->setHandleWidth(1);
+    mainSplitter_ = new QSplitter(Qt::Horizontal, parent);
+    mainSplitter_->setHandleWidth(1);
     editorPanel_ = buildEditorPanel();
-    mainSplitter->addWidget(editorPanel_);
+    mainSplitter_->addWidget(editorPanel_);
 
-    QSplitter* rightSplitter = new QSplitter(Qt::Vertical, mainSplitter);
-    rightSplitter->setHandleWidth(1);
+    rightSplitter_ = new QSplitter(Qt::Vertical, mainSplitter_);
+    rightSplitter_->setHandleWidth(1);
     canvasPanel_ = buildCanvasPanel();
-    rightSplitter->addWidget(canvasPanel_);
+    rightSplitter_->addWidget(canvasPanel_);
     debugPanel_ = buildDebugPanel();
-    rightSplitter->addWidget(debugPanel_);
-    rightSplitter->setSizes({300, 220});
+    rightSplitter_->addWidget(debugPanel_);
+    rightSplitter_->setSizes({300, 220});
 
-    mainSplitter->addWidget(rightSplitter);
-    mainSplitter->setSizes({380, 900});
+    mainSplitter_->addWidget(rightSplitter_);
+    mainSplitter_->setSizes({380, 900});
 
-    layout->addWidget(mainSplitter);
+    layout->addWidget(mainSplitter_);
 }
 
 // Editor panel (left)
@@ -725,6 +730,17 @@ int MainWindow::debugTabInsertIndex(const DebugTabEntry& entry) const {
         if (debugTabs_->indexOf(e.widget) != -1) index++;
     }
     return index;
+}
+
+void MainWindow::resetWindowLayout() {
+    editorPanelAction_->setChecked(true);
+    canvasPanelAction_->setChecked(true);
+    debugPanelAction_->setChecked(true);
+    for (DebugTabEntry& entry : debugTabToggles_)
+        if (entry.action) entry.action->setChecked(true);
+
+    mainSplitter_->setSizes({380, 900});
+    rightSplitter_->setSizes({300, 220});
 }
 
 void MainWindow::setDebugTabVisible(DebugTabEntry& entry, bool visible) {
