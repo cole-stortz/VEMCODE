@@ -215,7 +215,7 @@ Fill out the remaining commonly-used Arduino API surface and add low-level simul
 
 ---
 
-### Phase 8 — Component Plugin System + Generator + New Components
+### Phase 8 — Component Plugin System + Generator + New Components ✓
 
 Pull the component plugin architecture forward so that all new components added in this phase and beyond use the new system from day one. The dev component generator is built last, on top of the stable plugin foundation.
 
@@ -294,7 +294,7 @@ Heavier runtime work requiring more architectural changes: bus protocol simulati
 
 ---
 
-### Phase 10 — Editor + Settings + Canvas Improvements
+### Phase 10 — Editor + Settings + Canvas Improvements ✓
 
 Polish the editor into a first-class coding environment, consolidate settings, add a serial plotter, and give the canvas a proper layout system.
 
