@@ -151,6 +151,7 @@ set(SOURCES
     src/ui/panels/spipanel.cpp
     src/ui/settingsdialog.cpp
     src/ui/apptheme.cpp
+    src/ui/timelinerecorder.cpp
     src/core/runtime/arduinoruntime.cpp
     src/core/host/sketchhost.cpp
     src/core/host/sketchhostthread.cpp
@@ -191,6 +192,7 @@ set(HEADERS
     src/ui/panels/spipanel.h
     src/ui/settingsdialog.h
     src/ui/apptheme.h
+    src/ui/timelinerecorder.h
     src/core/runtime/arduinoapi.h
     src/core/runtime/arduinoruntime.h
     src/core/host/sketchhost.h

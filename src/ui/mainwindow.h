@@ -39,6 +39,7 @@
 #include "src/core/runtime/boardprofile.h"
 #include "src/ui/editor/keybindmanager.h"
 #include "src/ui/editor/findreplacebar.h"
+#include "src/ui/timelinerecorder.h"
 
 // One entry per debug-panel tab, tracked so the Window menu can show/hide
 // tabs individually while preserving their relative order on re-insert.
@@ -84,6 +85,7 @@ private slots:
     void onSerialSend();
     void insertCompletion(const QString& completion);
     void onLayoutToggled(bool on);
+    void onExportTimeline();
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -181,6 +183,7 @@ private:
     // Simulation
     SketchThread*      sketchThread_  = nullptr;
     QString            currentSketchPath_;
+    TimelineRecorder   timelineRecorder_;
 
     // Window title base (sans "unsaved changes" marker) and editor zoom level
     QString windowTitleBase_ = "VEMCODE";

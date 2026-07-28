@@ -373,6 +373,14 @@ void MainWindow::setupMenuBar() {
     runMenu->addAction("Run", this, [this]() { if (runButton_->isEnabled()) onRunClicked(); });
     runMenu->addAction("Stop", this, &MainWindow::onStopClicked);
     runMenu->addSeparator();
+    QAction* recordAction = runMenu->addAction("Record");
+    recordAction->setCheckable(true);
+    recordAction->setToolTip("Capture canvas interactions and Serial sends into a .timeline file");
+    connect(recordAction, &QAction::toggled, this, [this](bool on) {
+        timelineRecorder_.setActive(on);
+    });
+    runMenu->addAction("Export Timeline...", this, &MainWindow::onExportTimeline);
+    runMenu->addSeparator();
     runMenu->addAction("Reset Canvas Layout", this, [this]() { canvasWidget_->resetLayout(); });
 
     // Help
@@ -841,6 +849,10 @@ void MainWindow::onPinChanged(int pin, int value) {
 }
 
 void MainWindow::onComponentInput(int pin, int eventType, QVariant value) {
+    if (timelineRecorder_.isActive())
+        timelineRecorder_.recordComponentInput(pin, static_cast<ComponentEventType>(eventType),
+            value, simTimer_.elapsed() / 1000.0, detector_.components());
+
     switch (static_cast<ComponentEventType>(eventType)) {
         case ComponentEventType::DigitalPress:
             sketchThread_->injectPin(pin, value.toInt());
@@ -1044,6 +1056,7 @@ void MainWindow::onRunClicked() {
     signalTimeline_->clear();
     serialPlotter_->clear();
     variableWatch_->clearValues();
+    timelineRecorder_.clear();
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
@@ -1108,6 +1121,28 @@ void MainWindow::onStopClicked() {
     statusBar()->showMessage("Stopped");
     runButton_->setEnabled(true);
     stopButton_->setEnabled(false);
+}
+
+void MainWindow::onExportTimeline() {
+    if (timelineRecorder_.isEmpty()) {
+        statusBar()->showMessage("Nothing recorded yet");
+        return;
+    }
+
+    QString baseName = currentSketchPath_.isEmpty()
+        ? "recording" : QFileInfo(currentSketchPath_).completeBaseName();
+    QString defaultDir = currentSketchPath_.isEmpty()
+        ? defaultSketchLocation_ : QFileInfo(currentSketchPath_).absolutePath();
+    QString path = QFileDialog::getSaveFileName(
+        this, "Export Timeline", defaultDir + "/" + baseName + ".timeline",
+        "Timeline files (*.timeline)"
+    );
+    if (path.isEmpty()) return;
+
+    if (timelineRecorder_.exportToFile(path))
+        statusBar()->showMessage("Exported: " + path);
+    else
+        statusBar()->showMessage("Failed to export: " + path);
 }
 
 void MainWindow::onLayoutToggled(bool on) {
@@ -1783,6 +1818,8 @@ void MainWindow::onSpeedChanged(int value) {
 void MainWindow::onSerialSend() {
     QString text = serialInput_->text();
     if (text.isEmpty()) return;
+    if (timelineRecorder_.isActive())
+        timelineRecorder_.recordSerialSend(text, simTimer_.elapsed() / 1000.0);
     sketchThread_->injectSerial(text + "\n");
     serialMonitor_->appendPlainText("> " + text);
     serialInput_->clear();
