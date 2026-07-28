@@ -66,6 +66,7 @@ void SketchThread::run() {
     // Override Serial output -- emit signal instead of printing to console
     runtime.on_serial_output = [this](const std::string& text) {
         emit serialOutput(QString::fromStdString(text));
+        if (timelineRunner_) timelineRunner_->onSerialOutput(text);
     };
 
     runtime.on_serial1_output = [this](const std::string& text) {
@@ -83,6 +84,7 @@ void SketchThread::run() {
     // Override pin change -- emit signal instead of printing to console
     runtime.on_pin_changed = [this](int pin, int value) {
         emit pinChanged(pin, value);
+        if (timelineRunner_) timelineRunner_->onPinChanged(pin, value);
     };
 
     // Check to see if a variable changed and emit that signal
@@ -178,7 +180,20 @@ void SketchThread::run() {
         try {
             host_.runtime().exec_mutex().lock();
             tl_exec_locked = true;
+            if (timelineRunner_) {
+                auto now = std::chrono::steady_clock::now();
+                double real_dt = std::chrono::duration<double>(now - lastTick_).count();
+                lastTick_ = now;
+                sketchTimeAccum_ += real_dt * displaySpeed_;
+                timelineRunner_->fireDueEvents(sketchTimeAccum_);
+            }
             host_.run_loop();
+            if (timelineRunner_ && timelineRunner_->finished()) {
+                emit timelineFinished(timelineRunner_->anyAssertFailed(),
+                    timelineRunner_->assertCount() - timelineRunner_->assertFailedCount(),
+                    timelineRunner_->assertCount());
+                timelineRunner_.reset();
+            }
             tl_exec_locked = false;
             host_.runtime().exec_mutex().unlock();
         } catch (const std::exception& e) {
@@ -245,7 +260,17 @@ void SketchThread::injectAnalog(int pin, int value) {
 }
 
 void SketchThread::setSpeed(float speed){
+    displaySpeed_ = speed;
     host_.set_speed(speed);
+}
+
+void SketchThread::armTimeline(std::vector<DetectedComponent> components, std::vector<TimelineEvent> events) {
+    timelineRunner_ = std::make_unique<TestRunner>(host_, std::move(components), std::move(events));
+    sketchTimeAccum_ = 0.0;
+    lastTick_ = std::chrono::steady_clock::now();
+    timelineRunner_->on_assert_result = [this](bool pass, double time, const std::string& msg) {
+        emit assertResult(pass, time, QString::fromStdString(msg));
+    };
 }
 
 void SketchThread::injectSerial(const QString& data) {

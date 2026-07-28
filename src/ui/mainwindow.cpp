@@ -105,6 +105,17 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::onSoftSerialOutput);
     connect(sketchThread_, &SketchThread::pinChanged,
             this, &MainWindow::onPinChanged);
+    connect(sketchThread_, &SketchThread::assertResult,
+            this, [this](bool pass, double time, QString message) {
+                serialMonitor_->appendPlainText(QString("[TIMELINE] %1 [t=%2] %3")
+                    .arg(pass ? "PASS" : "FAIL").arg(time, 0, 'f', 2).arg(message));
+            });
+    connect(sketchThread_, &SketchThread::timelineFinished,
+            this, [this](bool anyFailed, int passCount, int totalCount) {
+                Q_UNUSED(anyFailed);
+                statusBar()->showMessage(
+                    QString("Timeline finished: %1/%2 asserts passed").arg(passCount).arg(totalCount));
+            });
     connect(sketchThread_, &SketchThread::sketchReloaded,
             this, &MainWindow::onSketchReloaded);
     connect(sketchThread_, &SketchThread::loadFailed,
@@ -113,8 +124,9 @@ MainWindow::MainWindow(QWidget* parent)
             this, [this](const QString& reason) {
                 serialMonitor_->appendPlainText("ERROR: " + reason + "\n");
                 statusBar()->showMessage("Sketch crashed");
-                runButton_->setEnabled(true);
+                setRunTriggersEnabled(true);
                 stopButton_->setEnabled(false);
+                finishRecordingIfActive();
             });
     connect(sketchThread_, &SketchThread::watchdogReset,
             this, [this]() {
@@ -373,14 +385,6 @@ void MainWindow::setupMenuBar() {
     runMenu->addAction("Run", this, [this]() { if (runButton_->isEnabled()) onRunClicked(); });
     runMenu->addAction("Stop", this, &MainWindow::onStopClicked);
     runMenu->addSeparator();
-    QAction* recordAction = runMenu->addAction("Record");
-    recordAction->setCheckable(true);
-    recordAction->setToolTip("Capture canvas interactions and Serial sends into a .timeline file");
-    connect(recordAction, &QAction::toggled, this, [this](bool on) {
-        timelineRecorder_.setActive(on);
-    });
-    runMenu->addAction("Export Timeline...", this, &MainWindow::onExportTimeline);
-    runMenu->addSeparator();
     runMenu->addAction("Reset Canvas Layout", this, [this]() { canvasWidget_->resetLayout(); });
 
     // Help
@@ -431,6 +435,21 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
     stopButton_->setObjectName("btnStop");
     connect(stopButton_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     toolbarLayout->addWidget(stopButton_);
+
+    recordButton_ = new QPushButton("Record", toolbar);
+    recordButton_->setFixedSize(64, 26);
+    recordButton_->setObjectName("btnRecord");
+    recordButton_->setToolTip("Run while capturing canvas interactions and Serial sends;\n"
+                               "exports a .timeline file when you click Stop");
+    connect(recordButton_, &QPushButton::clicked, this, &MainWindow::onRecordClicked);
+    toolbarLayout->addWidget(recordButton_);
+
+    playTimelineButton_ = new QPushButton("Play Timeline", toolbar);
+    playTimelineButton_->setFixedSize(96, 26);
+    playTimelineButton_->setObjectName("btnPlayTimeline");
+    playTimelineButton_->setToolTip("Pick a .timeline file and run the sketch driven by it");
+    connect(playTimelineButton_, &QPushButton::clicked, this, &MainWindow::onPlayTimelineClicked);
+    toolbarLayout->addWidget(playTimelineButton_);
 
     QLabel* speedLabel = new QLabel("Speed:", toolbar);
     speedLabel->setProperty("role", "muted-label");
@@ -911,8 +930,9 @@ void MainWindow::onSketchReloaded() {
 void MainWindow::onLoadFailed(QString reason) {
     serialMonitor_->appendPlainText("ERROR: " + reason + "\n");
     statusBar()->showMessage("Load failed");
-    runButton_->setEnabled(true);
+    setRunTriggersEnabled(true);
     stopButton_->setEnabled(false);
+    finishRecordingIfActive();
 }
 
 // Button handlers
@@ -939,12 +959,13 @@ void MainWindow::onRunClicked() {
     if (serialMonitor1_) serialMonitor1_->clear();
     if (serialMonitor2_) serialMonitor2_->clear();
     statusBar()->showMessage("Compiling...");
-    runButton_->setEnabled(false);
+    setRunTriggersEnabled(false);
 
     QFile file(currentSketchPath_);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         statusBar()->showMessage("Failed to write: " + currentSketchPath_);
-        runButton_->setEnabled(true);
+        setRunTriggersEnabled(true);
+        timelineRecorder_.setActive(false);
         return;
     }
     file.write(codeEditor_->toPlainText().toUtf8());
@@ -1047,7 +1068,8 @@ void MainWindow::onRunClicked() {
         serialMonitor_->appendPlainText("=== Compile errors ===\n");
         serialMonitor_->appendPlainText(raw);
         statusBar()->showMessage("Compile failed");
-        runButton_->setEnabled(true);
+        setRunTriggersEnabled(true);
+        timelineRecorder_.setActive(false);
         showCompileErrors(result);
         return;
     }
@@ -1113,19 +1135,45 @@ void MainWindow::onRunClicked() {
         }
     }
 
+    if (!timelinePlaybackPath_.isEmpty()) {
+        QString playbackPath = timelinePlaybackPath_;
+        timelinePlaybackPath_.clear(); // one-shot: consumed by this run, not persisted for the next
+        try {
+            std::vector<TimelineEvent> events = parse_timeline_file(playbackPath.toStdString());
+            sketchThread_->armTimeline(detector_.components(), events);
+            serialMonitor_->appendPlainText("=== Playing timeline: " + playbackPath + " ===\n");
+        } catch (const std::exception& e) {
+            statusBar()->showMessage(QString("Failed to load timeline: %1").arg(e.what()));
+            setRunTriggersEnabled(true);
+            timelineRecorder_.setActive(false);
+            return;
+        }
+    }
+
     sketchThread_->startSketch(QString::fromStdString(result.dll_path));
 }
 
 void MainWindow::onStopClicked() {
     sketchThread_->stopSketch();
     statusBar()->showMessage("Stopped");
-    runButton_->setEnabled(true);
+    setRunTriggersEnabled(true);
     stopButton_->setEnabled(false);
+    finishRecordingIfActive();
 }
 
-void MainWindow::onExportTimeline() {
+void MainWindow::setRunTriggersEnabled(bool enabled) {
+    runButton_->setEnabled(enabled);
+    recordButton_->setEnabled(enabled);
+    playTimelineButton_->setEnabled(enabled);
+}
+
+void MainWindow::finishRecordingIfActive() {
+    bool wasRecording = timelineRecorder_.isActive();
+    timelineRecorder_.setActive(false);
+    if (!wasRecording) return;
+
     if (timelineRecorder_.isEmpty()) {
-        statusBar()->showMessage("Nothing recorded yet");
+        statusBar()->showMessage("Nothing recorded");
         return;
     }
 
@@ -1137,12 +1185,48 @@ void MainWindow::onExportTimeline() {
         this, "Export Timeline", defaultDir + "/" + baseName + ".timeline",
         "Timeline files (*.timeline)"
     );
-    if (path.isEmpty()) return;
+    if (path.isEmpty()) {
+        statusBar()->showMessage("Recording discarded");
+        return;
+    }
 
     if (timelineRecorder_.exportToFile(path))
         statusBar()->showMessage("Exported: " + path);
     else
         statusBar()->showMessage("Failed to export: " + path);
+}
+
+void MainWindow::onRecordClicked() {
+    if (!runButton_->isEnabled()) return; // already running
+    timelineRecorder_.setActive(true);
+    onRunClicked();
+}
+
+void MainWindow::onPlayTimelineClicked() {
+    if (!runButton_->isEnabled()) return; // already running
+
+    // Mirrors the headless CLI's timeline=true convention: default to
+    // <sketch-name>.timeline next to the sketch if one exists.
+    QString defaultPath;
+    if (!currentSketchPath_.isEmpty()) {
+        QFileInfo info(currentSketchPath_);
+        defaultPath = info.absolutePath() + "/" + info.completeBaseName() + ".timeline";
+    }
+
+    QString path;
+    if (!defaultPath.isEmpty() && QFile::exists(defaultPath)) {
+        path = defaultPath;
+    } else {
+        QString startDir = currentSketchPath_.isEmpty()
+            ? defaultSketchLocation_ : QFileInfo(currentSketchPath_).absolutePath();
+        path = QFileDialog::getOpenFileName(
+            this, "Select Timeline", startDir, "Timeline files (*.timeline)"
+        );
+    }
+    if (path.isEmpty()) return;
+
+    timelinePlaybackPath_ = path;
+    onRunClicked();
 }
 
 void MainWindow::onLayoutToggled(bool on) {

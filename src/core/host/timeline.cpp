@@ -191,9 +191,10 @@ void TestRunner::checkAssert(const TimelineEvent& ev) {
         ++assertCount_;
         bool pass = (actual == expected);
         if (!pass) ++assertFailed_;
-        std::cout << (pass ? "PASS" : "FAIL") << " [t=" << ev.time << "] ASSERT PIN "
-                   << ev.args[0] << " == " << ev.args[1]
-                   << " (actual: " << actual << ")\n";
+        std::string message = "ASSERT PIN " + ev.args[0] + " == " + ev.args[1] +
+            " (actual: " + std::to_string(actual) + ")";
+        std::cout << (pass ? "PASS" : "FAIL") << " [t=" << ev.time << "] " << message << "\n";
+        if (on_assert_result) on_assert_result(pass, ev.time, message);
         return;
     }
 
@@ -204,8 +205,9 @@ void TestRunner::checkAssert(const TimelineEvent& ev) {
         ++assertCount_;
         bool pass = serialBuffer_.find(ev.args[0]) != std::string::npos;
         if (!pass) ++assertFailed_;
-        std::cout << (pass ? "PASS" : "FAIL") << " [t=" << ev.time
-                   << "] ASSERT SERIAL_CONTAINS \"" << ev.args[0] << "\"\n";
+        std::string message = "ASSERT SERIAL_CONTAINS \"" + ev.args[0] + "\"";
+        std::cout << (pass ? "PASS" : "FAIL") << " [t=" << ev.time << "] " << message << "\n";
+        if (on_assert_result) on_assert_result(pass, ev.time, message);
         return;
     }
 

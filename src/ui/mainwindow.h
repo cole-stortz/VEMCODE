@@ -23,6 +23,7 @@
 #include <QCloseEvent>
 #include <qcombobox.h>
 #include "src/core/host/sketchhostthread.h"
+#include "src/core/host/timeline.h"
 #include "src/core/build/compiler.h"
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/circuitdetector.h"
@@ -85,7 +86,8 @@ private slots:
     void onSerialSend();
     void insertCompletion(const QString& completion);
     void onLayoutToggled(bool on);
-    void onExportTimeline();
+    void onRecordClicked();
+    void onPlayTimelineClicked();
 
 private:
     void setupToolbar(QWidget* parent, QVBoxLayout* layout);
@@ -134,9 +136,22 @@ private:
 
     void populateRecentMenu(QMenu* menu);
 
+    // Mirrors enabled state across the three run-triggering buttons (Run,
+    // Record, Play Timeline) -- doesn't touch stopButton_, which has its
+    // own separate timing (only enabled once the sketch actually starts,
+    // not just while compiling).
+    void setRunTriggersEnabled(bool enabled);
+
+    // Ends a Record-triggered run: if nothing was captured, just a status
+    // message; otherwise prompts for a save path and exports. No-op if the
+    // run that just stopped wasn't started via Record.
+    void finishRecordingIfActive();
+
     // Toolbar
     QPushButton*    runButton_      = nullptr;
     QPushButton*    stopButton_     = nullptr;
+    QPushButton*    recordButton_   = nullptr;
+    QPushButton*    playTimelineButton_ = nullptr;
     QLabel*         boardLabel_     = nullptr;
     QPushButton*    layoutButton_   = nullptr;
 
@@ -184,6 +199,7 @@ private:
     SketchThread*      sketchThread_  = nullptr;
     QString            currentSketchPath_;
     TimelineRecorder   timelineRecorder_;
+    QString            timelinePlaybackPath_;
 
     // Window title base (sans "unsaved changes" marker) and editor zoom level
     QString windowTitleBase_ = "VEMCODE";
