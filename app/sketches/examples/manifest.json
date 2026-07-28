@@ -71,6 +71,9 @@
     { "name": "NeoPixel Strip", "folder": "NeoPixel", "file": "NeoPixel.cpp", "category": "NeoPixel",
       "description": "WS2812B strip chasing a lit pixel via setPixelColor/show." },
 
+    { "name": "SSD1306 OLED", "folder": "OLED", "file": "OLED.cpp", "category": "OLED",
+      "description": "128x64 I2C display drawing text and a moving circle." },
+
     { "name": "Seven-Segment Display", "folder": "SevenSegment", "file": "SevenSegment.cpp", "category": "Seven-Segment Display",
       "description": "One pin per segment (A-G), no decimal point." },
 

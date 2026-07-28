@@ -54,6 +54,12 @@ struct ArduinoAPI {
     // matching the real library's buffer-then-flush semantics.
     void (*neopixel_show)(int pin, const uint8_t* rgb, int count);
 
+    // SSD1306 OLED -- keyed by reset pin, or a fixed sentinel (900, see
+    // Adafruit_SSD1306::NO_RESET_PIN_KEY) when the sketch has no real reset
+    // line, which is the common case for I2C breakout modules. pixels is
+    // width*height bytes, one per pixel (0/1), sent once per display().
+    void (*oled_display)(int pin, const uint8_t* pixels, int width, int height);
+
     // DHT11/DHT22 -- canvas-injected readings, keyed by data pin
     float (*dht_read_temperature)(int pin);
     float (*dht_read_humidity)   (int pin);

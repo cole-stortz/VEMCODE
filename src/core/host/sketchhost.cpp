@@ -4,6 +4,8 @@
 #include <chrono>
 #include <filesystem>
 #include <sstream>
+#include <vector>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -61,13 +63,49 @@ static const std::string TMP_SUFFIX = ".tmp.dylib";
 static const std::string TMP_SUFFIX = ".tmp.so";
 #endif
 
+// Each load() already removes its own immediate predecessor via
+// last_tmp_path_, but a process that never destructs cleanly (crash,
+// force-kill, an old GUI session left running) orphans its temp copy
+// forever. This sweeps a sketch's directory on every successful load and
+// keeps only the kMaxTmpFiles most recent, self-healing any pileup over
+// time without needing per-process bookkeeping across separate processes.
+static constexpr int kMaxTmpFiles = 8;
+
+static void cleanup_old_tmp_files(const std::string& dll_path) {
+    std::filesystem::path p(dll_path);
+    std::filesystem::path dir = p.has_parent_path() ? p.parent_path() : std::filesystem::path(".");
+    std::string prefix = p.filename().string() + ".";
+
+    std::vector<std::pair<std::filesystem::file_time_type, std::filesystem::path>> candidates;
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec) return;
+        const std::string name = entry.path().filename().string();
+        if (name.rfind(prefix, 0) != 0) continue;
+        if (name.size() < TMP_SUFFIX.size() ||
+            name.compare(name.size() - TMP_SUFFIX.size(), TMP_SUFFIX.size(), TMP_SUFFIX) != 0)
+            continue;
+        std::error_code mtime_ec;
+        auto mtime = std::filesystem::last_write_time(entry.path(), mtime_ec);
+        if (mtime_ec) continue;
+        candidates.emplace_back(mtime, entry.path());
+    }
+    if ((int)candidates.size() <= kMaxTmpFiles) return;
+
+    std::sort(candidates.begin(), candidates.end(),
+              [](const auto& a, const auto& b) { return a.first > b.first; }); // newest first
+    for (size_t i = kMaxTmpFiles; i < candidates.size(); ++i) {
+        std::error_code rm_ec;
+        std::filesystem::remove(candidates[i].second, rm_ec);
+    }
+}
+
 SketchHost::~SketchHost() {
     runtime_.stop_threads(); // before unloading the DLL those threads call into
     if (dll_.handle) lib_close(dll_.handle);
-    if (!dll_path_.empty()) {
+    if (!last_tmp_path_.empty()) {
         std::error_code ec;
-        std::filesystem::remove(
-            dll_path_ + "." + std::to_string(current_pid()) + TMP_SUFFIX, ec);
+        std::filesystem::remove(last_tmp_path_, ec);
     }
 }
 
@@ -83,18 +121,40 @@ bool SketchHost::load(const std::string& dll_path) {
         dll_.vb_loop  = nullptr;
     }
 
+    // Now that the old handle (if any) is closed, it's safe to remove its
+    // temp file.
+    if (!last_tmp_path_.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(last_tmp_path_, ec);
+        last_tmp_path_.clear();
+    }
+
     // Copy to a temp file so the compiler can overwrite the original (the
     // original is locked while loaded on Windows). PID-scoped so two VEMCODE
     // processes running the same sketch never overwrite each other's mapped
     // file -- doing so while it's still dlopen'd elsewhere causes a SIGBUS.
-    std::string tmp_path = dll_path + "." + std::to_string(current_pid()) + TMP_SUFFIX;
+    // Also counter-scoped so a *second* load() within the same process (Stop
+    // then Run again, or an auto-recompile hot-reload) never reuses the same
+    // path either: dlclose() doesn't guarantee the dynamic linker forgets
+    // that (device, inode) pair, so overwriting and re-dlopen-ing the same
+    // path afterward can crash dlsym() on the next load with a SIGSEGV deep
+    // inside the dynamic linker's own symbol lookup -- reproduced in
+    // isolation with a 30-line dlopen/dlclose/overwrite/dlopen repro, no
+    // threads involved. A fresh name every load sidesteps the identity reuse
+    // entirely instead of relying on dlclose() to fully undo it.
+    std::string tmp_path = dll_path + "." + std::to_string(current_pid()) +
+                            "." + std::to_string(load_count_++) + TMP_SUFFIX;
     lib_copy(dll_path, tmp_path);
 
     void* h = lib_open(tmp_path);
     if (!h) {
         std::cerr << "[SketchHost] load failed: " << lib_error() << "\n";
+        std::error_code ec;
+        std::filesystem::remove(tmp_path, ec);
         return false;
     }
+    last_tmp_path_ = tmp_path;
+    cleanup_old_tmp_files(dll_path);
 
     dll_.handle   = h;
     dll_.vb_init  = (void(*)(ArduinoAPI*)) lib_sym(h, "vb_init");

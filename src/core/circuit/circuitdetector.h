@@ -27,6 +27,11 @@ struct DetectedComponent {
     // 1 for every other component type.
     int strip_length = 1;
 
+    // OLED only: pixel dimensions (Adafruit_SSD1306's 1st/2nd constructor
+    // args). 128x64 for every other component type (harmless default).
+    int display_width  = 128;
+    int display_height = 64;
+
     // String return
     std::string to_string() const;
 };
@@ -94,6 +99,18 @@ private:
     // 3rd arg (color order/speed flags, e.g. "NEO_GRB + NEO_KHZ800") is
     // never a plain \w+ token, so it's matched loosely and ignored.
     void detect_neopixel(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        std::set<int>& claimed);
+
+    // OLED (SSD1306, I2C): "Adafruit_SSD1306 display(width, height, &Wire,
+    // resetPin)" -- resetPin is very often -1 (no dedicated reset line, the
+    // common case for I2C breakout modules), which means there's no real
+    // GPIO pin to key the canvas item by. When that happens, this falls
+    // back to a fixed sentinel (Adafruit_SSD1306::NO_RESET_PIN_KEY in
+    // ssd1306.inc, kept in sync by hand since detector and injected header
+    // compile completely separately) instead of a real pin -- same "read
+    // the constructor call" shape as Max7219/NeoPixel otherwise.
+    void detect_oled(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 

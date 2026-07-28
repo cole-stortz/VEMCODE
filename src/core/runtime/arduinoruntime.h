@@ -121,6 +121,7 @@ public:
     std::function<void(int pin, int row, const std::string&)> on_lcd_print;
     std::function<void(int pin, int addr, int row, int bits)> on_matrix_row;
     std::function<void(int pin, std::vector<uint8_t>)> on_neopixel_show;
+    std::function<void(int pin, std::vector<uint8_t>, int width, int height)> on_oled_display;
     std::function<void(const std::string&)> on_serial1_output;
     std::function<void(const std::string&)> on_serial2_output;
     std::function<void(int rxPin, const std::string&)> on_soft_serial_output;
@@ -245,6 +246,7 @@ private:
     static void          impl_lcd_print      (int pin, int row, const char* text);
     static void          impl_matrix_set_row (int pin, int addr, int row, int bits);
     static void          impl_neopixel_show  (int pin, const uint8_t* rgb, int count);
+    static void          impl_oled_display   (int pin, const uint8_t* pixels, int width, int height);
     static float         impl_dht_read_temperature(int pin);
     static float         impl_dht_read_humidity   (int pin);
     static int           impl_Serial_available();

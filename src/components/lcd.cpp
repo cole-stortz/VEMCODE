@@ -45,7 +45,7 @@ public:
 static bool registered = []() {
     ComponentDefinition def{
         "LCD",
-        {"LCD", "DISPLAY", "SCREEN", "OLED"},
+        {"LCD"},
         {
             {"RS", {"RS"}},
             {"EN", {"LCD_EN", "LCD_E", "_ENABLE", "_EN"}},

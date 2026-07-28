@@ -105,6 +105,11 @@ void SketchThread::run() {
         emit neopixelShow(pin, QByteArray(reinterpret_cast<const char*>(rgb.data()), (int)rgb.size()));
     };
 
+    // SSD1306 OLED framebuffer output -- whole buffer, once per display()
+    runtime.on_oled_display = [this](int pin, std::vector<uint8_t> pixels, int width, int height) {
+        emit oledDisplay(pin, QByteArray(reinterpret_cast<const char*>(pixels.data()), (int)pixels.size()), width, height);
+    };
+
     // Watchdog
     runtime.on_watchdog_reset = [this](){
         emit watchdogReset();

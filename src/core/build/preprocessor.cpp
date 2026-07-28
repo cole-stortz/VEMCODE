@@ -212,6 +212,8 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "DHT",             g_dht_lib },
         { "LedControl",      g_ledcontrol_lib },
         { "Adafruit_NeoPixel", g_neopixel_lib },
+        { "Adafruit_SSD1306", g_ssd1306_lib },
+        { "Adafruit_GFX",     nullptr }, // Adafruit_SSD1306 here is self-contained, doesn't derive from a GFX base
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },

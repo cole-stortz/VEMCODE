@@ -70,15 +70,17 @@ VEMCODE matches keywords against your pin names (case-insensitive). Any pin name
 | DHT (temp/humidity) | `DHT`, `DHTPIN`, `DHT_PIN` | detected via `DHT name(pin, type)` constructor |
 | MAX7219 / LedControl | | `CS`, `CLK`, `DIN` (bare or prefixed), or via `LedControl` constructor |
 | NeoPixel / WS2812B | `NEOPIXEL`, `WS2812`, `PIXEL`, `PIXELS`, `STRIP` | detected via `Adafruit_NeoPixel` constructor instead |
+| OLED (SSD1306) | `OLED`, `SSD1306`, `DISPLAY`, `SCREEN` | detected via `Adafruit_SSD1306` constructor instead; no dedicated pin (I2C) |
 | Seven-Segment Display | | `SEG_A`..`SEG_G` (or `SEGA`..`SEGG`) |
 | RGB LED | | `REDPIN`/`R_PIN`, `GREENPIN`/`G_PIN`, `BLUEPIN`/`B_PIN` (suffix-paired) |
-| LCD | `LCD`, `DISPLAY`, `SCREEN`, `OLED` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
+| LCD | `LCD` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
 | IR Sensor | `IR`, `IRSENSOR`, `IR_SENSOR`, `IR_OUT`, `INFRARED` | |
 
 - **Keypad**: detected from a `byte`/`int`/`uint8_t` array named with `ROW`/`COL` in it (`byte rowPins[4] = {9,8,7,6};`), or from numbered defines like `ROW1..ROW4`/`COL1..COL4`. Needs 2-4 rows and 2-4 columns.
 - **DHT**: detected from a `DHT name(PIN, TYPE);` constructor call.
 - **MAX7219**: detected from `LedControl lc(dataPin, clkPin, csPin[, numDevices]);`.
 - **NeoPixel**: detected from `Adafruit_NeoPixel strip(count, pin[, type]);`.
+- **OLED**: detected from `Adafruit_SSD1306 display(width, height[, &Wire, resetPin]);`. I2C has no dedicated pin, so the canvas item keys off `resetPin` when given, or an internal fallback slot when it's `-1` (very common for breakout modules with no RST line).
 
 If a pin name matches more than one component's keywords, the longest matching keyword wins.
 ### Hardcoded Pin Numbers

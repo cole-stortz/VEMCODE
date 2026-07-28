@@ -23,6 +23,7 @@ public:
     void updateLcdText(int pin, int row, const QString& text);
     void updateMatrixRow(int pin, int addr, int row, int bits);
     void updateNeopixelShow(int pin, QByteArray rgb);
+    void updateOledDisplay(int pin, QByteArray pixels, int width, int height);
     void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
 
     // Layout mode: components become draggable instead of receiving their

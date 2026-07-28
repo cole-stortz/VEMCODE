@@ -62,6 +62,16 @@ public:
     // hook hands off.
     virtual void updateStripPixels(const QByteArray& rgb);
 
+    // OLED only: called once, right after construction and before the
+    // layout phase queries boundingRect() -- same timing requirement as
+    // configureDeviceCount/configureStripLength, since display size changes
+    // the item's rendered size.
+    virtual void configureDisplaySize(int width, int height);
+
+    // OLED only: whole-framebuffer update, sent once per display(). pixels
+    // is width*height bytes, one per pixel (0/1), row-major.
+    virtual void updateOledFramebuffer(const QByteArray& pixels, int width, int height);
+
     // Called once by CanvasWidget after inputChanged is connected. Emitting
     // from the constructor or configureMultiPin instead silently drops it --
     // both run before the caller can connect to a freshly-created item.

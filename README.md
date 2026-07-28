@@ -101,7 +101,7 @@ Right-click a known Arduino function (`digitalWrite`, `Serial.print`, `attachInt
 The circuit canvas is a custom panel placed on the top right which will automatically draw the circuit based on detected components and place them for you. The outputs go to the right of the microcontroller and the inputs are on the left. Inputs are interactive and Sensors have input fields based on type.
 
 #### Supported Components
-- Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, Stepper Motor, LCD, MAX7219 LED Matrix, NeoPixel/WS2812B Strip, Seven-Segment Display, Generic Output
+- Outputs: LED (regular and RGB), Buzzer, Servo, H-Bridge Motor, Stepper Motor, LCD, MAX7219 LED Matrix, NeoPixel/WS2812B Strip, SSD1306 OLED, Seven-Segment Display, Generic Output
 - Inputs: Button (clean and bouncy variants), Switch, Potentiometer, Rotary Encoder, Joystick, Keypad, Generic Input
 - Sensors: Color Sensor, Distance Sensor, Light Sensor (LDR), Temperature Sensor, Force Sensor, DHT (temp/humidity), IR Sensor, Generic Analog Sensor
 
@@ -122,6 +122,7 @@ VEMCODE does not support standard Arduino libraries directly. Instead, each supp
 - **DHT** — `DHT(pin, type)`, `begin()`, `readTemperature()`, `readHumidity()`; reads come from the canvas DHT sensor's configured values
 - **LedControl (MAX7219)** — `LedControl(dataPin, clkPin, csPin, numDevices)`, `setLed()`, `setRow()`, `setColumn()`, `clearDisplay()`; drives the canvas LED matrix component, `setIntensity()`/`shutdown()` are accepted as no-ops
 - **Adafruit_NeoPixel** — `Adafruit_NeoPixel(count, pin, type)`, `begin()`, `show()`, `setPixelColor()`, `Color()`, `clear()`, `fill()`, `setBrightness()`, `numPixels()`; colors are buffered and flushed to the canvas strip component once per `show()`, matching real library semantics; `type` (`NEO_GRB + NEO_KHZ800` etc.) is accepted but unused since colors are stored directly rather than serialized as a bitstream
+- **Adafruit_SSD1306** (`Wire`/`Adafruit_GFX` includes accepted alongside it) — `Adafruit_SSD1306(width, height, &Wire, resetPin)`, `begin()`, `clearDisplay()`, `drawPixel()`, `drawLine()`, `drawRect()`/`fillRect()`, `drawCircle()`/`fillCircle()`, `drawBitmap()`, `setCursor()`, `setTextSize()`, `setTextColor()`, `print()`/`println()`, `display()`; the whole monochrome framebuffer is flushed to the canvas once per `display()`; text renders with a compact built-in 3x5 dot-matrix font (legible approximation, not pixel-identical to real hardware fonts); since I2C has no dedicated GPIO pin, the canvas item keys off the reset pin when one is given, or a fixed internal slot when it's `-1` (the common case for breakout modules with no RST line) — sketches with multiple no-RST displays on the same bus will only show the first one
 
 
 ### Simulation

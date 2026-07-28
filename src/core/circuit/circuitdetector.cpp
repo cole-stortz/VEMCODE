@@ -628,6 +628,71 @@ void CircuitDetector::detect_neopixel(
     }
 }
 
+void CircuitDetector::detect_oled(
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    if (!ComponentRegistry::instance().find_by_type("OLED")) return;
+
+    // Same sentinel Adafruit_SSD1306::NO_RESET_PIN_KEY uses in ssd1306.inc.
+    constexpr int NO_RESET_PIN_KEY = 900;
+
+    // "Adafruit_SSD1306 display(width, height, &Wire, resetPin)" -- width
+    // and height are always required, but the wire pointer and reset pin
+    // are optional (both default in the real library), so the rest of the
+    // argument list is captured as one blob and split by hand rather than
+    // matched positionally -- much less regex-fragile than nested optional
+    // groups for an argument count that varies 2-4 wide.
+    static const std::regex ctor_re(
+        R"(\bAdafruit_SSD1306\s+(\w+)\s*(?:=\s*Adafruit_SSD1306\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(,\s*[^)]*)?\))");
+
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+         it != std::sregex_iterator(); ++it) {
+        std::string obj_name = (*it)[1].str();
+        int width  = resolve_pin((*it)[2].str(), defines);
+        int height = resolve_pin((*it)[3].str(), defines);
+        if (width <= 0)  width  = 128;
+        if (height <= 0) height = 64;
+        width  = std::min(width, 128);
+        height = std::min(height, 64);
+
+        int reset_pin = -1;
+        if (it->size() > 4 && (*it)[4].matched) {
+            std::string rest = (*it)[4].str(); // leading comma + remaining args
+            std::vector<std::string> args;
+            size_t start = 1; // skip the leading comma already captured
+            while (start <= rest.size()) {
+                size_t comma = rest.find(',', start);
+                std::string tok = comma == std::string::npos ? rest.substr(start) : rest.substr(start, comma - start);
+                size_t a = tok.find_first_not_of(" \t");
+                size_t b = tok.find_last_not_of(" \t");
+                args.push_back(a == std::string::npos ? "" : tok.substr(a, b - a + 1));
+                if (comma == std::string::npos) break;
+                start = comma + 1;
+            }
+            if (args.size() > 1) reset_pin = resolve_pin(args[1], defines);
+        }
+
+        int pin_key = reset_pin >= 0 ? reset_pin : NO_RESET_PIN_KEY;
+        if (claimed.count(pin_key) || pin_already_added(pin_key)) continue;
+
+        DetectedComponent comp;
+        comp.type_name      = "OLED";
+        comp.pin             = pin_key;
+        comp.pins             = {pin_key};
+        comp.pin_name         = obj_name;
+        comp.confirmed        = false;
+        comp.display_width    = width;
+        comp.display_height   = height;
+        comp.label = "OLED " + obj_name + " (" + std::to_string(width) + "x" + std::to_string(height) +
+                     (reset_pin >= 0 ? ", RST=" + std::to_string(reset_pin) : ", no RST") + ")";
+
+        components_.push_back(comp);
+        claimed.insert(pin_key);
+    }
+}
+
 std::string CircuitDetector::regex_escape(const std::string& s) {
     static const std::string special = ".()[]{}+*?^$|\\";
     std::string out;
@@ -776,6 +841,7 @@ std::set<int> CircuitDetector::detect_multipin(
     detect_dht(source, defines, claimed);
     detect_max7219(source, defines, claimed);
     detect_neopixel(source, defines, claimed);
+    detect_oled(source, defines, claimed);
 
     return claimed;
 }

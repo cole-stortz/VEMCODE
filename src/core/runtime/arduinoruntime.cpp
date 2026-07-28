@@ -91,6 +91,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.lcd_print        = impl_lcd_print;
     api.matrix_set_row   = impl_matrix_set_row;
     api.neopixel_show    = impl_neopixel_show;
+    api.oled_display     = impl_oled_display;
     api.dht_read_temperature = impl_dht_read_temperature;
     api.dht_read_humidity    = impl_dht_read_humidity;
     api.tone             = impl_tone;
@@ -363,6 +364,11 @@ void ArduinoRuntime::impl_matrix_set_row(int pin, int addr, int row, int bits) {
 void ArduinoRuntime::impl_neopixel_show(int pin, const uint8_t* rgb, int count) {
     if (g_runtime && g_runtime->on_neopixel_show)
         g_runtime->on_neopixel_show(pin, std::vector<uint8_t>(rgb, rgb + count * 3));
+}
+
+void ArduinoRuntime::impl_oled_display(int pin, const uint8_t* pixels, int width, int height) {
+    if (g_runtime && g_runtime->on_oled_display)
+        g_runtime->on_oled_display(pin, std::vector<uint8_t>(pixels, pixels + width * height), width, height);
 }
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {

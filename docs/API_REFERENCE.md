@@ -43,7 +43,7 @@ The circuit detector reads your sketch's `#define`s, `const int`s, `pinMode()` c
 - **Pattern matching**: a constructor or method call shape, e.g. `myServo.attach(9)` or `LiquidCrystal lcd(8,9,10,11,12,13)`.
 - **Multi-pin roles**: paired/grouped defines that share a prefix or suffix, e.g. `TRIG_PIN`/`ECHO_PIN` for a distance sensor.
 - **Keyword fallback**: any remaining `pinMode()`/`analogRead()` pin gets matched against a single-keyword table (below); unmatched pins become a generic input/output.
-- **Special cases**: Keypad matrices, `DHT` sensors, `LedControl`/MAX7219 chains, and `Adafruit_NeoPixel` strips are detected by their own hand-written patterns rather than the tables above.
+- **Special cases**: Keypad matrices, `DHT` sensors, `LedControl`/MAX7219 chains, `Adafruit_NeoPixel` strips, and `Adafruit_SSD1306` OLEDs are detected by their own hand-written patterns rather than the tables above.
 
 If two components would claim the same pin, the earlier tier wins and a warning is printed rather than silently overwriting the first match.
 
@@ -73,15 +73,17 @@ Keywords are matched case-insensitively as a substring of your pin's name (from 
 | DHT (temp/humidity) | `DHT`, `DHTPIN`, `DHT_PIN` | detected via `DHT name(pin, type)` constructor |
 | MAX7219 / LedControl | | `CS`, `CLK`, `DIN` (bare or prefixed), or via `LedControl` constructor |
 | NeoPixel / WS2812B | `NEOPIXEL`, `WS2812`, `PIXEL`, `PIXELS`, `STRIP` | detected via `Adafruit_NeoPixel` constructor instead |
+| OLED (SSD1306) | `OLED`, `SSD1306`, `DISPLAY`, `SCREEN` | detected via `Adafruit_SSD1306` constructor instead; no dedicated pin (I2C) |
 | Seven-Segment Display | | `SEG_A`..`SEG_G` (or `SEGA`..`SEGG`) |
 | RGB LED | | `REDPIN`/`R_PIN`, `GREENPIN`/`G_PIN`, `BLUEPIN`/`B_PIN` (suffix-paired) |
-| LCD | `LCD`, `DISPLAY`, `SCREEN`, `OLED` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
+| LCD | `LCD` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
 | IR Sensor | `IR`, `IRSENSOR`, `IR_SENSOR`, `IR_OUT`, `INFRARED` | |
 
 - **Keypad**: detected from a `byte`/`int`/`uint8_t` array named with `ROW`/`COL` in it (`byte rowPins[4] = {9,8,7,6};`), or from numbered defines like `ROW1..ROW4`/`COL1..COL4`. Needs 2-4 rows and 2-4 columns.
 - **DHT**: detected from a `DHT name(PIN, TYPE);` constructor call, the type argument (e.g. `DHT11`/`DHT22`) is just used for the label.
 - **MAX7219**: detected from `LedControl lc(dataPin, clkPin, csPin[, numDevices]);`; device count is clamped 1-8.
 - **NeoPixel**: detected from `Adafruit_NeoPixel strip(count, pin[, type]);`; pixel count is clamped 1-256.
+- **OLED**: detected from `Adafruit_SSD1306 display(width, height[, &Wire, resetPin]);`; width/height clamp to 128x64, default to 128x64 if unresolved. I2C has no dedicated GPIO pin, so the canvas item keys off `resetPin` when it resolves to a real pin, or a fixed internal sentinel when it's `-1` or omitted (very common for breakout modules with no RST line) — multiple no-RST displays in one sketch will only show the first.
 
 ## Digital I/O
 - `pinMode(pin, mode)`: `mode` is `INPUT`, `OUTPUT`, or `INPUT_PULLUP`. `INPUT_PULLUP` immediately reads HIGH until something drives it low, matching a real pull-up's idle state.

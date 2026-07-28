@@ -56,6 +56,7 @@ signals:
     void lcdPrint(int pin, int row, QString text);
     void matrixRowChanged(int pin, int addr, int row, int bits);
     void neopixelShow(int pin, QByteArray rgb);
+    void oledDisplay(int pin, QByteArray pixels, int width, int height);
     void watchdogReset();
     void sleepChanged(bool sleeping);
 

@@ -1,0 +1,7 @@
+# No canvas-injection verb exercises the framebuffer headlessly, same as
+# Max7219Test/NeoPixelTest -- this only confirms the sketch loads,
+# Adafruit_SSD1306.h's drawing calls run without crashing, and the moving
+# circle's x position advances correctly.
+0.2, ASSERT, SERIAL_CONTAINS, "OLED ready"
+0.4, ASSERT, SERIAL_CONTAINS, "OLED frame x=0"
+0.6, ASSERT, SERIAL_CONTAINS, "OLED frame x=5"

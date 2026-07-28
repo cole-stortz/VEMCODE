@@ -11,5 +11,7 @@ void ComponentItem::configureRowsCols(int, int) {}
 void ComponentItem::configureDeviceCount(int) {}
 void ComponentItem::configureStripLength(int) {}
 void ComponentItem::updateStripPixels(const QByteArray&) {}
+void ComponentItem::configureDisplaySize(int, int) {}
+void ComponentItem::updateOledFramebuffer(const QByteArray&, int, int) {}
 void ComponentItem::emitInitialValue() {}
 void ComponentItem::configureRotation(int) {}

@@ -319,6 +319,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         // boundingRect() gets queried for layout math.
         item->configureDeviceCount(comp.num_devices);
         item->configureStripLength(comp.strip_length);
+        item->configureDisplaySize(comp.display_width, comp.display_height);
         QRectF box = item->boundingRect();
         int comp_w = (int)box.width();
         int comp_h = (int)box.height();
@@ -392,6 +393,12 @@ void CanvasWidget::updateNeopixelShow(int pin, QByteArray rgb) {
     auto it = pinItems_.find(pin);
     if (it == pinItems_.end()) return;
     it.value()->updateStripPixels(rgb);
+}
+
+void CanvasWidget::updateOledDisplay(int pin, QByteArray pixels, int width, int height) {
+    auto it = pinItems_.find(pin);
+    if (it == pinItems_.end()) return;
+    it.value()->updateOledFramebuffer(pixels, width, height);
 }
 
 void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {

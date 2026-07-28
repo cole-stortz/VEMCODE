@@ -130,6 +130,8 @@ MainWindow::MainWindow(QWidget* parent)
             canvasWidget_, &CanvasWidget::updateMatrixRow);
     connect(sketchThread_, &SketchThread::neopixelShow,
             canvasWidget_, &CanvasWidget::updateNeopixelShow);
+    connect(sketchThread_, &SketchThread::oledDisplay,
+            canvasWidget_, &CanvasWidget::updateOledDisplay);
     connect(devicesPanel_, &DevicesPanel::deviceChanged,
             this, [this](int address, std::vector<uint8_t> bytes) {
                 sketchThread_->injectWireDevice(address, bytes);
