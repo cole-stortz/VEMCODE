@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <functional>
 
 class SketchHost;
 
@@ -47,7 +48,14 @@ public:
 
     bool finished() const { return nextEvent_ >= events_.size(); }
     bool anyAssertFailed() const { return assertFailed_ > 0; }
+    int assertCount() const { return assertCount_; }
+    int assertFailedCount() const { return assertFailed_; }
     void printSummary() const;
+
+    // Optional -- if set, called from checkAssert() alongside the existing
+    // stdout PASS/FAIL line, so a GUI caller can surface results without
+    // needing to scrape stdout. Not used by run_headless.
+    std::function<void(bool pass, double time, const std::string& message)> on_assert_result;
 
 private:
     void dispatchAction(const TimelineEvent& ev);

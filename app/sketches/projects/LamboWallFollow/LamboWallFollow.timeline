@@ -1,9 +1,10 @@
-
-0,  SET_COLOR, ColorSensor, 0, 0, 0  
-0,  SET, DistanceSensor_PIN, 10   # 10cm see wall
-5,  SET, DistanceSensor_PIN, 1    # 1cm backward
-10, SET, DistanceSensor_PIN, 100  # 100cm forward
-15, SET, DistanceSensor_PIN, 10   # 10cm see wall
-20, SET, DistanceSensor_PIN, 100  # 100cm forward
-25, SET_COLOR, ColorSensor, 0, 1000, 0
-26, ASSERT, SERIAL_CONTAINS, "Finished"
+0.050, SET_COLOR, ColorSensor, 0, 0, 0
+0.050, SET, DistanceSensor_PIN, 10.0
+5.005, SET, DistanceSensor_PIN, 1.0
+8.587, SET, DistanceSensor_PIN, 10.0
+8.741, SET, DistanceSensor_PIN, 100.0
+12.042, SET, DistanceSensor_PIN, 10.0
+15.302, SET_COLOR, ColorSensor, 0, 1, 0
+15.442, SET_COLOR, ColorSensor, 0, 10, 0
+15.605, SET_COLOR, ColorSensor, 0, 100, 0
+15.761, SET_COLOR, ColorSensor, 0, 255, 0

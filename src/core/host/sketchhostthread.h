@@ -1,5 +1,6 @@
 #pragma once
 #include "src/core/host/sketchhost.h"
+#include "src/core/host/timeline.h"
 #include <QThread>
 #include <QString>
 #include <QByteArray>
@@ -7,6 +8,8 @@
 #include <QMutex>
 #include <vector>
 #include <utility>
+#include <memory>
+#include <chrono>
 
 // Runs SketchHost on a background thread so the simulation never blocks the UI.
 class SketchThread : public QThread {
@@ -43,7 +46,16 @@ public:
     // the sketch thread's own loop so reads never race the sketch's writes.
     void setWatchList(std::vector<std::pair<QString, QString>> vars);
 
+    // Arms a .timeline playback for the next run() -- must be called before
+    // startSketch(). Drives the same TestRunner the headless CLI uses, from
+    // inside this thread's own locked loop (see run()), so it gets the same
+    // "sketch always reacts between events" guarantee headless mode has.
+    void armTimeline(std::vector<DetectedComponent> components, std::vector<TimelineEvent> events);
+
 signals:
+    // pass/time/message mirror TestRunner::on_assert_result exactly.
+    void assertResult(bool pass, double time, QString message);
+    void timelineFinished(bool anyFailed, int passCount, int totalCount);
     void serialOutput(QString text);
     void serial1Output(QString text);
     void serial2Output(QString text);
@@ -70,4 +82,10 @@ private:
     QMutex        inject_mutex_;
     QMutex        watch_mutex_;
     std::vector<std::pair<QString, QString>> watchList_;
+
+    // .timeline playback (see armTimeline() above)
+    std::unique_ptr<TestRunner> timelineRunner_;
+    double displaySpeed_    = 1.0;
+    double sketchTimeAccum_ = 0.0;
+    std::chrono::steady_clock::time_point lastTick_;
 };
