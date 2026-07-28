@@ -5,6 +5,7 @@
 #include "src/ui/editor/sketchlinter.h"
 #include <regex>
 #include <algorithm>
+#include <cmath>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -457,9 +458,10 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 
     speedSlider_ = new QSlider(Qt::Horizontal, toolbar);
     speedSlider_->setRange(1, 25);
-    speedSlider_->setValue(10);
+    speedSlider_->setValue(13); // dead center of 1-25 -- see speedForSliderValue()
     speedSlider_->setFixedWidth(80);
-    speedSlider_->setToolTip("Simulation speed (5 = normal)");
+    speedSlider_->setToolTip("Simulation speed (1.0x = normal, double-click to reset)");
+    speedSlider_->installEventFilter(this);
     connect(speedSlider_, &QSlider::valueChanged, this, &MainWindow::onSpeedChanged);
     toolbarLayout->addWidget(speedSlider_);
 
@@ -1461,6 +1463,11 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
         }
     }
 
+    if (obj == speedSlider_ && event->type() == QEvent::MouseButtonDblClick) {
+        speedSlider_->setValue(13); // 1.0x -- see speedForSliderValue()
+        return true;
+    }
+
     if (obj == codeEditor_ && event->type() == QEvent::Wheel) {
         QWheelEvent* wheel = static_cast<QWheelEvent*>(event);
         if (wheel->modifiers() & Qt::ControlModifier) {
@@ -1892,10 +1899,22 @@ void MainWindow::addToRecentSketches(const QString& path) {
     settings.setValue("recent/sketches", recent);
 }
 
+// Slider range 1-25 is unchanged (same drag distance/step count as before),
+// but the value->speed mapping is now two log-scaled segments joined at
+// 1.0x (dead center, tick 13): 1..13 spans 0.1x-1.0x, 13..25 spans 1.0x-5.0x.
+// Equal slider distance means equal *ratio* change in speed either side of
+// 1x, not a flat +/-0.1x -- matches how a speed multiplier is actually
+// perceived (0.1x -> 0.2x is huge; 4x -> 4.1x is nothing).
+static float speedForSliderValue(int value) {
+    if (value <= 13)
+        return 0.1f * std::pow(10.0f, (value - 1) / 12.0f);
+    return std::pow(5.0f, (value - 13) / 12.0f);
+}
+
 void MainWindow::onSpeedChanged(int value) {
-    float display_speed = value / 10.0f;  // slider range 1–25: 1=0.1x, 10=1.0x, 25=2.5x
+    float display_speed = speedForSliderValue(value);
     sketchThread_->setSpeed(display_speed);
-    speedSlider_->setToolTip(QString("Speed: %1x").arg(display_speed, 0, 'f', 1));
+    speedSlider_->setToolTip(QString("Speed: %1x").arg(display_speed, 0, 'f', 2));
     QToolTip::showText(QCursor::pos(), speedSlider_->toolTip(), speedSlider_);
 }
 
