@@ -356,7 +356,7 @@ void CircuitDetector::detect_array_group(
     for (size_t i = 0; i < len; ++i) {
         std::vector<int> pins;
         for (const auto& rp : role_pins) pins.push_back(rp[i]);
-        add_multipin_component(def, pins, def.type_name, claimed);
+        add_multipin_component(def, pins, def.type_name + std::to_string(i), claimed);
     }
 }
 

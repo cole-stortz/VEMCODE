@@ -1,0 +1,33 @@
+0.682, SET_COLOR, ColorSensor2, 0, 0, 0
+0.683, SET_COLOR, ColorSensor3, 0, 0, 0
+0.683, SET, forceSensorPin, 0
+0.683, RELEASE, IRSensor
+0.683, SET, DistanceSensorPIN1, 10.0
+0.684, SET, DistanceSensorPIN2, 10.0
+0.684, SET_COLOR, ColorSensor1, 0, 0, 0
+0.684, SET_COLOR, ColorSensor0, 0, 0, 0
+2.671, PRESS, IRSensor
+3.206, RELEASE, IRSensor
+5.381, SET, DistanceSensorPIN1, 1.0
+7.204, SET, forceSensorPin, 1
+7.365, SET, forceSensorPin, 10
+7.519, SET, forceSensorPin, 100
+7.680, SET, forceSensorPin, 1000
+10.042, SET, DistanceSensorPIN1, 10.0
+19.775, SET_COLOR, ColorSensor2, 1, 0, 0
+19.989, SET_COLOR, ColorSensor2, 10, 0, 0
+20.210, SET_COLOR, ColorSensor2, 100, 0, 0
+20.456, SET_COLOR, ColorSensor2, 255, 0, 0
+22.901, SET_COLOR, ColorSensor0, 1, 0, 0
+23.123, SET_COLOR, ColorSensor0, 10, 0, 0
+23.324, SET_COLOR, ColorSensor0, 100, 0, 0
+23.522, SET_COLOR, ColorSensor0, 255, 0, 0
+26.713, SET_COLOR, ColorSensor0, 0, 0, 0
+28.571, SET_COLOR, ColorSensor2, 0, 0, 0
+37.327, SET_COLOR, ColorSensor3, 0, 1, 0
+37.552, SET_COLOR, ColorSensor3, 0, 10, 0
+37.751, SET_COLOR, ColorSensor3, 0, 100, 0
+37.941, SET_COLOR, ColorSensor3, 0, 255, 0
+40.319, SET_COLOR, ColorSensor1, 0, 255, 0
+41.991, SET_COLOR, ColorSensor0, 0, 255, 0
+44.302, SET_COLOR, ColorSensor2, 0, 255, 0
