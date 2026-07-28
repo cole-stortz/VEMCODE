@@ -114,6 +114,10 @@ private:
     QWidget* buildSerialPanel();
     void     rebuildSerialMonitors();
 
+    // Switches activeProfile_, persists it, and pushes it to the canvas/
+    // toolbar/sketch thread. Shared by the Settings dialog and the Board menu.
+    void applyBoardChange(const BoardProfile& profile);
+
     // Window menu -- shows/hides a debug tab and persists the choice; insert
     // position is derived from debugTabToggles_ order so re-showing a tab
     // lands back where it started relative to the other visible tabs.

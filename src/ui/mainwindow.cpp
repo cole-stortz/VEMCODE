@@ -20,6 +20,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QAction>
+#include <QActionGroup>
 #include <QToolTip>
 #include <QIcon>
 #include <QWheelEvent>
@@ -285,6 +286,11 @@ void MainWindow::setupMenuBar() {
     editMenu->addAction("Select All", QKeySequence::SelectAll, codeEditor_, &QPlainTextEdit::selectAll);
     editMenu->addSeparator();
     editMenu->addAction("Find", findReplaceBar_, &FindReplaceBar::showBar);
+    editMenu->addSeparator();
+    editMenu->addAction(QString("Duplicate Line\t%1").arg(keybinds_.value("duplicate_line").toString()),
+        codeEditor_, &EditorWithLines::duplicateCurrentLine);
+    editMenu->addAction(QString("Toggle Comment\t%1").arg(keybinds_.value("comment_toggle").toString()),
+        codeEditor_, &EditorWithLines::toggleCommentSelection);
 
     // View
     QMenu* viewMenu = menuBar->addMenu("&View");
@@ -337,6 +343,25 @@ void MainWindow::setupMenuBar() {
             setDebugTabVisible(entry, visible);
         });
     }
+
+    // Board -- quick switch without opening the full Settings dialog
+    QMenu* boardMenu = menuBar->addMenu("&Board");
+    QActionGroup* boardGroup = new QActionGroup(this);
+    boardGroup->setExclusive(true);
+    auto addBoardAction = [&](const BoardProfile& profile) {
+        QAction* action = boardMenu->addAction(profile.name);
+        action->setCheckable(true);
+        action->setChecked(QString(activeProfile_.name) == QString(profile.name));
+        boardGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, profile]() {
+            applyBoardChange(profile);
+        });
+    };
+    addBoardAction(BOARD_UNO);
+    addBoardAction(BOARD_NANO);
+    addBoardAction(BOARD_MEGA);
+    addBoardAction(BOARD_DUE);
+    addBoardAction(BOARD_TEENSY);
 
     // Run
     QMenu* runMenu = menuBar->addMenu("&Run");
@@ -1502,15 +1527,12 @@ void MainWindow::onSettingsClicked() {
     if (dialog.exec() == QDialog::Accepted) {
         compilerPath_      = dialog.compilerPath();
         projectRoot_       = dialog.projectRoot();
-        int oldSerialCount = activeProfile_.serial_count;
-        activeProfile_     = dialog.selectedBoard();
         analogNoise_       = dialog.analogNoise();
         autoCompileOnSave_ = dialog.autoCompileOnSave();
         defaultSketchLocation_ = dialog.defaultSketchLocation();
         settings.setValue("compiler/path", compilerPath_);
         settings.setValue("compiler/project_root", projectRoot_);
         settings.setValue("sketches/default_location", defaultSketchLocation_);
-        settings.setValue("board/name", QString(activeProfile_.name));
         settings.setValue("simulation/analog_noise", analogNoise_);
         settings.setValue("editor/auto_compile_on_save", autoCompileOnSave_);
         darkTheme_ = dialog.darkTheme();
@@ -1520,14 +1542,24 @@ void MainWindow::onSettingsClicked() {
         codeEditor_->setActionKeybinds(keybinds_.value("code_completion"),
                                         keybinds_.value("duplicate_line"),
                                         keybinds_.value("comment_toggle"));
-        canvasWidget_->setProfile(activeProfile_);
-        boardLabel_->setText(activeProfile_.name);
-        if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+        applyBoardChange(dialog.selectedBoard());
         if (sketchThread_) sketchThread_->setAnalogNoise(analogNoise_);
-        if (activeProfile_.serial_count != oldSerialCount)
-            rebuildSerialMonitors();
         statusBar()->showMessage("Settings saved");
     }
+}
+
+void MainWindow::applyBoardChange(const BoardProfile& profile) {
+    int oldSerialCount = activeProfile_.serial_count;
+    activeProfile_ = profile;
+
+    QSettings settings = appSettings();
+    settings.setValue("board/name", QString(activeProfile_.name));
+
+    canvasWidget_->setProfile(activeProfile_);
+    boardLabel_->setText(activeProfile_.name);
+    if (sketchThread_) sketchThread_->setProfile(activeProfile_);
+    if (activeProfile_.serial_count != oldSerialCount)
+        rebuildSerialMonitors();
 }
 
 // Shared tail of onNewSketch()/onOpenExample() -- writes <name>/<name>.cpp

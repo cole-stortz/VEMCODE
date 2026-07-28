@@ -1,3 +1,7 @@
+// Cyberpunk Gameboy using Arduino Nano, by lololljjkl (LGPL3+)
+// https://projecthub.arduino.cc/lololljjkl/cyberpunk-gameboy-using-arduino-nano-87f95f
+// @board Arduino Nano
+
 #include <LedControl.h>
 
 LedControl lc = LedControl(11, 13, 10, 3);

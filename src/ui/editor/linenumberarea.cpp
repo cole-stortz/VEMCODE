@@ -89,19 +89,7 @@ void EditorWithLines::keyPressEvent(QKeyEvent* event) {
     }
 
     if (pressed == duplicateLineKey_) {
-        QTextCursor cursor = textCursor();
-        int col = cursor.positionInBlock();
-
-        QTextCursor lineCursor = cursor;
-        lineCursor.movePosition(QTextCursor::StartOfLine);
-        lineCursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-        QString line = lineCursor.selectedText();
-
-        cursor.movePosition(QTextCursor::EndOfLine);
-        cursor.insertText("\n" + line);
-        cursor.movePosition(QTextCursor::StartOfLine);
-        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, col);
-        setTextCursor(cursor);
+        duplicateCurrentLine();
         return;
     }
 
@@ -117,6 +105,22 @@ void EditorWithLines::keyPressEvent(QKeyEvent* event) {
     }
 
     QPlainTextEdit::keyPressEvent(event);
+}
+
+void EditorWithLines::duplicateCurrentLine() {
+    QTextCursor cursor = textCursor();
+    int col = cursor.positionInBlock();
+
+    QTextCursor lineCursor = cursor;
+    lineCursor.movePosition(QTextCursor::StartOfLine);
+    lineCursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    QString line = lineCursor.selectedText();
+
+    cursor.movePosition(QTextCursor::EndOfLine);
+    cursor.insertText("\n" + line);
+    cursor.movePosition(QTextCursor::StartOfLine);
+    cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, col);
+    setTextCursor(cursor);
 }
 
 void EditorWithLines::toggleCommentSelection() {
