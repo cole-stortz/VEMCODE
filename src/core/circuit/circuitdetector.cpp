@@ -74,7 +74,7 @@ void CircuitDetector::detect(const std::string& source) {
         DetectedComponent comp;
         comp.pin       = pin;
         comp.pin_name  = defines.count(token) ? token : "";
-        comp.type_name = infer_type(token, "INPUT");
+        comp.type_name = infer_type(token, "ANALOG");
         comp.confirmed = false;
 
         comp.label = comp.type_name + " (pin " + std::to_string(pin) + ")";
@@ -894,6 +894,8 @@ std::string CircuitDetector::infer_type(
 
     if (mode == "OUTPUT")
         return "GenericOutput";
+    if (mode == "ANALOG")
+        return "AnalogSensor";
 
     return "GenericInput";
 }
