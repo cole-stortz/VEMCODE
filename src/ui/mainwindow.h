@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QCompleter>
 #include <QStringListModel>
+#include <QList>
 #include <QTimer>
 #include <QScrollBar>
 #include <QCloseEvent>
@@ -38,6 +39,14 @@
 #include "src/core/runtime/boardprofile.h"
 #include "src/ui/editor/keybindmanager.h"
 #include "src/ui/editor/findreplacebar.h"
+
+// One entry per debug-panel tab, tracked so the Window menu can show/hide
+// tabs individually while preserving their relative order on re-insert.
+struct DebugTabEntry {
+    QString  label;
+    QWidget* widget = nullptr;
+    QString  settingsKey;
+};
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -105,6 +114,12 @@ private:
     QWidget* buildSerialPanel();
     void     rebuildSerialMonitors();
 
+    // Window menu -- shows/hides a debug tab and persists the choice; insert
+    // position is derived from debugTabToggles_ order so re-showing a tab
+    // lands back where it started relative to the other visible tabs.
+    void setDebugTabVisible(DebugTabEntry& entry, bool visible);
+    int  debugTabInsertIndex(const DebugTabEntry& entry) const;
+
     void populateRecentMenu(QMenu* menu);
 
     // Toolbar
@@ -114,6 +129,7 @@ private:
     QPushButton*    layoutButton_   = nullptr;
 
     // Editor panel (left)
+    QWidget* editorPanel_ = nullptr;
     EditorWithLines* codeEditor_  = nullptr;
     CodeHighlighter* highlighter_ = nullptr;
     LineNumberArea* lineNumbers_  = nullptr;
@@ -131,13 +147,16 @@ private:
     FindReplaceBar* findReplaceBar_ = nullptr;
 
     // Canvas panel (top right)
+    QWidget*        canvasPanel_    = nullptr;
     CanvasWidget*   canvasWidget_   = nullptr;
 
     // Debug panel (bottom right)
+    QWidget*        debugPanel_      = nullptr;
     QTabWidget*     debugTabs_       = nullptr;
     QPlainTextEdit* serialMonitor_   = nullptr;
     QPlainTextEdit* serialMonitor1_  = nullptr;
     QPlainTextEdit* serialMonitor2_  = nullptr;
+    QList<DebugTabEntry> debugTabToggles_;
 
     // Simulation
     SketchThread*      sketchThread_  = nullptr;

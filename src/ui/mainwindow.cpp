@@ -82,6 +82,9 @@ MainWindow::MainWindow(QWidget* parent)
     boardLabel_->setText(activeProfile_.name);
 
     setupMainArea(central, layout);  // variableWatch_ must exist before the connect below
+    editorPanel_->setVisible(settings.value("window/panel_editor", true).toBool());
+    canvasPanel_->setVisible(settings.value("window/panel_canvas", true).toBool());
+    debugPanel_->setVisible(settings.value("window/panel_debug", true).toBool());
     canvasWidget_->setProfile(activeProfile_);
     darkTheme_ = settings.value("canvas/dark_theme", true).toBool();
     setAppTheme(darkTheme_);
@@ -307,6 +310,34 @@ void MainWindow::setupMenuBar() {
     connect(layoutModeAction, &QAction::toggled, layoutButton_, &QPushButton::setChecked);
     connect(layoutButton_, &QPushButton::toggled, layoutModeAction, &QAction::setChecked);
 
+    // Window -- toggle panel/tab visibility, persisted to settings.ini
+    QMenu* windowMenu = menuBar->addMenu("&Window");
+    QSettings windowSettings = appSettings();
+
+    auto addPanelToggle = [&](const QString& label, QWidget* panel, const QString& key) {
+        QAction* action = windowMenu->addAction(label);
+        action->setCheckable(true);
+        action->setChecked(windowSettings.value(key, true).toBool());
+        connect(action, &QAction::toggled, this, [this, panel, key](bool visible) {
+            panel->setVisible(visible);
+            QSettings settings = appSettings();
+            settings.setValue(key, visible);
+        });
+    };
+    addPanelToggle("Editor", editorPanel_, "window/panel_editor");
+    addPanelToggle("Canvas", canvasPanel_, "window/panel_canvas");
+    addPanelToggle("Debug Panel", debugPanel_, "window/panel_debug");
+
+    windowMenu->addSeparator();
+    for (DebugTabEntry& entry : debugTabToggles_) {
+        QAction* action = windowMenu->addAction(entry.label);
+        action->setCheckable(true);
+        action->setChecked(debugTabs_->indexOf(entry.widget) != -1);
+        connect(action, &QAction::toggled, this, [this, &entry](bool visible) {
+            setDebugTabVisible(entry, visible);
+        });
+    }
+
     // Run
     QMenu* runMenu = menuBar->addMenu("&Run");
     runMenu->addAction("Run", this, [this]() { if (runButton_->isEnabled()) onRunClicked(); });
@@ -388,12 +419,15 @@ void MainWindow::setupToolbar(QWidget* parent, QVBoxLayout* layout) {
 void MainWindow::setupMainArea(QWidget* parent, QVBoxLayout* layout) {
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, parent);
     mainSplitter->setHandleWidth(1);
-    mainSplitter->addWidget(buildEditorPanel());
+    editorPanel_ = buildEditorPanel();
+    mainSplitter->addWidget(editorPanel_);
 
     QSplitter* rightSplitter = new QSplitter(Qt::Vertical, mainSplitter);
     rightSplitter->setHandleWidth(1);
-    rightSplitter->addWidget(buildCanvasPanel());
-    rightSplitter->addWidget(buildDebugPanel());
+    canvasPanel_ = buildCanvasPanel();
+    rightSplitter->addWidget(canvasPanel_);
+    debugPanel_ = buildDebugPanel();
+    rightSplitter->addWidget(debugPanel_);
     rightSplitter->setSizes({300, 220});
 
     mainSplitter->addWidget(rightSplitter);
@@ -640,10 +674,43 @@ QWidget* MainWindow::buildSerialPanel() {
 }
 
 void MainWindow::rebuildSerialMonitors() {
-    int savedTab = debugTabs_->currentIndex();
-    debugTabs_->removeTab(0);
-    debugTabs_->insertTab(0, buildSerialPanel(), "Serial monitor");
-    debugTabs_->setCurrentIndex(savedTab);
+    // Serial monitor is always debugTabToggles_[0]; its tab index can move
+    // around if other tabs are hidden, and it may be hidden itself.
+    DebugTabEntry& serialEntry = debugTabToggles_[0];
+    int  savedTab   = debugTabs_->currentIndex();
+    int  oldIndex   = debugTabs_->indexOf(serialEntry.widget);
+    bool wasVisible = oldIndex != -1;
+
+    if (wasVisible) debugTabs_->removeTab(oldIndex);
+    serialEntry.widget = buildSerialPanel();
+    serialEntry.widget->setParent(debugTabs_->parentWidget());
+    if (wasVisible) {
+        debugTabs_->insertTab(oldIndex, serialEntry.widget, serialEntry.label);
+        debugTabs_->setCurrentIndex(savedTab);
+    }
+}
+
+// Position for re-inserting entry -- count how many entries ahead of it in
+// debugTabToggles_ are currently visible, so it lands back in the same
+// relative order rather than always at the end.
+int MainWindow::debugTabInsertIndex(const DebugTabEntry& entry) const {
+    int index = 0;
+    for (const DebugTabEntry& e : debugTabToggles_) {
+        if (&e == &entry) break;
+        if (debugTabs_->indexOf(e.widget) != -1) index++;
+    }
+    return index;
+}
+
+void MainWindow::setDebugTabVisible(DebugTabEntry& entry, bool visible) {
+    int currentIndex = debugTabs_->indexOf(entry.widget);
+    if (visible && currentIndex == -1) {
+        debugTabs_->insertTab(debugTabInsertIndex(entry), entry.widget, entry.label);
+    } else if (!visible && currentIndex != -1) {
+        debugTabs_->removeTab(currentIndex);
+    }
+    QSettings settings = appSettings();
+    settings.setValue(entry.settingsKey, visible);
 }
 
 // Debug panel (bottom right) -- tabbed: serial, timeline, watch
@@ -656,17 +723,27 @@ QWidget* MainWindow::buildDebugPanel() {
     debugTabs_ = new QTabWidget();
     debugTabs_->setMinimumHeight(100);
 
-    debugTabs_->addTab(buildSerialPanel(), "Serial monitor");
     signalTimeline_ = new SignalTimeline();
-    debugTabs_->addTab(signalTimeline_, "Signal timeline");
-    serialPlotter_ = new SerialPlotter();
-    debugTabs_->addTab(serialPlotter_, "Serial plotter");
-    variableWatch_ = new VariableWatch();
-    debugTabs_->addTab(variableWatch_, "Variable watch");
-    devicesPanel_ = new DevicesPanel();
-    debugTabs_->addTab(devicesPanel_, "I2C");
-    spiPanel_ = new SpiPanel();
-    debugTabs_->addTab(spiPanel_, "SPI");
+    serialPlotter_  = new SerialPlotter();
+    variableWatch_  = new VariableWatch();
+    devicesPanel_   = new DevicesPanel();
+    spiPanel_       = new SpiPanel();
+
+    debugTabToggles_ = {
+        {"Serial monitor",  buildSerialPanel(), "window/tab_serial_monitor"},
+        {"Signal timeline", signalTimeline_,    "window/tab_signal_timeline"},
+        {"Serial plotter",  serialPlotter_,     "window/tab_serial_plotter"},
+        {"Variable watch",  variableWatch_,     "window/tab_variable_watch"},
+        {"I2C",             devicesPanel_,      "window/tab_i2c"},
+        {"SPI",             spiPanel_,          "window/tab_spi"},
+    };
+
+    QSettings settings = appSettings();
+    for (DebugTabEntry& entry : debugTabToggles_) {
+        entry.widget->setParent(panel);  // owned even if not added as a tab below
+        if (settings.value(entry.settingsKey, true).toBool())
+            debugTabs_->addTab(entry.widget, entry.label);
+    }
 
     layout->addWidget(debugTabs_);
     return panel;
