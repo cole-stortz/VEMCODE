@@ -7,6 +7,7 @@
 #include <QMap>
 #include <QVariant>
 #include <QColor>
+#include <QByteArray>
 #include <vector>
 #include "src/core/circuit/circuitdetector.h"
 #include "src/core/circuit/componentitem.h"
@@ -21,6 +22,7 @@ public:
     void updatePin(int pin, int value);
     void updateLcdText(int pin, int row, const QString& text);
     void updateMatrixRow(int pin, int addr, int row, int bits);
+    void updateNeopixelShow(int pin, QByteArray rgb);
     void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
 
     // Layout mode: components become draggable instead of receiving their

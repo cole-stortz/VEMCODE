@@ -42,19 +42,23 @@ for dir in "$TESTS_DIR"/*/; do
 
     echo "=== $name ==="
     if [ -f "$timeline" ]; then
-        # No output=$(...) capture -- command substitution always buffers the
-        # whole child process's output until it exits, which is what caused
-        # the "nothing, then everything at once" effect. Letting the child
-        # inherit stdout/stderr directly instead prints live as it runs.
-        "$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch" timeline=true speed=10
+        # Buffered here (unlike the non-timeline branch below) -- a timeline
+        # sketch's own Serial output is usually just debug noise around the
+        # handful of PASS/FAIL/summary lines that actually matter, so capture
+        # it and filter down to those on success. On failure, print
+        # everything instead -- a compile error or crash needs the full
+        # output to diagnose, not just the lines matching the filter.
+        out=$("$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch" timeline=true speed=10 2>&1)
         code=$?
-        echo
 
         if [ "$code" -eq 0 ]; then
+            echo "$out" | grep -E '^(PASS|FAIL|WARNING|===)'
             PASSED+=("$name")
         else
+            echo "$out"
             FAILED+=("$name (exit $code)")
         fi
+        echo
     else
         "$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch" speed=5 timeout=2
         code=$?

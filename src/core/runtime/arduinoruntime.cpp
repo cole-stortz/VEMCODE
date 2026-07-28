@@ -90,6 +90,7 @@ ArduinoAPI ArduinoRuntime::get_api() {
     api.delayMicroseconds = impl_delayMicroseconds;
     api.lcd_print        = impl_lcd_print;
     api.matrix_set_row   = impl_matrix_set_row;
+    api.neopixel_show    = impl_neopixel_show;
     api.dht_read_temperature = impl_dht_read_temperature;
     api.dht_read_humidity    = impl_dht_read_humidity;
     api.tone             = impl_tone;
@@ -357,6 +358,11 @@ void ArduinoRuntime::impl_lcd_print(int pin, int row, const char* text) {
 void ArduinoRuntime::impl_matrix_set_row(int pin, int addr, int row, int bits) {
     if (g_runtime && g_runtime->on_matrix_row)
         g_runtime->on_matrix_row(pin, addr, row, bits);
+}
+
+void ArduinoRuntime::impl_neopixel_show(int pin, const uint8_t* rgb, int count) {
+    if (g_runtime && g_runtime->on_neopixel_show)
+        g_runtime->on_neopixel_show(pin, std::vector<uint8_t>(rgb, rgb + count * 3));
 }
 
 void ArduinoRuntime::set_speed_multiplier(float speed) {

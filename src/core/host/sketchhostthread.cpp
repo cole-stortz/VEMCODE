@@ -100,6 +100,11 @@ void SketchThread::run() {
         emit matrixRowChanged(pin, addr, row, bits);
     };
 
+    // NeoPixel/WS2812 strip output -- whole buffer, once per show()
+    runtime.on_neopixel_show = [this](int pin, std::vector<uint8_t> rgb) {
+        emit neopixelShow(pin, QByteArray(reinterpret_cast<const char*>(rgb.data()), (int)rgb.size()));
+    };
+
     // Watchdog
     runtime.on_watchdog_reset = [this](){
         emit watchdogReset();

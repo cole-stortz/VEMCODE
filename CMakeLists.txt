@@ -57,7 +57,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc"
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad.inc"
     "${CMAKE_SOURCE_DIR}/src/core/build/libs/dht.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ledcontrol.inc")
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ledcontrol.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel.inc")
 
 file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc" SERVO_LIB_CONTENT)
 configure_file(
@@ -115,6 +116,13 @@ configure_file(
     @ONLY
 )
 
+file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel.inc" NEOPIXEL_LIB_CONTENT)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel_lib.cpp.in"
+    "${CMAKE_BINARY_DIR}/generated/neopixel_lib.cpp"
+    @ONLY
+)
+
 # Component plugin files — drop a .cpp into src/components/ and it's picked up automatically
 file(GLOB COMPONENT_SOURCES "${CMAKE_SOURCE_DIR}/src/components/*.cpp")
 
@@ -155,6 +163,7 @@ set(SOURCES
     ${CMAKE_BINARY_DIR}/generated/keypad_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/dht_lib.cpp
     ${CMAKE_BINARY_DIR}/generated/ledcontrol_lib.cpp
+    ${CMAKE_BINARY_DIR}/generated/neopixel_lib.cpp
     ${COMPONENT_SOURCES}
 )
 

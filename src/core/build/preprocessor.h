@@ -11,6 +11,7 @@ extern const char* g_spi_lib;
 extern const char* g_keypad_lib;
 extern const char* g_dht_lib;
 extern const char* g_ledcontrol_lib;
+extern const char* g_neopixel_lib;
 
 // Transforms Arduino sketch syntax into DLL format before compilation.
 // Passes through unchanged if source already contains "vb_init".

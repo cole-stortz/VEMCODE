@@ -1,6 +1,7 @@
 #pragma once
 #include <QGraphicsObject>
 #include <QVariant>
+#include <QByteArray>
 #include <vector>
 
 enum class ComponentEventType {
@@ -49,6 +50,17 @@ public:
     // before layout math runs, unlike configureRowsCols/configureMultiPin
     // which only affect pin wiring.
     virtual void configureDeviceCount(int count);
+
+    // NeoPixel only: called once, right after construction and before the
+    // layout phase queries boundingRect() -- same timing requirement as
+    // configureDeviceCount, since pixel count changes the item's rendered
+    // size.
+    virtual void configureStripLength(int count);
+
+    // NeoPixel only: whole-strip color update, sent once per show(). rgb is
+    // count*3 interleaved bytes (r,g,b per pixel), same order the runtime
+    // hook hands off.
+    virtual void updateStripPixels(const QByteArray& rgb);
 
     // Called once by CanvasWidget after inputChanged is connected. Emitting
     // from the constructor or configureMultiPin instead silently drops it --

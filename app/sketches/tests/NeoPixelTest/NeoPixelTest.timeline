@@ -1,0 +1,7 @@
+# No canvas-injection verb exercises strip state headlessly, same as
+# Max7219Test -- this only confirms the sketch loads, Adafruit_NeoPixel.h's
+# setPixelColor/show calls run without crashing, and the pixel index advances
+# correctly.
+0.2, ASSERT, SERIAL_CONTAINS, "NeoPixel ready"
+0.4, ASSERT, SERIAL_CONTAINS, "NeoPixel lit pixel 0"
+0.6, ASSERT, SERIAL_CONTAINS, "NeoPixel lit pixel 1"

@@ -589,6 +589,45 @@ void CircuitDetector::detect_max7219(
     }
 }
 
+void CircuitDetector::detect_neopixel(
+    const std::string& source,
+    const std::map<std::string, std::string>& defines,
+    std::set<int>& claimed)
+{
+    if (!ComponentRegistry::instance().find_by_type("NeoPixel")) return;
+
+    // "Adafruit_NeoPixel strip(count, pin[, type])" -- count and pin are
+    // positional per the real library's constructor; the optional 3rd arg
+    // (color order/speed flags) is matched loosely since it's often an
+    // expression like "NEO_GRB + NEO_KHZ800" rather than a single token.
+    static const std::regex ctor_re(
+        R"(\bAdafruit_NeoPixel\s+(\w+)\s*(?:=\s*Adafruit_NeoPixel\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(?:,[^)]*)?\))");
+
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+         it != std::sregex_iterator(); ++it) {
+        std::string obj_name = (*it)[1].str();
+        int count = resolve_pin((*it)[2].str(), defines);
+        int pin   = resolve_pin((*it)[3].str(), defines);
+        if (pin < 0) continue;
+        if (claimed.count(pin) || pin_already_added(pin)) continue;
+
+        int strip_length = count < 1 ? 1 : std::min(count, 256);
+
+        DetectedComponent comp;
+        comp.type_name    = "NeoPixel";
+        comp.pin          = pin;
+        comp.pins         = {pin};
+        comp.pin_name     = obj_name;
+        comp.confirmed    = false;
+        comp.strip_length = strip_length;
+        comp.label = "NeoPixel " + obj_name + " (pin " + std::to_string(pin) +
+                     ", pixels=" + std::to_string(strip_length) + ")";
+
+        components_.push_back(comp);
+        claimed.insert(pin);
+    }
+}
+
 std::string CircuitDetector::regex_escape(const std::string& s) {
     static const std::string special = ".()[]{}+*?^$|\\";
     std::string out;
@@ -736,6 +775,7 @@ std::set<int> CircuitDetector::detect_multipin(
     detect_keypad_matrix(source, defines, arrays, claimed);
     detect_dht(source, defines, claimed);
     detect_max7219(source, defines, claimed);
+    detect_neopixel(source, defines, claimed);
 
     return claimed;
 }

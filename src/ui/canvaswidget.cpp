@@ -318,6 +318,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         // the item's rendered size, and this is the only phase where
         // boundingRect() gets queried for layout math.
         item->configureDeviceCount(comp.num_devices);
+        item->configureStripLength(comp.strip_length);
         QRectF box = item->boundingRect();
         int comp_w = (int)box.width();
         int comp_h = (int)box.height();
@@ -385,6 +386,12 @@ void CanvasWidget::updateMatrixRow(int pin, int addr, int row, int bits) {
     auto it = pinItems_.find(pin);
     if (it == pinItems_.end()) return;
     it.value()->updateMatrixRow(addr, row, bits);
+}
+
+void CanvasWidget::updateNeopixelShow(int pin, QByteArray rgb) {
+    auto it = pinItems_.find(pin);
+    if (it == pinItems_.end()) return;
+    it.value()->updateStripPixels(rgb);
 }
 
 void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {

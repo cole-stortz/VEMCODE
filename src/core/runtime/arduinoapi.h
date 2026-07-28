@@ -49,6 +49,11 @@ struct ArduinoAPI {
     // device (0 for a single module); one call per fully-latched row byte
     void (*matrix_set_row)(int pin, int addr, int row, int bits);
 
+    // NeoPixel/WS2812 strip -- keyed by data pin; rgb is count*3 interleaved
+    // bytes (r,g,b per pixel), sent once per show() rather than per-pixel,
+    // matching the real library's buffer-then-flush semantics.
+    void (*neopixel_show)(int pin, const uint8_t* rgb, int count);
+
     // DHT11/DHT22 -- canvas-injected readings, keyed by data pin
     float (*dht_read_temperature)(int pin);
     float (*dht_read_humidity)   (int pin);

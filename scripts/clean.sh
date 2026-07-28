@@ -15,8 +15,6 @@ PATTERNS=(
 
 count=0
 for pattern in "${PATTERNS[@]}"; do
-    echo "Using find: $(type -P find)"
-    find --version | head -1
     while IFS= read -r -d '' f; do
         rm -f -- "$f"
         count=$((count + 1))

@@ -211,6 +211,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         { "Keypad",          g_keypad_lib },
         { "DHT",             g_dht_lib },
         { "LedControl",      g_ledcontrol_lib },
+        { "Adafruit_NeoPixel", g_neopixel_lib },
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },

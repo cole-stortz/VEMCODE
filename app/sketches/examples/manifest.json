@@ -68,6 +68,9 @@
     { "name": "MAX7219 LED Matrix", "folder": "Max7219", "file": "Max7219.cpp", "category": "MAX7219",
       "description": "8x8 LED matrix driven via setLed/setRow/setColumn." },
 
+    { "name": "NeoPixel Strip", "folder": "NeoPixel", "file": "NeoPixel.cpp", "category": "NeoPixel",
+      "description": "WS2812B strip chasing a lit pixel via setPixelColor/show." },
+
     { "name": "Seven-Segment Display", "folder": "SevenSegment", "file": "SevenSegment.cpp", "category": "Seven-Segment Display",
       "description": "One pin per segment (A-G), no decimal point." },
 

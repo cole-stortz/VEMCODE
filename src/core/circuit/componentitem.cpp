@@ -9,5 +9,7 @@ void ComponentItem::updateMatrixRow(int, int, int) {}
 void ComponentItem::configureMultiPin(const std::vector<int>&) {}
 void ComponentItem::configureRowsCols(int, int) {}
 void ComponentItem::configureDeviceCount(int) {}
+void ComponentItem::configureStripLength(int) {}
+void ComponentItem::updateStripPixels(const QByteArray&) {}
 void ComponentItem::emitInitialValue() {}
 void ComponentItem::configureRotation(int) {}

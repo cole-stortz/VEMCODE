@@ -2,6 +2,7 @@
 #include "src/core/host/sketchhost.h"
 #include <QThread>
 #include <QString>
+#include <QByteArray>
 #include <atomic>
 #include <QMutex>
 #include <vector>
@@ -54,6 +55,7 @@ signals:
     void variableChanged(QString name, QString value);
     void lcdPrint(int pin, int row, QString text);
     void matrixRowChanged(int pin, int addr, int row, int bits);
+    void neopixelShow(int pin, QByteArray rgb);
     void watchdogReset();
     void sleepChanged(bool sleeping);
 

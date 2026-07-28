@@ -23,6 +23,10 @@ struct DetectedComponent {
     // constructor arg). 1 for every other component type.
     int num_devices = 1;
 
+    // NeoPixel only: LED count (Adafruit_NeoPixel's 1st constructor arg).
+    // 1 for every other component type.
+    int strip_length = 1;
+
     // String return
     std::string to_string() const;
 };
@@ -80,6 +84,16 @@ private:
     // engine above can't find them; same "read the constructor call, not the
     // pin names" pattern as Keypad/DHT.
     void detect_max7219(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        std::set<int>& claimed);
+
+    // NeoPixel: "Adafruit_NeoPixel strip(count, pin[, type])" or
+    // "Adafruit_NeoPixel strip = Adafruit_NeoPixel(...)" -- same "read the
+    // constructor call, not the pin names" shape as Max7219, except the
+    // pin is the constructor's 2nd arg (1st is LED count) and the optional
+    // 3rd arg (color order/speed flags, e.g. "NEO_GRB + NEO_KHZ800") is
+    // never a plain \w+ token, so it's matched loosely and ignored.
+    void detect_neopixel(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 

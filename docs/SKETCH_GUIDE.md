@@ -69,6 +69,7 @@ VEMCODE matches keywords against your pin names (case-insensitive). Any pin name
 | Keypad | `KEYPAD` | row/col pin arrays, see below |
 | DHT (temp/humidity) | `DHT`, `DHTPIN`, `DHT_PIN` | detected via `DHT name(pin, type)` constructor |
 | MAX7219 / LedControl | | `CS`, `CLK`, `DIN` (bare or prefixed), or via `LedControl` constructor |
+| NeoPixel / WS2812B | `NEOPIXEL`, `WS2812`, `PIXEL`, `PIXELS`, `STRIP` | detected via `Adafruit_NeoPixel` constructor instead |
 | Seven-Segment Display | | `SEG_A`..`SEG_G` (or `SEGA`..`SEGG`) |
 | RGB LED | | `REDPIN`/`R_PIN`, `GREENPIN`/`G_PIN`, `BLUEPIN`/`B_PIN` (suffix-paired) |
 | LCD | `LCD`, `DISPLAY`, `SCREEN`, `OLED` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
@@ -77,6 +78,7 @@ VEMCODE matches keywords against your pin names (case-insensitive). Any pin name
 - **Keypad**: detected from a `byte`/`int`/`uint8_t` array named with `ROW`/`COL` in it (`byte rowPins[4] = {9,8,7,6};`), or from numbered defines like `ROW1..ROW4`/`COL1..COL4`. Needs 2-4 rows and 2-4 columns.
 - **DHT**: detected from a `DHT name(PIN, TYPE);` constructor call.
 - **MAX7219**: detected from `LedControl lc(dataPin, clkPin, csPin[, numDevices]);`.
+- **NeoPixel**: detected from `Adafruit_NeoPixel strip(count, pin[, type]);`.
 
 If a pin name matches more than one component's keywords, the longest matching keyword wins.
 ### Hardcoded Pin Numbers
