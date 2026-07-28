@@ -32,6 +32,15 @@ public:
         commentToggleKey_ = commentToggle;
     }
 
+    // Exposed so MainWindow's Edit menu can trigger these directly, in
+    // addition to the raw key comparisons in keyPressEvent below.
+    void duplicateCurrentLine();
+
+    // Toggles "// " on every line touched by the selection (or just the
+    // current line with no selection). Uncomments if every non-blank line in
+    // range already starts with "//", otherwise comments every non-blank line.
+    void toggleCommentSelection();
+
 signals:
     // completion has no self-contained handling here -- it needs MainWindow's
     // QCompleter, so this just asks MainWindow to show the popup.
@@ -46,11 +55,6 @@ protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
 
 private:
-    // Toggles "// " on every line touched by the selection (or just the
-    // current line with no selection). Uncomments if every non-blank line in
-    // range already starts with "//", otherwise comments every non-blank line.
-    void toggleCommentSelection();
-
     QKeySequence completionKey_;
     QKeySequence duplicateLineKey_;
     QKeySequence commentToggleKey_;

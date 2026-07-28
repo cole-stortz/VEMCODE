@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QCompleter>
 #include <QStringListModel>
+#include <QList>
 #include <QTimer>
 #include <QScrollBar>
 #include <QCloseEvent>
@@ -38,6 +39,15 @@
 #include "src/core/runtime/boardprofile.h"
 #include "src/ui/editor/keybindmanager.h"
 #include "src/ui/editor/findreplacebar.h"
+
+// One entry per debug-panel tab, tracked so the Window menu can show/hide
+// tabs individually while preserving their relative order on re-insert.
+struct DebugTabEntry {
+    QString  label;
+    QWidget* widget = nullptr;
+    QString  settingsKey;
+    QAction* action = nullptr;  // set once setupMenuBar() builds the Window menu
+};
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -105,6 +115,21 @@ private:
     QWidget* buildSerialPanel();
     void     rebuildSerialMonitors();
 
+    // Switches activeProfile_, persists it, and pushes it to the canvas/
+    // toolbar/sketch thread. Shared by the Settings dialog and the Board menu.
+    void applyBoardChange(const BoardProfile& profile);
+
+    // Window menu -- shows/hides a debug tab and persists the choice; insert
+    // position is derived from debugTabToggles_ order so re-showing a tab
+    // lands back where it started relative to the other visible tabs.
+    void setDebugTabVisible(DebugTabEntry& entry, bool visible);
+    int  debugTabInsertIndex(const DebugTabEntry& entry) const;
+
+    // Re-checks every Window menu toggle (routes through the same QActions
+    // users click, so it stays a single source of truth) and restores the
+    // default splitter sizes.
+    void resetWindowLayout();
+
     void populateRecentMenu(QMenu* menu);
 
     // Toolbar
@@ -113,7 +138,18 @@ private:
     QLabel*         boardLabel_     = nullptr;
     QPushButton*    layoutButton_   = nullptr;
 
+    // Splitters -- top-level (editor | rest) and right side (canvas / debug)
+    QSplitter* mainSplitter_  = nullptr;
+    QSplitter* rightSplitter_ = nullptr;
+
+    // Window menu panel-visibility actions, kept so resetWindowLayout() can
+    // re-check them (and let their own toggled() handler do the work).
+    QAction* editorPanelAction_ = nullptr;
+    QAction* canvasPanelAction_ = nullptr;
+    QAction* debugPanelAction_  = nullptr;
+
     // Editor panel (left)
+    QWidget* editorPanel_ = nullptr;
     EditorWithLines* codeEditor_  = nullptr;
     CodeHighlighter* highlighter_ = nullptr;
     LineNumberArea* lineNumbers_  = nullptr;
@@ -131,13 +167,16 @@ private:
     FindReplaceBar* findReplaceBar_ = nullptr;
 
     // Canvas panel (top right)
+    QWidget*        canvasPanel_    = nullptr;
     CanvasWidget*   canvasWidget_   = nullptr;
 
     // Debug panel (bottom right)
+    QWidget*        debugPanel_      = nullptr;
     QTabWidget*     debugTabs_       = nullptr;
     QPlainTextEdit* serialMonitor_   = nullptr;
     QPlainTextEdit* serialMonitor1_  = nullptr;
     QPlainTextEdit* serialMonitor2_  = nullptr;
+    QList<DebugTabEntry> debugTabToggles_;
 
     // Simulation
     SketchThread*      sketchThread_  = nullptr;
