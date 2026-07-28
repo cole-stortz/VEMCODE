@@ -9,6 +9,7 @@ VEMCODE reads your sketch and automatically detects your components, builds the 
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-GPL%20v3-blue)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/cole-stortz/VEMCODE)
 
 ![LED DEMO](docs/led_demo.gif)
 
