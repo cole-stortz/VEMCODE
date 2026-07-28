@@ -56,7 +56,7 @@ for dir in "$TESTS_DIR"/*/; do
             FAILED+=("$name (exit $code)")
         fi
     else
-        "$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch"
+        "$TIMEOUT_BIN" -k 2 --signal=INT "$TIMEOUT_SECS" "$VEMCODE_BIN" "$sketch" speed=5 timeout=2
         code=$?
         echo
 
