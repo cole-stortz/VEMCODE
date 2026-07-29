@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QRadialGradient>
 
 static const QColor BUZZER_ACTIVE("#dc9b74");
 
@@ -16,16 +15,20 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
+
+        // Lead drawn under the body, extending past its left edge -- the
+        // body paints over the overlap, so the visible stub always ends up
+        // flush with the body's edge without having to keep the two in sync.
+        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(40, 15), QPointF(0, 15));
+
         QPointF c = r.center();
-        qreal rad = qMin(r.width(), r.height()) * 0.36;
+        qreal rad = qMin(r.width(), r.height()) * 0.45;
         QColor base = active_ ? BUZZER_ACTIVE : QColor("#4a3624");
 
-        QRadialGradient body(c, rad);
-        body.setColorAt(0.0, base.lighter(130));
-        body.setColorAt(0.75, base);
-        body.setColorAt(1.0, base.darker(150));
-        p->setPen(QPen(base.darker(180), 1.2));
-        p->setBrush(body);
+        p->setPen(QPen(base.darker(180), 3));
+        p->setBrush(base);
         p->drawEllipse(c, rad, rad);
 
         p->setPen(QPen(base.darker(200), 1));
@@ -33,13 +36,8 @@ public:
         p->drawEllipse(c, rad * 0.6, rad * 0.6);
 
         p->setPen(Qt::NoPen);
-        p->setBrush(QColor("#1a1a1a"));
+        p->setBrush(base.darker(300));
         p->drawEllipse(c, rad * 0.18, rad * 0.18);
-
-        // Straight lead on the left edge -- buzzers are outputs, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
-        p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
 
         if (active_) {
             p->setPen(QPen(BUZZER_ACTIVE, 1.4));

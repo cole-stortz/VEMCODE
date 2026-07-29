@@ -30,26 +30,38 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor BUTTON_ACTIVE("#dc74c2");
+static const QColor BUZZER_ACTIVE("#dc9b74");
 
-static void paint(QPainter* p, const QRectF& r, bool pressed) {
+static void paint(QPainter* p, const QRectF& r, bool active) {
+    // Straight lead on the left edge -- buzzers are outputs, so
+    // CanvasWidget::updateWires attaches the wire at local (0, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
-    
-    float x_shrink = 0.2;
-    float y_shrink = 0.1;
-    QRectF base = r.adjusted(r.width() * x_shrink, r.height() * y_shrink, -r.width() * x_shrink, -r.height() * y_shrink);
-    QColor plate("#3a3a3a");
-    p->setPen(QPen(plate.darker(180), 3));
-    p->setBrush(plate);
-    p->drawRoundedRect(base, 4, 4);
+    p->drawLine(QPointF(40, 15), QPointF(0, 15));
 
-    QPointF c = base.center();
-    qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40); // original - 0.28 : 0.34
-    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#e0e0e0");
-    p->setPen(QPen(capColor.darker(160), 1));
-    p->setBrush(capColor);
-    p->drawEllipse(c, capR, capR);
+    QPointF c = r.center();
+    qreal rad = qMin(r.width(), r.height()) * 0.45;
+    QColor base = active ? BUZZER_ACTIVE : QColor("#4a3624");
+
+    p->setPen(QPen(base.darker(180), 3));
+    p->setBrush(base);
+    p->drawEllipse(c, rad, rad);
+
+    p->setPen(QPen(base.darker(200), 1));
+    p->setBrush(Qt::NoBrush);
+    p->drawEllipse(c, rad * 0.6, rad * 0.6);
+
+    p->setPen(Qt::NoPen);
+    p->setBrush(base.darker(300));
+    p->drawEllipse(c, rad * 0.18, rad * 0.18);
+
+    if (active) {
+        p->setPen(QPen(BUZZER_ACTIVE, 1.4));
+        for (int i = 1; i <= 3; ++i) {
+            qreal a = rad + i * 5;
+            QRectF arcRect(c.x() + rad * 0.7, c.y() - a / 2, a * 0.6, a);
+            p->drawArc(arcRect, -60 * 16, 120 * 16);
+        }
+    }
 }
 
 // ========================= PASTE ZONE END =========================
