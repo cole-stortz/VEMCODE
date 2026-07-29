@@ -7,6 +7,8 @@
 #include <QPen>
 #include <QBrush>
 #include <QFont>
+#include <QFontMetrics>
+#include <QRadialGradient>
 #include <QMouseEvent>
 #include <QTransform>
 #include <QFile>
@@ -21,25 +23,24 @@
 #include <qmessagebox.h>
 #include <qnamespace.h>
 
-// Chip/pin/component chrome -- static regardless of app theme, same as every
+// Component chrome -- static regardless of app theme, same as every
 // component's own body/fill colors (LED_ACTIVE, wire_color, etc. in
-// src/components/*.cpp). The board itself is the one exception (below) --
-// its dark navy doesn't read against a light canvas viewport.
-static const QColor COLOR_CHIP_BG        ("#3c3c62");
-static const QColor COLOR_CHIP_BORDER    ("#5a5a89");
-static const QColor COLOR_CHIP_LABEL     ("#9595d2");
-static const QColor COLOR_PIN_DOT_BG     ("#2a2a3a");
-static const QColor COLOR_PIN_DOT_BORDER ("#444466");
-static const QColor COLOR_PIN_LABEL      ("#333355");
+// src/components/*.cpp).
 static const QColor COLOR_COMPONENT_SUBLABEL ("#888888");
 
-// Board rectangle + label -- follows the app-wide theme.
-static const QColor BOARD_BG_DARK      ("#1a1a2e");
-static const QColor BOARD_BORDER_DARK  ("#3a3a5c");
-static const QColor BOARD_LABEL_DARK   ("#555577");
-static const QColor BOARD_BG_LIGHT     ("#d8d8e8");
-static const QColor BOARD_BORDER_LIGHT ("#9898b8");
-static const QColor BOARD_LABEL_LIGHT  ("#5c5c86");
+// Power indicator LED -- fixed colors regardless of board_color, same as a
+// real board's power LED doesn't change with the PCB color.
+static const QColor COLOR_POWER_LED_ON  ("#4ade80");
+static const QColor COLOR_POWER_LED_OFF ("#3a3a3a");
+
+// Mounting holes -- fixed colors, same reasoning as the power LED (real
+// hardware, doesn't change with board_color).
+static const QColor COLOR_MOUNT_HOLE         ("#111111");
+static const QColor COLOR_MOUNT_HOLE_BORDER  ("#606068");
+
+// Board rect, chip, and pin dot colors are all derived from a single base
+// color (profile_.board_color, or boardColorOverride_ if the user picked one)
+// rather than fixed constants -- see drawBoard().
 
 // Viewport background (the empty area outside the board) is the one thing
 // here that follows the app-wide theme -- everything else on the canvas
@@ -72,6 +73,12 @@ void CanvasWidget::setDarkTheme(bool dark) {
     refresh(lastComponents_); // redraws the board with the new theme's colors
 }
 
+void CanvasWidget::setSketchRunning(bool running) {
+    if (sketchRunning_ == running) return;
+    sketchRunning_ = running;
+    refresh(lastComponents_); // redraws the board with the power LED's new state
+}
+
 void CanvasWidget::setLayoutMode(bool on) {
     layoutMode_ = on;
     setCursor(on ? Qt::OpenHandCursor : Qt::ArrowCursor);
@@ -79,12 +86,24 @@ void CanvasWidget::setLayoutMode(bool on) {
 
 void CanvasWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton && event->modifiers().testFlag(Qt::ControlModifier)) {
-        QGraphicsItem* hit = itemAt(event->pos());
+        QGraphicsItem* originalHit = itemAt(event->pos());
+        QGraphicsItem* hit = originalHit;
         ComponentItem* comp = nullptr;
         while (hit) {
             comp = dynamic_cast<ComponentItem*>(hit);
             if (comp) break;
             hit = hit->parentItem();
+        }
+
+        if (!comp && originalHit && originalHit == boardRectItem_) {
+            QColor current = boardColorOverride_.isValid() ? boardColorOverride_ : profile_.board_color;
+            QColor chosen = QColorDialog::getColor(current, this, "Board Color");
+            if (chosen.isValid()) {
+                boardColorOverride_ = chosen;
+                refresh(lastComponents_);
+            }
+            event->accept();
+            return;
         }
 
         if (comp && comp->supportsRotation()) {
@@ -187,6 +206,7 @@ void CanvasWidget::resetLayout() {
     manualRotations_.clear();
     manualColors_.clear();
     manualPolarities_.clear();
+    boardColorOverride_ = QColor();
     refresh(lastComponents_);
 }
 
@@ -222,6 +242,8 @@ void CanvasWidget::saveLayout(const QString& sketchPath) const {
     root["rotations"] = rotations;
     root["colors"] = colors;
     root["polarities"] = polarities;
+    if (boardColorOverride_.isValid())
+        root["boardColor"] = boardColorOverride_.name(QColor::HexArgb);
 
     QFile file(sketchPath + ".vblayout");
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
@@ -233,6 +255,7 @@ void CanvasWidget::loadLayout(const QString& sketchPath) {
     manualRotations_.clear();
     manualColors_.clear();
     manualPolarities_.clear();
+    boardColorOverride_ = QColor();
     setZoom(1.0);
     if (sketchPath.isEmpty()) return;
 
@@ -278,6 +301,12 @@ void CanvasWidget::loadLayout(const QString& sketchPath) {
         int pin = it.key().toInt(&ok);
         if (!ok) continue;
         manualPolarities_[pin] = it.value().toBool();
+    }
+
+    QString boardColorStr = root.value("boardColor").toString();
+    if (!boardColorStr.isEmpty()) {
+        QColor c(boardColorStr);
+        if (c.isValid()) boardColorOverride_ = c;
     }
 }
 
@@ -406,30 +435,127 @@ void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {
 }
 
 void CanvasWidget::drawBoard() {
-    const QColor& board_bg     = darkTheme_ ? BOARD_BG_DARK     : BOARD_BG_LIGHT;
-    const QColor& board_border = darkTheme_ ? BOARD_BORDER_DARK : BOARD_BORDER_LIGHT;
-    const QColor& board_label  = darkTheme_ ? BOARD_LABEL_DARK  : BOARD_LABEL_LIGHT;
+    QColor base = boardColorOverride_.isValid() ? boardColorOverride_ : profile_.board_color;
 
-    scene_->addRect(
+    // Dark theme: base is used as the (dark) board background, and chip/pin
+    // chrome shades *lighter* off it. Light theme: same hue is instead forced
+    // to a light lightness so the board reads as a light background, and
+    // chrome shades *darker* off it -- fromHsl (not .lighter()) so the result
+    // is a consistent light bg regardless of how dark/light the base itself is.
+    QColor board_bg = base;
+    if (!darkTheme_) {
+        int h, s, l, a;
+        base.getHsl(&h, &s, &l, &a);
+        board_bg = QColor::fromHsl(h, s, 175, a);
+    }
+
+    // Every color below is a distinct shading step off board_bg, so the chip
+    // and pin dots read as separate elements instead of blurring into the
+    // board rect -- and everything shifts together when board_bg changes
+    // (default, ctrl+click override, or theme).
+    auto shade = [&](int amount) {
+        return darkTheme_ ? board_bg.lighter(amount) : board_bg.darker(amount);
+    };
+
+    const QColor board_border = shade(140);
+    const QColor board_label  = shade(350);
+
+    const QColor chip_bg      = shade(115);
+    const QColor chip_border  = shade(170);
+    const QColor chip_label   = shade(400);
+
+    const QColor pin_dot_bg     = shade(105);
+    const QColor pin_dot_border = shade(160);
+    const QColor pin_label      = shade(230);
+
+    boardRectItem_ = scene_->addRect(
         BOARD_X, BOARD_Y, BOARD_W, BOARD_H,
         QPen(board_border, 2),
         QBrush(board_bg)
     );
 
+    // Mounting holes -- fixed dark color (exposed substrate under the
+    // drilled hole), same 4-corner placement on every board regardless of
+    // size. Inset far enough from the edges that they never land on a pin
+    // dot, which always sits exactly on the board's x edge.
+    {
+        int hole_r = 3, hole_inset = 10;
+        QPointF holes[4] = {
+            QPointF(BOARD_X + hole_inset,           BOARD_Y + hole_inset),
+            QPointF(BOARD_X + BOARD_W - hole_inset, BOARD_Y + hole_inset),
+            QPointF(BOARD_X + hole_inset,           BOARD_Y + BOARD_H - hole_inset),
+            QPointF(BOARD_X + BOARD_W - hole_inset, BOARD_Y + BOARD_H - hole_inset),
+        };
+        for (const QPointF& h : holes) {
+            scene_->addEllipse(
+                h.x() - hole_r, h.y() - hole_r, hole_r * 2, hole_r * 2,
+                QPen(COLOR_MOUNT_HOLE_BORDER, 1),
+                QBrush(COLOR_MOUNT_HOLE)
+            );
+        }
+    }
+
+    // Chip rect position/width computed here (rather than down by the chip
+    // rect itself) since the chip label below is placed relative to it.
+    int chip_w = BOARD_W - 80;
+    int chip_x = BOARD_X + 40;
+
+    // Power indicator LED, near the top-right corner -- lit green with a
+    // soft glow while the sketch is running, dim gray otherwise. Same visual
+    // language as LedItem's glow (src/components/led.cpp).
+    int led_d = 10;
+    QPointF led_c(BOARD_X + BOARD_W - 35 + led_d / 2.0, BOARD_Y + 5 + led_d / 2.0);
+    QColor led_color = sketchRunning_ ? COLOR_POWER_LED_ON : COLOR_POWER_LED_OFF;
+
+    if (sketchRunning_) {
+        qreal glow_r = led_d * 1.8;
+        QRadialGradient glow(led_c, glow_r);
+        QColor g1 = led_color; g1.setAlpha(130);
+        QColor g2 = led_color; g2.setAlpha(0);
+        glow.setColorAt(0.0, g1);
+        glow.setColorAt(1.0, g2);
+        scene_->addEllipse(
+            led_c.x() - glow_r, led_c.y() - glow_r, glow_r * 2, glow_r * 2,
+            QPen(Qt::NoPen), QBrush(glow)
+        );
+    }
+
+    scene_->addEllipse(
+        led_c.x() - led_d / 2.0, led_c.y() - led_d / 2.0, led_d, led_d,
+        QPen(led_color.darker(160), 1),
+        QBrush(led_color)
+    );
+
+    QFont labelFont("Courier New", 9);
     QGraphicsTextItem* label = scene_->addText(profile_.name);
     label->setDefaultTextColor(board_label);
-    label->setFont(QFont("Courier New", 9));
-    label->setPos(BOARD_X + BOARD_W / 2.0 - 40, BOARD_Y + 10);
+    label->setFont(labelFont);
+    // Centered on actual rendered text width rather than an assumed width --
+    // "Arduino Mega 2560" and "Arduino Nano" aren't the same length as
+    // "Arduino Uno", and board width now varies per profile too.
+    int labelTextW = QFontMetrics(labelFont).horizontalAdvance(profile_.name);
+    label->setPos(BOARD_X + BOARD_W / 2.0 - labelTextW / 2.0, BOARD_Y + 20);
 
+    // Chip rect scales with BOARD_W so it stays inside narrower boards
+    // (Nano, Teensy) instead of the fixed 120px that only fit the 200px default.
     scene_->addRect(
-        BOARD_X + 40, BOARD_Y + 80, 120, 60,
-        QPen(COLOR_CHIP_BORDER, 1),
-        QBrush(COLOR_CHIP_BG)
+        chip_x, BOARD_Y + 80, chip_w, 60,
+        QPen(chip_border, 1),
+        QBrush(chip_bg)
     );
+    QFont chipFont("Courier New", 8);
     QGraphicsTextItem* chipLabel = scene_->addText(profile_.chip);
-    chipLabel->setDefaultTextColor(COLOR_CHIP_LABEL);
-    chipLabel->setFont(QFont("Courier New", 8));
-    chipLabel->setPos(BOARD_X + 48, BOARD_Y + 100);
+    chipLabel->setDefaultTextColor(chip_label);
+    chipLabel->setFont(chipFont);
+    // Narrower boards (Nano, Teensy) don't have room for the full chip name
+    // inside the chip rect at this font size -- rather than truncate it,
+    // drop it just below the chip, centered, so it's still fully readable.
+    int chipTextW = QFontMetrics(chipFont).horizontalAdvance(profile_.chip);
+    if (chipTextW <= chip_w - 16) {
+        chipLabel->setPos(chip_x + 8, BOARD_Y + 100);
+    } else {
+        chipLabel->setPos(chip_x + chip_w / 2.0 - chipTextW / 2.0, BOARD_Y + 80 + 60 + 4);
+    }
 
     // Digital pins -- both below the analog block and (for boards like
     // Teensy 4.1) any extra digital pins above it
@@ -438,11 +564,11 @@ void CanvasWidget::drawBoard() {
         QPointF pos = pinLocation(i);
         scene_->addEllipse(
             pos.x() - 3, pos.y() - 3, 6, 6,
-            QPen(COLOR_PIN_DOT_BORDER, 1),
-            QBrush(COLOR_PIN_DOT_BG)
+            QPen(pin_dot_border, 1),
+            QBrush(pin_dot_bg)
         );
         QGraphicsTextItem* pinNum = scene_->addText(QString::number(i));
-        pinNum->setDefaultTextColor(COLOR_PIN_LABEL);
+        pinNum->setDefaultTextColor(pin_label);
         pinNum->setFont(QFont("Courier New", 7));
         pinNum->setPos(pos.x() + 6, pos.y() - 8);
     }
@@ -452,12 +578,12 @@ void CanvasWidget::drawBoard() {
         QPointF pos = pinLocation(i);
         scene_->addEllipse(
             pos.x() - 3, pos.y() - 3, 6, 6,
-            QPen(COLOR_PIN_DOT_BORDER, 1),
-            QBrush(COLOR_PIN_DOT_BG)
+            QPen(pin_dot_border, 1),
+            QBrush(pin_dot_bg)
         );
         QGraphicsTextItem* pinNum = scene_->addText(QString("A%1").arg(i - 14));
         pinNum->setPlainText(QString("A%1").arg(i - profile_.analog_offset));
-        pinNum->setDefaultTextColor(COLOR_PIN_LABEL);
+        pinNum->setDefaultTextColor(pin_label);
         pinNum->setFont(QFont("Courier New", 7));
         pinNum->setPos(pos.x() - 24, pos.y() - 8);
     }

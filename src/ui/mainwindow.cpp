@@ -127,6 +127,7 @@ MainWindow::MainWindow(QWidget* parent)
                 statusBar()->showMessage("Sketch crashed");
                 setRunTriggersEnabled(true);
                 stopButton_->setEnabled(false);
+                canvasWidget_->setSketchRunning(false);
                 finishRecordingIfActive();
             });
     connect(sketchThread_, &SketchThread::watchdogReset,
@@ -934,6 +935,7 @@ void MainWindow::onLoadFailed(QString reason) {
     statusBar()->showMessage("Load failed");
     setRunTriggersEnabled(true);
     stopButton_->setEnabled(false);
+    canvasWidget_->setSketchRunning(false);
     finishRecordingIfActive();
 }
 
@@ -1084,6 +1086,7 @@ void MainWindow::onRunClicked() {
     simTimer_.start();
     statusBar()->showMessage("Running: " + currentSketchPath_);
     stopButton_->setEnabled(true);
+    canvasWidget_->setSketchRunning(true);
 
     // Reset state and inject component values before starting the sketch --
     // otherwise it can read pins before injection, or see stale prior-run state.
@@ -1160,6 +1163,7 @@ void MainWindow::onStopClicked() {
     statusBar()->showMessage("Stopped");
     setRunTriggersEnabled(true);
     stopButton_->setEnabled(false);
+    canvasWidget_->setSketchRunning(false);
     finishRecordingIfActive();
 }
 
