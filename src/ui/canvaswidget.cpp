@@ -657,11 +657,22 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     updateWires(item);
 }
 
-QGraphicsLineItem* CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color) {
-    return scene_->addLine(
-        from.x(), from.y(), to.x(), to.y(),
-        QPen(color, 1, Qt::SolidLine, Qt::RoundCap)
+void CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color,
+                             std::vector<QGraphicsLineItem*>& lines) {
+    // Fixed semi-transparent black regardless of theme -- reads as a shadow
+    // under both a dark and light canvas, and is what makes bright wire
+    // colors (yellow, white, etc.) hold up against a light-mode background.
+    QGraphicsLineItem* shadow = scene_->addLine(
+        from.x() + 1, from.y() + 1, to.x() + 1, to.y() + 1,
+        QPen(QColor(0, 0, 0, 90), 2.5, Qt::SolidLine, Qt::RoundCap)
     );
+    lines.push_back(shadow);
+
+    QGraphicsLineItem* line = scene_->addLine(
+        from.x(), from.y(), to.x(), to.y(),
+        QPen(color, 2, Qt::SolidLine, Qt::RoundCap)
+    );
+    lines.push_back(line);
 }
 
 // Re-derives every wire segment for one component from its current scene
@@ -710,9 +721,9 @@ void CanvasWidget::updateWires(ComponentItem* item) {
         }
         QPointF mid1(inter_x, target.y());
         QPointF mid2(inter_x, attach_y);
-        info.wire_lines.push_back(drawWire(target, mid1, info.wire_color));
-        info.wire_lines.push_back(drawWire(mid1, mid2, info.wire_color));
-        info.wire_lines.push_back(drawWire(mid2, comp_edge, info.wire_color));
+        drawWire(target, mid1, info.wire_color, info.wire_lines);
+        drawWire(mid1, mid2, info.wire_color, info.wire_lines);
+        drawWire(mid2, comp_edge, info.wire_color, info.wire_lines);
         i++;
     }
 }

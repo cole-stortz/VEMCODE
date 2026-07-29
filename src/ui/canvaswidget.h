@@ -72,7 +72,11 @@ private:
     void drawBoard();
     void placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
                          ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h);
-    QGraphicsLineItem* drawWire(QPointF from, QPointF to, const QColor& color);
+    // Draws a wire segment plus a slight shadow behind it (helps bright wire
+    // colors stay visible in light mode) -- appends both items to `lines` so
+    // updateWires() can clean them up together on re-route.
+    void drawWire(QPointF from, QPointF to, const QColor& color,
+                  std::vector<QGraphicsLineItem*>& lines);
     void updateWires(ComponentItem* item); // re-route a component's wires from its current position
     QPointF pinLocation(int pin);
     void setZoom(qreal zoom);
