@@ -1,49 +1,33 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QRadialGradient>
 #include <QCursor>
 
 static const QColor BUTTON_ACTIVE("#dc74c2");
 
-// Tactile pushbutton body: a dark plastic base plate with 4 corner legs and
-// a round cap that shrinks and tints on press. Shared by ButtonItem and
-// ButtonCleanItem below -- same physical shape, different pin semantics.
+// Tactile pushbutton body: a flat dark plastic base plate with a round cap
+// that shrinks and tints on press. Shared by ButtonItem and ButtonCleanItem
+// below -- same physical shape, different pin semantics.
 static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
-    QRectF base = r.adjusted(r.width() * 0.15, r.height() * 0.15, -r.width() * 0.15, -r.height() * 0.15);
-    QColor plate("#2b2b2b");
-    QLinearGradient bg(base.topLeft(), base.bottomLeft());
-    bg.setColorAt(0.0, plate.lighter(130));
-    bg.setColorAt(0.5, plate);
-    bg.setColorAt(1.0, plate.darker(120));
-    p->setPen(QPen(plate.darker(180), 1.2));
-    p->setBrush(bg);
-    p->drawRoundedRect(base, 4, 4);
-
-    p->setPen(Qt::NoPen);
-    p->setBrush(QColor("#999"));
-    qreal legW = 4, legH = 6;
-    for (const auto& pt : {base.topLeft(), base.topRight(), base.bottomLeft(), base.bottomRight()})
-        p->drawRect(QRectF(pt.x() - legW / 2, pt.y() - legH / 2, legW, legH));
-
-    QPointF c = base.center();
-    qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.28 : 0.34);
-    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#e0e0e0");
-    QRadialGradient cap(c - QPointF(capR * 0.3, capR * 0.3), capR * 1.6);
-    cap.setColorAt(0.0, capColor.lighter(140));
-    cap.setColorAt(1.0, capColor.darker(120));
-    p->setPen(QPen(capColor.darker(160), 1));
-    p->setBrush(cap);
-    p->drawEllipse(c, capR, capR);
-
-    p->setPen(QPen(capColor.darker(200), 1.4));
-    p->drawLine(c - QPointF(capR * 0.5, 0), c + QPointF(capR * 0.5, 0));
-    p->drawLine(c - QPointF(0, capR * 0.5), c + QPointF(0, capR * 0.5));
-
-    // Straight lead on the right edge -- buttons are inputs, so
+    // Lead drawn under the plate, extending past its right edge -- the
+    // plate paints over the overlap, so the visible stub always ends up
+    // flush with the plate's edge without having to keep the two in sync.
     // CanvasWidget::updateWires attaches the wire at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
+    p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
+
+    QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.1, -r.width() * 0.2, -r.height() * 0.1);
+    QColor plate("#3a3a3a");
+    p->setPen(QPen(plate.darker(180), 3));
+    p->setBrush(plate);
+    p->drawRoundedRect(base, 4, 4);
+
+    QPointF c = base.center();
+    qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40);
+    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#e0e0e0");
+    p->setPen(QPen(capColor.darker(160), 1));
+    p->setBrush(capColor);
+    p->drawEllipse(c, capR, capR);
 }
 
 class ButtonItem : public ComponentItem {
