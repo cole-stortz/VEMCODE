@@ -1246,7 +1246,10 @@ void MainWindow::onOpenClicked() {
         this, "Open sketch", sketches_root, "C++ files (*.cpp *.ino)"
     );
     if (path.isEmpty()) return;
+    openSketchFile(path);
+}
 
+void MainWindow::openSketchFile(const QString& path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         statusBar()->showMessage("Failed to open: " + path);
