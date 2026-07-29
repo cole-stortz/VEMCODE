@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QRadialGradient>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
@@ -29,9 +28,9 @@ public:
             return in;
         };
 
-        r_in_ = make_input("#ff4444", "#1a0000", 4);
-        g_in_ = make_input("#44ff44", "#001a00", 34);
-        b_in_ = make_input("#4444ff", "#00001a", 64);
+        r_in_ = make_input("#ff4444", "#1a0000", 7);
+        g_in_ = make_input("#44ff44", "#001a00", 37);
+        b_in_ = make_input("#4444ff", "#00001a", 67);
 
         connect(r_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
         connect(g_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
@@ -42,24 +41,21 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        p->setPen(QPen(QColor("#000"), 1));
-        p->setBrush(QColor("#1a1a1a"));
+        p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 3));
+        p->setBrush(QColor(COLOR_SENSOR_FILL.darker(300)));
         p->drawRoundedRect(r, 4, 4);
 
         QPointF c(r.center().x(), r.top() + r.height() * 0.32);
         qreal lensR = qMin(r.width(), r.height()) * 0.22;
-        QRadialGradient g(c - QPointF(lensR * 0.3, lensR * 0.3), lensR * 1.4);
-        g.setColorAt(0.0, lastSensed_.lighter(150));
-        g.setColorAt(1.0, lastSensed_.darker(140));
-        p->setPen(QPen(QColor("#000"), 1));
-        p->setBrush(g);
+        p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 1));
+        p->setBrush(lastSensed_);
         p->drawEllipse(c, lensR, lensR);
 
         qreal off = qMin(r.width(), r.height()) * 0.3;
         for (const auto& d : {QPointF(-off, -off * 0.6), QPointF(off, -off * 0.6),
                                QPointF(-off, off * 0.6), QPointF(off, off * 0.6)}) {
-            p->setPen(Qt::NoPen);
-            p->setBrush(QColor("#eeeeee"));
+            p->setPen(QPen(QColor("#3a3a3a").darker(200), 1));
+            p->setBrush(QColor("#3a3a3a"));
             p->drawEllipse(c + d, 3, 3);
         }
 
@@ -69,7 +65,7 @@ public:
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal ly = 15 + i * 5;
-            p->drawLine(QPointF(r.width() - 10, ly), QPointF(r.width(), ly));
+            p->drawLine(QPointF(r.width() - 5, ly), QPointF(r.width(), ly));
         }
     }
 

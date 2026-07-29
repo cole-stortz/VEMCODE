@@ -30,44 +30,56 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor BUZZER_ACTIVE("#dc9b74");
+static const QColor COLOR_SENSOR_FILL("#a874dc");
 
-static void paint(QPainter* p, const QRectF& r, bool active) {
-    // Straight lead on the left edge -- buzzers are outputs, so
-    // CanvasWidget::updateWires attaches the wire at local (0, 15).
+static void paint(QPainter* p, const QRectF& r, const QColor& lastSensed) {
+    p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 3));
+    p->setBrush(QColor(COLOR_SENSOR_FILL.darker(300)));
+    p->drawRoundedRect(r, 4, 4);
+
+    QPointF c(r.center().x(), r.top() + r.height() * 0.32);
+    qreal lensR = qMin(r.width(), r.height()) * 0.22;
+    p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 1));
+    p->setBrush(lastSensed);
+    p->drawEllipse(c, lensR, lensR);
+
+    qreal off = qMin(r.width(), r.height()) * 0.3;
+    for (const auto& d : {QPointF(-off, -off * 0.6), QPointF(off, -off * 0.6),
+                           QPointF(-off, off * 0.6), QPointF(off, off * 0.6)}) {
+        p->setPen(QPen(QColor("#3a3a3a").darker(200), 1));
+        p->setBrush(QColor("#3a3a3a"));
+        p->drawEllipse(c + d, 3, 3);
+    }
+
+    // Straight leads on the right edge, one per OUT/S2/S3 pin slot --
+    // color sensors are inputs, so CanvasWidget::updateWires attaches
+    // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(40, 15), QPointF(0, 15));
-
-    QPointF c = r.center();
-    qreal rad = qMin(r.width(), r.height()) * 0.45;
-    QColor base = active ? BUZZER_ACTIVE : QColor("#4a3624");
-
-    p->setPen(QPen(base.darker(180), 3));
-    p->setBrush(base);
-    p->drawEllipse(c, rad, rad);
-
-    p->setPen(QPen(base.darker(200), 1));
-    p->setBrush(Qt::NoBrush);
-    p->drawEllipse(c, rad * 0.6, rad * 0.6);
-
-    p->setPen(Qt::NoPen);
-    p->setBrush(base.darker(300));
-    p->drawEllipse(c, rad * 0.18, rad * 0.18);
-
-    if (active) {
-        p->setPen(QPen(BUZZER_ACTIVE, 1.4));
-        for (int i = 1; i <= 3; ++i) {
-            qreal a = rad + i * 5;
-            QRectF arcRect(c.x() + rad * 0.7, c.y() - a / 2, a * 0.6, a);
-            p->drawArc(arcRect, -60 * 16, 120 * 16);
-        }
+    for (int i = 0; i < 3; ++i) {
+        qreal ly = 15 + i * 5;
+        p->drawLine(QPointF(r.width() - 5, ly), QPointF(r.width(), ly));
     }
 }
 
 // ========================= PASTE ZONE END =========================
 
+// Not part of the paste zone -- stand-ins for the real QLineEdit/
+// QGraphicsProxyWidget R/G/B inputs that ColorSensorItem embeds outside of
+// paint() (see color_sensor.cpp's constructor). paint() alone never draws
+// these, so this fakes their position/size/colors just for visual reference.
+// Delete this when swapping the paste zone to a different component.
+static void drawColorSensorInputPlaceholders(QPainter* p, const QRectF& r) {
+    struct Box { const char* fg; const char* bg; qreal x; };
+    for (const auto& b : {Box{"#ff4444", "#1a0000", 4}, Box{"#44ff44", "#001a00", 34}, Box{"#4444ff", "#00001a", 64}}) {
+        QRectF box(r.x() + b.x, r.y() + 42, 26, 16);
+        p->setPen(QPen(QColor(b.fg), 1));
+        p->setBrush(QColor(b.bg));
+        p->drawRect(box);
+    }
+}
+
 static const qreal BOUNDS_W = 100;
-static const qreal BOUNDS_H = 44;
+static const qreal BOUNDS_H = 64;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -99,14 +111,15 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_);
+        paint(&p, boundsRect, pressed_ ? QColor("#44dc74") : COLOR_SENSOR_FILL);
+        drawColorSensorInputPlaceholders(&p, boundsRect);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle pressed (%1)   d: theme (%2)   wheel: zoom (%3x)")
-                       .arg(pressed_ ? "on" : "off")
+                   QString("click: toggle sensed color (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                       .arg(pressed_ ? "green" : "default")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }
