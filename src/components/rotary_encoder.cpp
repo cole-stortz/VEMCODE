@@ -1,8 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
-#include <QRadialGradient>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 #include <QtMath>
@@ -34,48 +32,40 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        QRectF body = r.adjusted(r.width() * 0.22, r.height() * 0.08, -r.width() * 0.22, -r.height() * 0.2);
 
-        QColor housing("#263826");
-        QLinearGradient bg(body.topLeft(), body.bottomLeft());
-        bg.setColorAt(0.0, housing.lighter(130));
-        bg.setColorAt(0.5, housing);
-        bg.setColorAt(1.0, housing.darker(120));
-        p->setPen(QPen(housing.darker(180), 1.2));
-        p->setBrush(bg);
-        p->drawRoundedRect(body, 4, 4);
-
-        QPointF c = body.center();
-        qreal rad = qMin(body.width(), body.height()) * 0.4;
-        QColor ringColor = dragging_ ? ROTENC_ACTIVE : QColor("#3a3a3a");
-        p->setPen(QPen(ringColor, 2));
-        int notches = 20;
-        for (int i = 0; i < notches; ++i) {
-            qreal a = qDegreesToRadians(360.0 * i / notches);
-            QPointF p1(c.x() + std::cos(a) * rad, c.y() + std::sin(a) * rad);
-            QPointF p2(c.x() + std::cos(a) * rad * 0.85, c.y() + std::sin(a) * rad * 0.85);
-            p->drawLine(p1, p2);
-        }
-
-        QRadialGradient knob(c - QPointF(rad * 0.25, rad * 0.25), rad * 1.3);
-        knob.setColorAt(0.0, QColor("#4a4a4a"));
-        knob.setColorAt(1.0, QColor("#1a1a1a"));
-        p->setPen(QPen(QColor("#000"), 1));
-        p->setBrush(knob);
-        p->drawEllipse(c, rad * 0.7, rad * 0.7);
-
-        qreal a = qDegreesToRadians((value_ * 30.0));
-        p->setPen(QPen(ringColor, 2));
-        p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.6, std::sin(a) * rad * 0.6));
-
-        // Straight leads on the right edge, one per CLK/DT pin slot -- rotary
-        // encoders are inputs, so CanvasWidget::updateWires attaches wire i
-        // at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Leads drawn under the knob, extending well past its edge -- the
+        // knob paints over the overlap, so the visible stubs always end up
+        // flush with the knob regardless of the exact radius.
+        // Rotary encoders are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 2; ++i) {
             qreal ly = 15 + i * 5;
-            p->drawLine(QPointF(r.width() - 10, ly), QPointF(r.width(), ly));
+            p->drawLine(QPointF(r.width() - 50, ly), QPointF(r.width(), ly));
         }
+
+        qreal rad = qMin(r.width(), r.height()) * 0.45;
+        QPointF c(r.center().x() + 10, r.center().y());
+        QColor ringColor = dragging_ ? ROTENC_ACTIVE.lighter(140) : ROTENC_ACTIVE;
+        p->setPen(QPen(ringColor.darker(180), 3));
+        p->setBrush(ringColor);
+        p->drawEllipse(c, rad, rad);
+
+        p->setPen(QPen(QColor("#111"), 1));
+        int notches = 20;
+        for (int i = 0; i < notches; ++i) {
+            qreal a = qDegreesToRadians(360.0 * i / notches);
+            QPointF p1(c.x() + std::cos(a) * rad * 0.95, c.y() + std::sin(a) * rad * 0.95);
+            QPointF p2(c.x() + std::cos(a) * rad * 0.75, c.y() + std::sin(a) * rad * 0.75);
+            p->drawLine(p1, p2);
+        }
+
+        // No clamping on the angle -- unlike the potentiometer's bounded
+        // 270deg sweep, an encoder spins freely, so the needle just keeps
+        // going around as value_ accumulates past 360deg.
+        qreal a = qDegreesToRadians(value_ * 30.0);
+        p->setPen(QPen(QColor("#1a1a1a"), 2));
+        p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

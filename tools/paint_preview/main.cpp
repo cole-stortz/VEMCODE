@@ -31,51 +31,53 @@
 #include <QLineF>
 #include <QImage>
 #include <QFont>
+#include <QtMath>
+#include <cmath>
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor BEZEL_BG   ("#111111");
-static const QColor SCREEN_OFF ("#04141a");
-static const QColor SCREEN_ON  ("#7fe8ff");
-static constexpr float PX_SCALE = 1.5f;
-static constexpr float MARGIN = 8.0f;
+static const QColor POT_ACTIVE("#a8dc74");
 
-static void paint(QPainter* p, int width, int height, const QImage& img) {
-    QRectF box(0, 0, width * PX_SCALE + 2 * MARGIN, height * PX_SCALE + 2 * MARGIN);
-    p->setPen(QPen(QColor("#000000"), 3));
-    p->setBrush(BEZEL_BG);
-    p->drawRect(box);
-
-    QRectF screenRect(MARGIN, MARGIN, width * PX_SCALE, height * PX_SCALE);
-    p->setRenderHint(QPainter::SmoothPixmapTransform, false);
-    p->drawImage(screenRect, img);
-
-    // Straight lead on the left edge -- OLED is an output, so
-    // CanvasWidget::updateWires attaches the wire at local (0, 15).
+static void paint(QPainter* p, const QRectF& r, int value) {
+    // Lead drawn under the knob, extending well past its edge -- the knob
+    // paints over the overlap, so the visible stub always ends up flush
+    // with the knob regardless of the exact radius.
+    // Potentiometers are inputs, so CanvasWidget::updateWires attaches the
+    // wire at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(5, 15), QPointF(-1, 15));
+    p->drawLine(QPointF(r.width() - 50, 15), QPointF(r.width(), 15));
+
+    qreal ratio = value / 1023.0;
+
+    qreal rad = qMin(r.width(), r.height()) * 0.45;
+    QPointF c(r.center().x()+10, r.center().y());
+    QColor knobColor = POT_ACTIVE.lighter(int(100 + ratio * 40));
+    p->setPen(QPen(knobColor.darker(180), 3));
+    p->setBrush(knobColor);
+    p->drawEllipse(c, rad, rad);
+
+    p->setPen(QPen(QColor("#111"), 1));
+    for (int i = 0; i < 11; ++i) {
+        qreal a = qDegreesToRadians(-135.0 + i * 27.0);
+        QPointF p1(c.x() + std::cos(a) * rad * 0.75, c.y() + std::sin(a) * rad * 0.75);
+        QPointF p2(c.x() + std::cos(a) * rad * 0.95, c.y() + std::sin(a) * rad * 0.95);
+        p->drawLine(p1, p2);
+    }
+
+    qreal ang = qDegreesToRadians(-135.0 + ratio * 270.0);
+    p->setPen(QPen(QColor("#1a1a1a"), 2));
+    p->drawLine(c, c + QPointF(std::cos(ang) * rad * 0.8, std::sin(ang) * rad * 0.8));
+
+    p->setPen(POT_ACTIVE);
+    p->setFont(QFont("Courier New", 7));
+    qreal textW = r.width() * 0.4;
+    p->drawText(QRectF(0, 0, textW, r.height()), Qt::AlignCenter, QString::number(value));
 }
 
 // ========================= PASTE ZONE END =========================
 
-// Not part of the paste zone -- OledItem's real framebuffer only ever gets
-// filled by updateOledFramebuffer() from actual sketch output. This fakes a
-// blank vs. lit screen just for visual reference.
-// Delete this when swapping the paste zone to a different component.
-static QImage makeDemoImage(int width, int height, bool active) {
-    QImage img(width, height, QImage::Format_RGB32);
-    img.fill(SCREEN_OFF);
-    if (active) {
-        QPainter ip(&img);
-        ip.setPen(SCREEN_ON);
-        ip.setFont(QFont("Courier New", 16));
-        ip.drawText(img.rect(), Qt::AlignCenter, "OLED");
-    }
-    return img;
-}
-
-static const qreal BOUNDS_W = 128 * PX_SCALE + 2 * MARGIN;
-static const qreal BOUNDS_H = 64 * PX_SCALE + 2 * MARGIN;
+static const qreal BOUNDS_W = 100;
+static const qreal BOUNDS_H = 44;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -107,14 +109,14 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, 128, 64, makeDemoImage(128, 64, pressed_));
+        paint(&p, boundsRect, pressed_ ? 1023 : 0);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle screen content (%1)   d: theme (%2)   wheel: zoom (%3x)")
-                       .arg(pressed_ ? "on" : "off")
+                   QString("click: toggle value (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                       .arg(pressed_ ? "1023" : "0")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }
