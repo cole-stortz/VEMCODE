@@ -32,44 +32,69 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor JOY_ACTIVE("#74dcb5");
+static const QColor KEY_ACTIVE  ("#dc74c2");
+static const QColor KEY_INACTIVE("#37102e");
+static constexpr int CELL = 26;
 
-static void paint(QPainter* p, const QRectF& r, qreal dx, qreal dy, bool pressed) {
-    QRectF body = r.adjusted(2, 2, -2, -2);
-    QColor housing("#1c2b26");
-    p->setPen(QPen(housing.darker(180), 3));
-    p->setBrush(housing);
-    p->drawRoundedRect(body, 6, 6);
+// Real 4x4/4x3 membrane keypads (the ones in Arduino starter kits) are
+// silkscreened with this exact layout -- match it so the canvas grid reads
+// like the physical part, not an arbitrary numbering.
+static QString keyLabelFor(int rows, int cols, int r, int c) {
+    if (rows == 4 && cols == 4) {
+        static const char* K[4][4] = {
+            {"1", "2", "3", "A"}, {"4", "5", "6", "B"},
+            {"7", "8", "9", "C"}, {"*", "0", "#", "D"},
+        };
+        return K[r][c];
+    }
+    if (rows == 4 && cols == 3) {
+        static const char* K[4][3] = {
+            {"1", "2", "3"}, {"4", "5", "6"},
+            {"7", "8", "9"}, {"*", "0", "#"},
+        };
+        return K[r][c];
+    }
+    return QString::number(r * cols + c + 1);
+}
 
-    QPointF c = body.center();
-    qreal travel = qMin(body.width(), body.height()) * 0.28;
-    p->setPen(QPen(QColor("#000"), 1));
-    p->setBrush(QColor("#0a0a0a"));
-    p->drawEllipse(c, travel * 1.4, travel * 1.4);
+static void paint(QPainter* p, int rows, int cols, int pressedRow, int pressedCol) {
+    if (rows <= 0 || cols <= 0) return;
+    QRectF r(0, 0, cols * CELL + 8, rows * CELL + 6);
 
-    QPointF stick = c + QPointF(dx * travel, -dy * travel);
-    p->setPen(QPen(QColor("#333"), 3));
-    p->drawLine(c, stick);
+    p->setPen(QPen(QColor("#000"), 3));
+    p->setBrush(QColor("#111"));
+    p->drawRoundedRect(r, 4, 4);
 
-    QColor cap = pressed ? QColor("#e63946") : JOY_ACTIVE;
-    p->setPen(QPen(cap.darker(160), 2));
-    p->setBrush(cap);
-    p->drawEllipse(stick, 13, 13);
+    p->setFont(QFont("Courier New", 9));
+    for (int rr = 0; rr < rows; ++rr) {
+        for (int cc = 0; cc < cols; ++cc) {
+            bool active = (rr == pressedRow && cc == pressedCol);
+            QRectF cell(4 + cc * CELL, 4 + rr * CELL, CELL - 2, CELL - 2);
+            QColor fill = active ? KEY_ACTIVE : KEY_INACTIVE;
+            p->setPen(QPen(fill.darker(160), 1));
+            p->setBrush(fill);
+            p->drawRoundedRect(cell, 3, 3);
+            int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+            p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
+            p->drawText(cell, Qt::AlignCenter, keyLabelFor(rows, cols, rr, cc));
+        }
+    }
 
-    // Straight leads on the right edge, one per VRX/VRY/SW pin slot --
-    // joysticks are inputs, so CanvasWidget::updateWires attaches wire i
-    // at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+    // Straight leads on the right edge, one per row/col pin slot -- the
+    // same [row_0..row_{rows-1}, col_0..col_{cols-1}] order configureMultiPin
+    // uses. Keypads are inputs, so CanvasWidget::updateWires attaches
+    // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
     p->setPen(QPen(QColor("#999"), 2));
-    for (int i = 0; i < 3; ++i) {
-        qreal y = 15 + i * 5;
-        p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
+    for (int i = 0; i < rows + cols; ++i) {
+        qreal ly = 15 + i * 5;
+        p->drawLine(QPointF(r.width() - 3, ly), QPointF(r.width()+1, ly));
     }
 }
 
 // ========================= PASTE ZONE END =========================
 
-static const qreal BOUNDS_W = 100;
-static const qreal BOUNDS_H = 44;
+static const qreal BOUNDS_W = 4 * CELL + 8;
+static const qreal BOUNDS_H = 4 * CELL + 8;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -101,13 +126,13 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_ ? 0.6 : 0.0, pressed_ ? 0.4 : 0.0, pressed_);
+        paint(&p, 4, 4, pressed_ ? 1 : -1, pressed_ ? 2 : -1);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle deflected+pressed (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle a key pressed (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));

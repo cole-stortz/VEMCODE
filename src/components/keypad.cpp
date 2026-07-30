@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 #include <QVariantList>
@@ -46,7 +45,7 @@ public:
     QRectF boundingRect() const override {
         int r = rows_ > 0 ? rows_ : 4;
         int c = cols_ > 0 ? cols_ : 4;
-        return QRectF(0, 0, c * CELL + 8, r * CELL + 8);
+        return QRectF(0, 0, c * CELL + 8, r * CELL + 6);
     }
 
     void configureRowsCols(int rows, int cols) override {
@@ -67,7 +66,7 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (rows_ <= 0 || cols_ <= 0) return;
 
-        p->setPen(QPen(QColor("#000"), 1));
+        p->setPen(QPen(QColor("#000"), 3));
         p->setBrush(QColor("#111"));
         p->drawRoundedRect(boundingRect(), 4, 4);
 
@@ -77,11 +76,8 @@ public:
                 bool active = (r == pressedRow_ && c == pressedCol_);
                 QRectF cell(4 + c * CELL, 4 + r * CELL, CELL - 2, CELL - 2);
                 QColor fill = active ? KEY_ACTIVE : KEY_INACTIVE;
-                QLinearGradient g(cell.topLeft(), cell.bottomLeft());
-                g.setColorAt(0.0, fill.lighter(130));
-                g.setColorAt(1.0, fill.darker(120));
                 p->setPen(QPen(fill.darker(160), 1));
-                p->setBrush(g);
+                p->setBrush(fill);
                 p->drawRoundedRect(cell, 3, 3);
                 int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
                 p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
@@ -97,7 +93,7 @@ public:
         QRectF r = boundingRect();
         for (int i = 0; i < rows_ + cols_; ++i) {
             qreal ly = 15 + i * 5;
-            p->drawLine(QPointF(r.width() - 10, ly), QPointF(r.width(), ly));
+            p->drawLine(QPointF(r.width() - 3, ly), QPointF(r.width() + 1, ly));
         }
     }
 
