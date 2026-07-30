@@ -30,11 +30,23 @@ public:
         bool lit = redval_ > 0 || greenval_ > 0 || blueval_ > 0;
 
         QRectF r = boundingRect();
+
+        // Leads drawn under the bulb, extending well past its edge -- the
+        // bulb paints over the overlap, so the visible stubs always end up
+        // flush with the bulb regardless of the exact radius.
+        // RGB LEDs are outputs, so CanvasWidget::updateWires attaches wire i
+        // at local (0, 15 + i*5), same spacing as WIRE_SPACING in canvaswidget.h.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal y = 15 + i * 5;
+            p->drawLine(QPointF(35, y), QPointF(0, y));
+        }
+
         QPointF c = r.center();
-        qreal rad = qMin(r.width(), r.height()) * 0.30;
+        qreal rad = qMin(r.width(), r.height()) * 0.40;
 
         if (lit) {
-            QRadialGradient glow(c, rad * 2.6);
+            QRadialGradient glow(c, rad * 1.8);
             QColor g1 = fill; g1.setAlpha(140);
             QColor g2 = fill; g2.setAlpha(0);
             glow.setColorAt(0.0, g1);
@@ -45,22 +57,9 @@ public:
         }
 
         QColor body = lit ? fill : QColor("#2a2a2a");
-        QRadialGradient bulb(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.6);
-        bulb.setColorAt(0.0, body.lighter(lit ? 170 : 140));
-        bulb.setColorAt(0.6, body);
-        bulb.setColorAt(1.0, body.darker(140));
-        p->setPen(QPen(body.darker(200), 1.2));
-        p->setBrush(bulb);
+        p->setPen(QPen(body.darker(200), 3));
+        p->setBrush(body);
         p->drawEllipse(c, rad, rad);
-
-        // Straight leads on the left edge, one per R/G/B pin slot -- RGB LEDs
-        // are outputs, so CanvasWidget::updateWires attaches wire i at local
-        // (0, 15 + i*5), same spacing as WIRE_SPACING in canvaswidget.h.
-        p->setPen(QPen(QColor("#999"), 2));
-        for (int i = 0; i < 3; ++i) {
-            qreal y = 15 + i * 5;
-            p->drawLine(QPointF(10, y), QPointF(0, y));
-        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

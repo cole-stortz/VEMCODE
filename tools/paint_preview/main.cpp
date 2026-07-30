@@ -32,46 +32,48 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor LCD_FILL("#cf74dc");
+static const QColor LED_ACTIVE  ("#cfdc74");
+static const QColor LED_INACTIVE("#323710");
 
-static void paint(QPainter* p, const QRectF& r, const QString& row0, const QString& row1) {
-    QColor housing(LCD_FILL.darker(400));
-    p->setPen(QPen(housing.darker(180), 3));
-    p->setBrush(housing);
-    p->drawRoundedRect(r, 4, 4);
+// Derives a dimmed "off" color from the current base color, same
+// proportions as the original hardcoded LED_ACTIVE/LED_INACTIVE pair.
+static QColor dimmed(const QColor& c) {
+    return c.darker(400);
+}
 
-    QRectF screen = r.adjusted(r.width() * 0.06, r.height() * 0.18, -r.width() * 0.06, -r.height() * 0.1);
-    p->setPen(QPen(QColor("#0a2a1a"), 1));
-    p->setBrush(QColor("#4ecb71"));
-    p->drawRect(screen);
-
-    p->setPen(QColor("#0a2a1a"));
-    p->setFont(QFont("Courier New", 7));
-    p->drawText(QRectF(screen.left() + 4, screen.top() + 2, screen.width() - 8, screen.height() / 2 - 2),
-                Qt::AlignLeft | Qt::AlignVCenter, row0.left(16));
-    p->drawText(QRectF(screen.left() + 4, screen.top() + screen.height() / 2, screen.width() - 8, screen.height() / 2 - 2),
-                Qt::AlignLeft | Qt::AlignVCenter, row1.left(16));
-
-    // p->setPen(QPen(QColor("#c0c0c0"), 1));
-    // for (int i = 0; i < 6; ++i) {
-    //     qreal px = r.left() + 6 + i * (r.width() - 12) / 5.0;
-    //     p->drawLine(QPointF(px, r.top()), QPointF(px, r.top() + 4));
-    // }
-
-    // Straight leads on the left edge, one per RS/EN/D4-D7 pin slot --
-    // LCDs are outputs, so CanvasWidget::updateWires attaches wire i at
-    // local (0, 15 + i*5), same spacing as WIRE_SPACING.
+static void paint(QPainter* p, const QRectF& r, bool active, const QColor& baseColor) {
+    // Lead drawn under the bulb, extending well past its edge -- the bulb
+    // paints over the overlap, so the visible stub always ends up flush
+    // with the bulb regardless of the exact radius.
+    // LEDs are outputs, so CanvasWidget::updateWires attaches the wire at
+    // local (0, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    for (int i = 0; i < 6; ++i) {
-        qreal ly = 15 + i * 5;
-        p->drawLine(QPointF(3, ly), QPointF(0, ly));
+    p->drawLine(QPointF(35, 15), QPointF(0, 15));
+
+    QPointF c = r.center();
+    qreal rad = qMin(r.width(), r.height()) * 0.40;
+
+    if (active) {
+        QRadialGradient glow(c, rad * 1.8);
+        QColor g1 = baseColor; g1.setAlpha(140);
+        QColor g2 = baseColor; g2.setAlpha(0);
+        glow.setColorAt(0.0, g1);
+        glow.setColorAt(1.0, g2);
+        p->setPen(Qt::NoPen);
+        p->setBrush(glow);
+        p->drawEllipse(c, rad * 2.6, rad * 2.6);
     }
+
+    QColor body = active ? baseColor : dimmed(baseColor);
+    p->setPen(QPen(baseColor.darker(200), 3));
+    p->setBrush(body);
+    p->drawEllipse(c, rad, rad);
 }
 
 // ========================= PASTE ZONE END =========================
 
 static const qreal BOUNDS_W = 100;
-static const qreal BOUNDS_H = 54;
+static const qreal BOUNDS_H = 44;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -103,15 +105,13 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect,
-              pressed_ ? "HELLO, WORLD!" : QString(16, ' '),
-              pressed_ ? "VEMCODE LCD" : QString(16, ' '));
+        paint(&p, boundsRect, pressed_, LED_ACTIVE);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle sample text (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle active (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));

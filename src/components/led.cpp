@@ -24,11 +24,20 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
+
+        // Lead drawn under the bulb, extending well past its edge -- the
+        // bulb paints over the overlap, so the visible stub always ends up
+        // flush with the bulb regardless of the exact radius.
+        // LEDs are outputs, so CanvasWidget::updateWires attaches the wire
+        // at local (0, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(35, 15), QPointF(0, 15));
+
         QPointF c = r.center();
-        qreal rad = qMin(r.width(), r.height()) * 0.30;
+        qreal rad = qMin(r.width(), r.height()) * 0.40;
 
         if (active_) {
-            QRadialGradient glow(c, rad * 2.6);
+            QRadialGradient glow(c, rad * 1.8);
             QColor g1 = baseColor_; g1.setAlpha(140);
             QColor g2 = baseColor_; g2.setAlpha(0);
             glow.setColorAt(0.0, g1);
@@ -39,18 +48,9 @@ public:
         }
 
         QColor body = active_ ? baseColor_ : dimmed(baseColor_);
-        QRadialGradient bulb(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.6);
-        bulb.setColorAt(0.0, body.lighter(active_ ? 170 : 140));
-        bulb.setColorAt(0.6, body);
-        bulb.setColorAt(1.0, body.darker(140));
-        p->setPen(QPen(baseColor_.darker(200), 1.2));
-        p->setBrush(bulb);
+        p->setPen(QPen(baseColor_.darker(200), 3));
+        p->setBrush(body);
         p->drawEllipse(c, rad, rad);
-
-        // Straight lead on the left edge -- LEDs are outputs, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
-        p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
     }
 
     void onPinChanged(int, int value) override {
