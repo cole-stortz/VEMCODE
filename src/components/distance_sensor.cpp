@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QRadialGradient>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 #include <cmath>
@@ -35,26 +34,22 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        p->setPen(QPen(QColor("#0a1f14"), 1));
-        p->setBrush(QColor("#0f3a24"));
+        p->setPen(QPen(DISTANCE_SENSOR_ACCENT.darker(400), 3));
+        p->setBrush(DISTANCE_SENSOR_ACCENT.darker(600));
         p->drawRoundedRect(r, 4, 4);
 
         // "Eyes" live in the top band only -- the bottom is reserved for the
         // cm QLineEdit proxy, which is the actual human-readable readout.
-        qreal eyeR = 9.0;
-        QPointF c1(r.center().x() - eyeR * 1.3, r.top() + 20);
-        QPointF c2(r.center().x() + eyeR * 1.3, r.top() + 20);
+        qreal eyeR = 16.0;
+        QPointF c1(r.center().x() - eyeR * 1.25, r.top() + 22);
+        QPointF c2(r.center().x() + eyeR * 1.25, r.top() + 22);
         for (const auto& c : {c1, c2}) {
-            QRadialGradient g(c - QPointF(eyeR * 0.3, eyeR * 0.3), eyeR * 1.4);
-            g.setColorAt(0.0, QColor("#e8e8e8"));
-            g.setColorAt(0.5, QColor("#9a9a9a"));
-            g.setColorAt(1.0, QColor("#4a4a4a"));
             p->setPen(QPen(QColor("#222"), 1));
-            p->setBrush(g);
+            p->setBrush(QColor("#9a9a9a"));
             p->drawEllipse(c, eyeR, eyeR);
-            p->setPen(QPen(QColor("#333"), 1));
-            p->setBrush(Qt::NoBrush);
-            p->drawEllipse(c, eyeR * 0.6, eyeR * 0.6);
+            p->setPen(QPen(QColor("#9a9a9a").darker(500), 1));
+            p->setBrush(QColor("#9a9a9a").darker(300));
+            p->drawEllipse(c, eyeR * 0.8, eyeR * 0.8);
         }
 
         // Straight leads on the right edge, one per TRIG/ECHO pin slot --
@@ -63,7 +58,7 @@ public:
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 2; ++i) {
             qreal y = 15 + i * 5;
-            p->drawLine(QPointF(r.width() - 10, y), QPointF(r.width(), y));
+            p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
         }
     }
 

@@ -30,47 +30,49 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor DHT_FILL("#74a8dc");
+static const QColor DISTANCE_SENSOR_ACCENT("#74ffff");
 
 static void paint(QPainter* p, const QRectF& r) {
-    QColor base = DHT_FILL;
-    p->setPen(QPen(base.darker(180), 3));
-    p->setBrush(base);
-    p->drawRoundedRect(r, 5, 5);
+p->setPen(QPen(DISTANCE_SENSOR_ACCENT.darker(400), 3));
+    p->setBrush(DISTANCE_SENSOR_ACCENT.darker(600));
+    p->drawRoundedRect(r, 4, 4);
 
-    // Grille fills the top band only -- the bottom third is left clear for
-    // the temp_in_/humid_in_ QLineEdit proxies, which double as the
-    // human-readable readout (no point painting a duplicate screen
-    // underneath widgets that would just cover it).
-    QRectF grille = r.adjusted(6, 6, -6, -r.height() * 0.42);
-    p->setPen(QPen(base.darker(160), 1));
-    p->setBrush(base.darker(500));
-    int cols = 6, rows = 3;
-    qreal cw = grille.width() / cols, ch = grille.height() / rows;
-    for (int row = 0; row < rows; ++row)
-        for (int col = 0; col < cols; ++col)
-            p->drawRect(QRectF(grille.x() + col * cw + 1, grille.y() + row * ch + 1, cw - 2, ch - 2));
+    // "Eyes" live in the top band only -- the bottom is reserved for the
+    // cm QLineEdit proxy, which is the actual human-readable readout.
+    qreal eyeR = 16.0;
+    QPointF c1(r.center().x() - eyeR * 1.25, r.top() + 22);
+    QPointF c2(r.center().x() + eyeR * 1.25, r.top() + 22);
+    for (const auto& c : {c1, c2}) {
+        p->setPen(QPen(QColor("#222"), 1));
+        p->setBrush(QColor("#9a9a9a"));
+        p->drawEllipse(c, eyeR, eyeR);
+        p->setPen(QPen(QColor("#9a9a9a").darker(500), 1));
+        p->setBrush(QColor("#9a9a9a").darker(300));
+        p->drawEllipse(c, eyeR * 0.8, eyeR * 0.8);
+    }
 
-    // Straight lead on the right edge -- DHT is an input, so
-    // CanvasWidget::updateWires attaches the wire at local (width, 15).
+    // Straight leads on the right edge, one per TRIG/ECHO pin slot --
+    // distance sensors are inputs, so CanvasWidget::updateWires attaches
+    // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 3, 15), QPointF(r.width()+1, 15));
+    for (int i = 0; i < 2; ++i) {
+        qreal y = 15 + i * 5;
+        p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
+    }
 }
 
 // ========================= PASTE ZONE END =========================
 
-// Not part of the paste zone -- stand-ins for the real QLineEdit/
-// QGraphicsProxyWidget temp/humidity inputs that DhtItem embeds outside of
-// paint() (see dht.cpp's constructor). paint() alone never draws these, so
-// this fakes their position/size/color just for visual reference.
+// Not part of the paste zone -- stand-in for the real QLineEdit/
+// QGraphicsProxyWidget cm readout that DistanceSensorItem embeds outside of
+// paint() (see distance_sensor.cpp's constructor). paint() alone never draws
+// this, so this fakes its position/size/color just for visual reference.
 // Delete this when swapping the paste zone to a different component.
-static void drawDhtInputPlaceholders(QPainter* p, const QRectF& r) {
-    for (qreal x : {4.0, 52.0}) {
-        QRectF box(r.x() + x, r.y() + 42, 44, 16);
-        p->setPen(QPen(QColor("#74a8dc"), 1));
-        p->setBrush(QColor("#0a1420"));
-        p->drawRect(box);
-    }
+static void drawDistanceSensorInputPlaceholder(QPainter* p, const QRectF& r) {
+    QRectF box(r.x() + 34, r.y() + 40, 60, 20);
+    p->setPen(QPen(QColor("#44ffff"), 1));
+    p->setBrush(QColor("#001a1a"));
+    p->drawRect(box);
 }
 
 static const qreal BOUNDS_W = 100;
@@ -107,7 +109,7 @@ protected:
         p.drawRect(boundsRect);
 
         paint(&p, boundsRect);
-        drawDhtInputPlaceholders(&p, boundsRect);
+        drawDistanceSensorInputPlaceholder(&p, boundsRect);
 
         p.restore();
 
