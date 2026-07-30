@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
 
 static const QColor LCD_FILL("#cf74dc");
 
@@ -16,13 +15,9 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        QColor housing("#2a2a2a");
-        QLinearGradient bg(r.topLeft(), r.bottomLeft());
-        bg.setColorAt(0.0, housing.lighter(130));
-        bg.setColorAt(0.5, housing);
-        bg.setColorAt(1.0, housing.darker(120));
-        p->setPen(QPen(housing.darker(180), 1.2));
-        p->setBrush(bg);
+        QColor housing(LCD_FILL.darker(400));
+        p->setPen(QPen(housing.darker(180), 3));
+        p->setBrush(housing);
         p->drawRoundedRect(r, 4, 4);
 
         QRectF screen = r.adjusted(r.width() * 0.06, r.height() * 0.18, -r.width() * 0.06, -r.height() * 0.1);
@@ -37,19 +32,13 @@ public:
         p->drawText(QRectF(screen.left() + 4, screen.top() + screen.height() / 2, screen.width() - 8, screen.height() / 2 - 2),
                     Qt::AlignLeft | Qt::AlignVCenter, row1_.left(16));
 
-        p->setPen(QPen(QColor("#c0c0c0"), 1));
-        for (int i = 0; i < 6; ++i) {
-            qreal px = r.left() + 6 + i * (r.width() - 12) / 5.0;
-            p->drawLine(QPointF(px, r.top()), QPointF(px, r.top() + 4));
-        }
-
         // Straight leads on the left edge, one per RS/EN/D4-D7 pin slot --
         // LCDs are outputs, so CanvasWidget::updateWires attaches wire i at
         // local (0, 15 + i*5), same spacing as WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 6; ++i) {
             qreal ly = 15 + i * 5;
-            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+            p->drawLine(QPointF(3, ly), QPointF(0, ly));
         }
     }
 
