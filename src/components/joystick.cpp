@@ -1,8 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
-#include <QRadialGradient>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 
@@ -45,14 +43,10 @@ public:
         qreal dy = (vry_ - 512) / 512.0;
 
         QRectF r = boundingRect();
-        QRectF body = r.adjusted(6, 6, -6, -6);
+        QRectF body = r.adjusted(2, 2, -2, -2);
         QColor housing("#1c2b26");
-        QLinearGradient bg(body.topLeft(), body.bottomLeft());
-        bg.setColorAt(0.0, housing.lighter(130));
-        bg.setColorAt(0.5, housing);
-        bg.setColorAt(1.0, housing.darker(120));
-        p->setPen(QPen(housing.darker(180), 1.2));
-        p->setBrush(bg);
+        p->setPen(QPen(housing.darker(180), 3));
+        p->setBrush(housing);
         p->drawRoundedRect(body, 6, 6);
 
         QPointF c = body.center();
@@ -66,12 +60,9 @@ public:
         p->drawLine(c, stick);
 
         QColor cap = pressed_ ? QColor("#e63946") : JOY_ACTIVE;
-        QRadialGradient g(stick - QPointF(4, 4), 14);
-        g.setColorAt(0.0, cap.lighter(150));
-        g.setColorAt(1.0, cap.darker(130));
-        p->setPen(QPen(cap.darker(160), pressed_ ? 2 : 1));
-        p->setBrush(g);
-        p->drawEllipse(stick, 10, 10);
+        p->setPen(QPen(cap.darker(160), 2));
+        p->setBrush(cap);
+        p->drawEllipse(stick, 13, 13);
 
         // Straight leads on the right edge, one per VRX/VRY/SW pin slot --
         // joysticks are inputs, so CanvasWidget::updateWires attaches wire i
@@ -79,7 +70,7 @@ public:
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal y = 15 + i * 5;
-            p->drawLine(QPointF(r.width() - 10, y), QPointF(r.width(), y));
+            p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
         }
     }
 

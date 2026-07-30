@@ -16,7 +16,7 @@ static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
     p->setPen(QPen(QColor("#999"), 2));
     p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
 
-    QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.1, -r.width() * 0.2, -r.height() * 0.1);
+    QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.05, -r.width() * 0.2, -r.height() * 0.05);
     QColor plate("#3a3a3a");
     p->setPen(QPen(plate.darker(180), 3));
     p->setBrush(plate);
@@ -24,7 +24,7 @@ static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
 
     QPointF c = base.center();
     qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40);
-    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#e0e0e0");
+    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#a6a6a6");
     p->setPen(QPen(capColor.darker(160), 1));
     p->setBrush(capColor);
     p->drawEllipse(c, capR, capR);

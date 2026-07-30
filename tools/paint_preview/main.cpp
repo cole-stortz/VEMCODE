@@ -32,34 +32,38 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor IRSENSOR_ACTIVE("#dcc274");
+static const QColor JOY_ACTIVE("#74dcb5");
 
-static void paint(QPainter* p, const QRectF& r, bool irValue) {
-    p->setPen(QPen(QColor("#0f0a05"), 3));
-    p->setBrush(QColor("#241a0f"));
-    p->drawRoundedRect(r, 4, 4);
+static void paint(QPainter* p, const QRectF& r, qreal dx, qreal dy, bool pressed) {
+    QRectF body = r.adjusted(2, 2, -2, -2);
+    QColor housing("#1c2b26");
+    p->setPen(QPen(housing.darker(180), 3));
+    p->setBrush(housing);
+    p->drawRoundedRect(body, 6, 6);
 
-    QPointF ledC(r.left() + r.width() * 0.28, r.center().y() - 2);
-    qreal ledR = qMin(r.width(), r.height()) * 0.3;
-    QColor ledColor("#5a3ca0");
-    p->setPen(QPen(ledColor.darker(180), 2));
-    p->setBrush(ledColor);
-    p->drawEllipse(ledC, ledR, ledR);
+    QPointF c = body.center();
+    qreal travel = qMin(body.width(), body.height()) * 0.28;
+    p->setPen(QPen(QColor("#000"), 1));
+    p->setBrush(QColor("#0a0a0a"));
+    p->drawEllipse(c, travel * 1.4, travel * 1.4);
 
-    QPointF ind(r.right() - r.width() * 0.25, r.center().y() - 2);
-    QColor indColor = irValue ? IRSENSOR_ACTIVE : QColor("#372e10");
-    p->setPen(QPen(indColor.darker(180), 1.5));
-    p->setBrush(indColor);
-    p->drawEllipse(ind, 6, 6);
+    QPointF stick = c + QPointF(dx * travel, -dy * travel);
+    p->setPen(QPen(QColor("#333"), 3));
+    p->drawLine(c, stick);
 
-    p->setPen(IRSENSOR_ACTIVE);
-    p->setFont(QFont("Courier New", 7));
-    p->drawText(r, Qt::AlignHCenter | Qt::AlignBottom, "IR");
+    QColor cap = pressed ? QColor("#e63946") : JOY_ACTIVE;
+    p->setPen(QPen(cap.darker(160), 2));
+    p->setBrush(cap);
+    p->drawEllipse(stick, 13, 13);
 
-    // Straight lead on the right edge -- IR sensors are inputs, so
-    // CanvasWidget::updateWires attaches the wire at local (width, 15).
+    // Straight leads on the right edge, one per VRX/VRY/SW pin slot --
+    // joysticks are inputs, so CanvasWidget::updateWires attaches wire i
+    // at local (width, 15 + i*5), same spacing as WIRE_SPACING.
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 5, 15), QPointF(r.width(), 15));
+    for (int i = 0; i < 3; ++i) {
+        qreal y = 15 + i * 5;
+        p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
+    }
 }
 
 // ========================= PASTE ZONE END =========================
@@ -97,13 +101,13 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_);
+        paint(&p, boundsRect, pressed_ ? 0.6 : 0.0, pressed_ ? 0.4 : 0.0, pressed_);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle IR value (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle deflected+pressed (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
