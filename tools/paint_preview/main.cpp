@@ -30,50 +30,45 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor COLOR_SENSOR_FILL("#a874dc");
+static const QColor DHT_FILL("#74a8dc");
 
-static void paint(QPainter* p, const QRectF& r, const QColor& lastSensed) {
-    p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 3));
-    p->setBrush(QColor(COLOR_SENSOR_FILL.darker(300)));
-    p->drawRoundedRect(r, 4, 4);
+static void paint(QPainter* p, const QRectF& r) {
+    QColor base = DHT_FILL;
+    p->setPen(QPen(base.darker(180), 3));
+    p->setBrush(base);
+    p->drawRoundedRect(r, 5, 5);
 
-    QPointF c(r.center().x(), r.top() + r.height() * 0.32);
-    qreal lensR = qMin(r.width(), r.height()) * 0.22;
-    p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 1));
-    p->setBrush(lastSensed);
-    p->drawEllipse(c, lensR, lensR);
+    // Grille fills the top band only -- the bottom third is left clear for
+    // the temp_in_/humid_in_ QLineEdit proxies, which double as the
+    // human-readable readout (no point painting a duplicate screen
+    // underneath widgets that would just cover it).
+    QRectF grille = r.adjusted(6, 6, -6, -r.height() * 0.42);
+    p->setPen(QPen(base.darker(160), 1));
+    p->setBrush(base.darker(500));
+    int cols = 6, rows = 3;
+    qreal cw = grille.width() / cols, ch = grille.height() / rows;
+    for (int row = 0; row < rows; ++row)
+        for (int col = 0; col < cols; ++col)
+            p->drawRect(QRectF(grille.x() + col * cw + 1, grille.y() + row * ch + 1, cw - 2, ch - 2));
 
-    qreal off = qMin(r.width(), r.height()) * 0.3;
-    for (const auto& d : {QPointF(-off, -off * 0.6), QPointF(off, -off * 0.6),
-                           QPointF(-off, off * 0.6), QPointF(off, off * 0.6)}) {
-        p->setPen(QPen(QColor("#3a3a3a").darker(200), 1));
-        p->setBrush(QColor("#3a3a3a"));
-        p->drawEllipse(c + d, 3, 3);
-    }
-
-    // Straight leads on the right edge, one per OUT/S2/S3 pin slot --
-    // color sensors are inputs, so CanvasWidget::updateWires attaches
-    // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+    // Straight lead on the right edge -- DHT is an input, so
+    // CanvasWidget::updateWires attaches the wire at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    for (int i = 0; i < 3; ++i) {
-        qreal ly = 15 + i * 5;
-        p->drawLine(QPointF(r.width() - 5, ly), QPointF(r.width(), ly));
-    }
+    p->drawLine(QPointF(r.width() - 3, 15), QPointF(r.width()+1, 15));
 }
 
 // ========================= PASTE ZONE END =========================
 
 // Not part of the paste zone -- stand-ins for the real QLineEdit/
-// QGraphicsProxyWidget R/G/B inputs that ColorSensorItem embeds outside of
-// paint() (see color_sensor.cpp's constructor). paint() alone never draws
-// these, so this fakes their position/size/colors just for visual reference.
+// QGraphicsProxyWidget temp/humidity inputs that DhtItem embeds outside of
+// paint() (see dht.cpp's constructor). paint() alone never draws these, so
+// this fakes their position/size/color just for visual reference.
 // Delete this when swapping the paste zone to a different component.
-static void drawColorSensorInputPlaceholders(QPainter* p, const QRectF& r) {
-    struct Box { const char* fg; const char* bg; qreal x; };
-    for (const auto& b : {Box{"#ff4444", "#1a0000", 4}, Box{"#44ff44", "#001a00", 34}, Box{"#4444ff", "#00001a", 64}}) {
-        QRectF box(r.x() + b.x, r.y() + 42, 26, 16);
-        p->setPen(QPen(QColor(b.fg), 1));
-        p->setBrush(QColor(b.bg));
+static void drawDhtInputPlaceholders(QPainter* p, const QRectF& r) {
+    for (qreal x : {4.0, 52.0}) {
+        QRectF box(r.x() + x, r.y() + 42, 44, 16);
+        p->setPen(QPen(QColor("#74a8dc"), 1));
+        p->setBrush(QColor("#0a1420"));
         p->drawRect(box);
     }
 }
@@ -111,15 +106,14 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_ ? QColor("#44dc74") : COLOR_SENSOR_FILL);
-        drawColorSensorInputPlaceholders(&p, boundsRect);
+        paint(&p, boundsRect);
+        drawDhtInputPlaceholders(&p, boundsRect);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle sensed color (%1)   d: theme (%2)   wheel: zoom (%3x)")
-                       .arg(pressed_ ? "green" : "default")
+                   QString("d: theme (%1)   wheel: zoom (%2x)")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }
