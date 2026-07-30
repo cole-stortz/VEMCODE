@@ -5,6 +5,7 @@
 
 static const QColor STRIP_BG ("#1a1a1a");
 static const QColor STRIP_OFF("#2a2a2a");
+static const QColor NEOPIXEL_ACCENT("#4ade80");
 
 // Rendered as a grid of dots wrapping every COLS pixels within the standard
 // 100px-wide footprint, growing downward as pixel count increases -- same
@@ -31,7 +32,7 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF box = boundingRect();
-        p->setPen(QPen(QColor("#000000"), 1));
+        p->setPen(QPen(QColor("#000000"), 3));
         p->setBrush(STRIP_BG);
         p->drawRect(box);
 
@@ -52,7 +53,7 @@ public:
         // Straight lead on the left edge -- NeoPixel is an output, so
         // CanvasWidget::updateWires attaches the wire at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
+        p->drawLine(QPointF(5, 15), QPointF(0, 15));
     }
 
     // Whole-strip update, sent once per show() -- rgb is pixelCount_*3
@@ -81,7 +82,7 @@ static bool registered_neopixel = []() {
             return new NeoPixelItem(pin, parent);
         }
     };
-    def.wire_color = QColor("#4ade80");
+    def.wire_color = NEOPIXEL_ACCENT;
     ComponentRegistry::instance().register_component(def);
     return true;
 }();
