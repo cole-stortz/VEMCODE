@@ -27,56 +27,78 @@
 #include <QWheelEvent>
 #include <QRadialGradient>
 #include <QLinearGradient>
+#include <QPainterPath>
+#include <QLineF>
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor DISTANCE_SENSOR_ACCENT("#74ffff");
+static const QColor HBRIDGE_ACTIVE("#dc7474");
 
-static void paint(QPainter* p, const QRectF& r) {
-p->setPen(QPen(DISTANCE_SENSOR_ACCENT.darker(400), 3));
-    p->setBrush(DISTANCE_SENSOR_ACCENT.darker(600));
-    p->drawRoundedRect(r, 4, 4);
-
-    // "Eyes" live in the top band only -- the bottom is reserved for the
-    // cm QLineEdit proxy, which is the actual human-readable readout.
-    qreal eyeR = 16.0;
-    QPointF c1(r.center().x() - eyeR * 1.25, r.top() + 22);
-    QPointF c2(r.center().x() + eyeR * 1.25, r.top() + 22);
-    for (const auto& c : {c1, c2}) {
-        p->setPen(QPen(QColor("#222"), 1));
-        p->setBrush(QColor("#9a9a9a"));
-        p->drawEllipse(c, eyeR, eyeR);
-        p->setPen(QPen(QColor("#9a9a9a").darker(500), 1));
-        p->setBrush(QColor("#9a9a9a").darker(300));
-        p->drawEllipse(c, eyeR * 0.8, eyeR * 0.8);
-    }
-
-    // Straight leads on the right edge, one per TRIG/ECHO pin slot --
-    // distance sensors are inputs, so CanvasWidget::updateWires attaches
-    // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+static void paint(QPainter* p, const QRectF& r, int pwm, bool cwise, bool antiCwise) {
+    // Straight leads on the left edge, one per PWM/ANTI_CWISE/CWISE pin
+    // slot -- h-bridge motors are outputs, so CanvasWidget::updateWires
+    // attaches wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
     p->setPen(QPen(QColor("#999"), 2));
-    for (int i = 0; i < 2; ++i) {
-        qreal y = 15 + i * 5;
-        p->drawLine(QPointF(r.width() - 5, y), QPointF(r.width(), y));
+    for (int i = 0; i < 3; ++i) {
+        qreal ly = 15 + i * 5;
+        p->drawLine(QPointF(10, ly), QPointF(0, ly));
     }
+    
+    QString dir = (cwise && antiCwise) ? "BRAKE"
+                : cwise                 ? "CW"
+                : antiCwise             ? "CCW"
+                :                         "STOP";
+
+    qreal rad = r.height() * 0.42;
+    QPointF c(r.left() + rad + 6, r.center().y());
+    QColor body = QColor("#888").lighter(pwm > 0 ? 110 : 80);
+    p->setPen(QPen(QColor("#333"), 3));
+    p->setBrush(body);
+    p->drawEllipse(c, rad, rad);
+
+    p->setPen(QPen(QColor("#222"), 1));
+    p->setBrush(QColor("#555"));
+    p->drawEllipse(c, rad * 0.18, rad * 0.18);
+
+    if (dir == "CW" || dir == "CCW") {
+        p->setPen(QPen(HBRIDGE_ACTIVE, 2));
+        QRectF arcRect(c.x() - rad * 0.7, c.y() - rad * 0.7, rad * 1.4, rad * 1.4);
+        qreal spanDeg = dir == "CW" ? -270 : 270;
+        p->drawArc(arcRect, 0, spanDeg * 16);
+
+        // Arrowhead at the arc's terminal end -- sampled via arcMoveTo so the
+        // tangent direction always matches whatever drawArc actually rendered,
+        // rather than hand-deriving trig signs for Qt's arc-angle convention.
+        QPainterPath tipPath, backPath;
+        tipPath.arcMoveTo(arcRect, spanDeg);
+        backPath.arcMoveTo(arcRect, spanDeg - (spanDeg > 0 ? 15 : -15));
+        QPointF tip = tipPath.currentPosition();
+        QLineF dirLine(backPath.currentPosition(), tip);
+        dirLine.setLength(1);
+        QPointF dirVec = dirLine.p2() - dirLine.p1();
+        QPointF normVec(-dirVec.y(), dirVec.x());
+        qreal arrowLen = 6;
+        QPolygonF arrow;
+        arrow << tip + dirVec * arrowLen
+              << tip + normVec * (arrowLen * 0.55) - dirVec * (arrowLen * 0.2)
+              << tip - normVec * (arrowLen * 0.55) - dirVec * (arrowLen * 0.2);
+        p->setPen(Qt::NoPen);
+        p->setBrush(HBRIDGE_ACTIVE);
+        p->drawPolygon(arrow);
+    }
+
+    p->setPen(HBRIDGE_ACTIVE);
+    p->setFont(QFont("Courier New", 7));
+    qreal textX = r.width() * 0.6;
+    qreal textW = r.width() - textX;
+    p->drawText(QRectF(textX, r.center().y() - 14, textW, 14), Qt::AlignCenter, dir);
+    p->drawText(QRectF(textX, r.center().y(), textW, 14), Qt::AlignCenter, QString("pwm:%1").arg(pwm));
 }
 
 // ========================= PASTE ZONE END =========================
 
-// Not part of the paste zone -- stand-in for the real QLineEdit/
-// QGraphicsProxyWidget cm readout that DistanceSensorItem embeds outside of
-// paint() (see distance_sensor.cpp's constructor). paint() alone never draws
-// this, so this fakes its position/size/color just for visual reference.
-// Delete this when swapping the paste zone to a different component.
-static void drawDistanceSensorInputPlaceholder(QPainter* p, const QRectF& r) {
-    QRectF box(r.x() + 34, r.y() + 40, 60, 20);
-    p->setPen(QPen(QColor("#44ffff"), 1));
-    p->setBrush(QColor("#001a1a"));
-    p->drawRect(box);
-}
-
 static const qreal BOUNDS_W = 100;
-static const qreal BOUNDS_H = 64;
+static const qreal BOUNDS_H = 54;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -108,14 +130,14 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect);
-        drawDistanceSensorInputPlaceholder(&p, boundsRect);
+        paint(&p, boundsRect, pressed_ ? 200 : 0, pressed_, false);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("d: theme (%1)   wheel: zoom (%2x)")
+                   QString("click: toggle spinning (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                       .arg(pressed_ ? "CW" : "stopped")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }
