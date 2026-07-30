@@ -29,51 +29,53 @@
 #include <QLinearGradient>
 #include <QPainterPath>
 #include <QLineF>
+#include <QImage>
+#include <QFont>
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor LED_ACTIVE  ("#cfdc74");
-static const QColor LED_INACTIVE("#323710");
+static const QColor BEZEL_BG   ("#111111");
+static const QColor SCREEN_OFF ("#04141a");
+static const QColor SCREEN_ON  ("#7fe8ff");
+static constexpr float PX_SCALE = 1.5f;
+static constexpr float MARGIN = 8.0f;
 
-// Derives a dimmed "off" color from the current base color, same
-// proportions as the original hardcoded LED_ACTIVE/LED_INACTIVE pair.
-static QColor dimmed(const QColor& c) {
-    return c.darker(400);
-}
+static void paint(QPainter* p, int width, int height, const QImage& img) {
+    QRectF box(0, 0, width * PX_SCALE + 2 * MARGIN, height * PX_SCALE + 2 * MARGIN);
+    p->setPen(QPen(QColor("#000000"), 3));
+    p->setBrush(BEZEL_BG);
+    p->drawRect(box);
 
-static void paint(QPainter* p, const QRectF& r, bool active, const QColor& baseColor) {
-    // Lead drawn under the bulb, extending well past its edge -- the bulb
-    // paints over the overlap, so the visible stub always ends up flush
-    // with the bulb regardless of the exact radius.
-    // LEDs are outputs, so CanvasWidget::updateWires attaches the wire at
-    // local (0, 15).
+    QRectF screenRect(MARGIN, MARGIN, width * PX_SCALE, height * PX_SCALE);
+    p->setRenderHint(QPainter::SmoothPixmapTransform, false);
+    p->drawImage(screenRect, img);
+
+    // Straight lead on the left edge -- OLED is an output, so
+    // CanvasWidget::updateWires attaches the wire at local (0, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(35, 15), QPointF(0, 15));
-
-    QPointF c = r.center();
-    qreal rad = qMin(r.width(), r.height()) * 0.40;
-
-    if (active) {
-        QRadialGradient glow(c, rad * 1.8);
-        QColor g1 = baseColor; g1.setAlpha(140);
-        QColor g2 = baseColor; g2.setAlpha(0);
-        glow.setColorAt(0.0, g1);
-        glow.setColorAt(1.0, g2);
-        p->setPen(Qt::NoPen);
-        p->setBrush(glow);
-        p->drawEllipse(c, rad * 2.6, rad * 2.6);
-    }
-
-    QColor body = active ? baseColor : dimmed(baseColor);
-    p->setPen(QPen(baseColor.darker(200), 3));
-    p->setBrush(body);
-    p->drawEllipse(c, rad, rad);
+    p->drawLine(QPointF(5, 15), QPointF(-1, 15));
 }
 
 // ========================= PASTE ZONE END =========================
 
-static const qreal BOUNDS_W = 100;
-static const qreal BOUNDS_H = 44;
+// Not part of the paste zone -- OledItem's real framebuffer only ever gets
+// filled by updateOledFramebuffer() from actual sketch output. This fakes a
+// blank vs. lit screen just for visual reference.
+// Delete this when swapping the paste zone to a different component.
+static QImage makeDemoImage(int width, int height, bool active) {
+    QImage img(width, height, QImage::Format_RGB32);
+    img.fill(SCREEN_OFF);
+    if (active) {
+        QPainter ip(&img);
+        ip.setPen(SCREEN_ON);
+        ip.setFont(QFont("Courier New", 16));
+        ip.drawText(img.rect(), Qt::AlignCenter, "OLED");
+    }
+    return img;
+}
+
+static const qreal BOUNDS_W = 128 * PX_SCALE + 2 * MARGIN;
+static const qreal BOUNDS_H = 64 * PX_SCALE + 2 * MARGIN;
 
 static const QColor VIEWPORT_BG_DARK("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT("#dcdce2");
@@ -105,13 +107,13 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_, LED_ACTIVE);
+        paint(&p, 128, 64, makeDemoImage(128, 64, pressed_));
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle active (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle screen content (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));

@@ -43,7 +43,7 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF box = boundingRect();
-        p->setPen(QPen(QColor("#000000"), 1));
+        p->setPen(QPen(QColor("#000000"), 3));
         p->setBrush(BEZEL_BG);
         p->drawRect(box);
 
@@ -54,7 +54,7 @@ public:
         // Straight lead on the left edge -- OLED is an output, so
         // CanvasWidget::updateWires attaches the wire at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
+        p->drawLine(QPointF(5, 15), QPointF(-1, 15));
     }
 
     // Whole-framebuffer update, sent once per display() -- pixels is
