@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
 #include <QtMath>
 #include <cmath>
 
@@ -18,38 +17,35 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        QRectF body = r.adjusted(r.width() * 0.15, r.height() * 0.3, -r.width() * 0.15, -6);
-
-        QColor housing("#2a2a2a");
-        QLinearGradient bg(body.topLeft(), body.bottomLeft());
-        bg.setColorAt(0.0, housing.lighter(130));
-        bg.setColorAt(0.5, housing);
-        bg.setColorAt(1.0, housing.darker(120));
-        p->setPen(QPen(housing.darker(180), 1.2));
-        p->setBrush(bg);
+        QRectF body = r.adjusted(2, 2, -2, -2);
+        p->setPen(QPen(SERVO_FILL.darker(180), 3));
+        p->setBrush(SERVO_FILL.darker(400));
         p->drawRoundedRect(body, 4, 4);
 
-        QPointF pivot(body.center().x(), body.top());
+        QPointF pivot(body.left() + 20, r.center().y());
+        qreal hornLen = 16;
+
         p->setPen(QPen(QColor("#111"), 1));
-        p->setBrush(QColor("#555"));
-        p->drawEllipse(pivot, 5, 5);
+        p->setBrush(QColor("#333"));
+        p->drawEllipse(pivot, 6, 6);
 
         qreal a = qDegreesToRadians(angle_ - 90.0);
-        QPointF tip = pivot + QPointF(std::cos(a) * body.width() * 0.55, std::sin(a) * body.width() * 0.55);
+        QPointF tip = pivot + QPointF(std::cos(a) * hornLen, std::sin(a) * hornLen);
         p->setPen(QPen(SERVO_FILL, 3));
         p->drawLine(pivot, tip);
         p->setPen(Qt::NoPen);
         p->setBrush(SERVO_FILL);
         p->drawEllipse(tip, 4, 4);
 
-        p->setPen(QColor("#cfcfcf"));
+        p->setPen(SERVO_FILL);
         p->setFont(QFont("Courier New", 8));
-        p->drawText(r, Qt::AlignHCenter | Qt::AlignBottom, QString("%1°").arg(angle_));
+        qreal textX = pivot.x() + hornLen + 10;
+        p->drawText(QRectF(textX, 0, r.width() - textX, r.height()), Qt::AlignCenter, QString("%1°").arg(angle_));
 
         // Straight lead on the left edge -- servos are outputs, so
         // CanvasWidget::updateWires attaches the wire at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
+        p->drawLine(QPointF(5, 15), QPointF(0, 15));
     }
 
     void onPinChanged(int, int value) override {

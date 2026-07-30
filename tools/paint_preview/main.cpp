@@ -36,42 +36,37 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor POT_ACTIVE("#a8dc74");
+static const QColor SERVO_FILL("#74dc8e");
 
-static void paint(QPainter* p, const QRectF& r, int value) {
-    // Lead drawn under the knob, extending well past its edge -- the knob
-    // paints over the overlap, so the visible stub always ends up flush
-    // with the knob regardless of the exact radius.
-    // Potentiometers are inputs, so CanvasWidget::updateWires attaches the
-    // wire at local (width, 15).
-    p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 50, 15), QPointF(r.width(), 15));
+static void paint(QPainter* p, const QRectF& r, int angle) {
+    QRectF body = r.adjusted(2, 2, -2, -2);
+    p->setPen(QPen(SERVO_FILL.darker(180), 3));
+    p->setBrush(SERVO_FILL.darker(400));
+    p->drawRoundedRect(body, 4, 4);
 
-    qreal ratio = value / 1023.0;
-
-    qreal rad = qMin(r.width(), r.height()) * 0.45;
-    QPointF c(r.center().x()+10, r.center().y());
-    QColor knobColor = POT_ACTIVE.lighter(int(100 + ratio * 40));
-    p->setPen(QPen(knobColor.darker(180), 3));
-    p->setBrush(knobColor);
-    p->drawEllipse(c, rad, rad);
+    QPointF pivot(body.left() + 20, r.center().y());
+    qreal hornLen = 16;
 
     p->setPen(QPen(QColor("#111"), 1));
-    for (int i = 0; i < 11; ++i) {
-        qreal a = qDegreesToRadians(-135.0 + i * 27.0);
-        QPointF p1(c.x() + std::cos(a) * rad * 0.75, c.y() + std::sin(a) * rad * 0.75);
-        QPointF p2(c.x() + std::cos(a) * rad * 0.95, c.y() + std::sin(a) * rad * 0.95);
-        p->drawLine(p1, p2);
-    }
+    p->setBrush(QColor("#333"));
+    p->drawEllipse(pivot, 6, 6);
 
-    qreal ang = qDegreesToRadians(-135.0 + ratio * 270.0);
-    p->setPen(QPen(QColor("#1a1a1a"), 2));
-    p->drawLine(c, c + QPointF(std::cos(ang) * rad * 0.8, std::sin(ang) * rad * 0.8));
+    qreal a = qDegreesToRadians(angle - 90.0);
+    QPointF tip = pivot + QPointF(std::cos(a) * hornLen, std::sin(a) * hornLen);
+    p->setPen(QPen(SERVO_FILL, 3));
+    p->drawLine(pivot, tip);
+    p->setPen(Qt::NoPen);
+    p->setBrush(SERVO_FILL);
+    p->drawEllipse(tip, 4, 4);
 
-    p->setPen(POT_ACTIVE);
-    p->setFont(QFont("Courier New", 7));
-    qreal textW = r.width() * 0.4;
-    p->drawText(QRectF(0, 0, textW, r.height()), Qt::AlignCenter, QString::number(value));
+    p->setPen(SERVO_FILL);
+    p->setFont(QFont("Courier New", 8));
+    qreal textX = pivot.x() + hornLen + 10;
+    p->drawText(QRectF(textX, 0, r.width() - textX, r.height()), Qt::AlignCenter, QString("%1°").arg(angle));
+
+    p->setPen(QPen(QColor("#999"), 2));
+    p->drawLine(QPointF(5, 15), QPointF(0, 15));
+
 }
 
 // ========================= PASTE ZONE END =========================
@@ -109,14 +104,14 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_ ? 1023 : 0);
+        paint(&p, boundsRect, pressed_ ? 180 : 0);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle value (%1)   d: theme (%2)   wheel: zoom (%3x)")
-                       .arg(pressed_ ? "1023" : "0")
+                   QString("click: toggle angle (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                       .arg(pressed_ ? "180" : "0")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }
