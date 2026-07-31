@@ -24,7 +24,7 @@ public:
     void updateMatrixRow(int pin, int addr, int row, int bits);
     void updateNeopixelShow(int pin, QByteArray rgb);
     void updateOledDisplay(int pin, QByteArray pixels, int width, int height);
-    void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; }
+    void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; BOARD_W = p.board_width; }
 
     // Layout mode: components become draggable instead of receiving their
     // normal interactive mouse events (button press, slider drag, etc).
@@ -52,6 +52,11 @@ public:
     void setDarkTheme(bool dark);
     bool isDarkTheme() const { return darkTheme_; }
 
+    // Drives the board's power-indicator LED -- lit and glowing while the
+    // sketch is running, dim otherwise. Called from MainWindow alongside its
+    // stopButton_ enabled state.
+    void setSketchRunning(bool running);
+
 signals:
     void inputChanged(int pin, int eventType, QVariant value);
 
@@ -65,9 +70,17 @@ protected:
 
 private:
     void drawBoard();
+    // `chain_prev` is set for an I2C daisy-chain link (device after the
+    // first on a shared bus, see i2cbus.h) -- its wire attaches to that
+    // item instead of a board pin. Null for every normal component.
     void placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
-                         ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h);
-    QGraphicsLineItem* drawWire(QPointF from, QPointF to, const QColor& color);
+                         ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h,
+                         ComponentItem* chain_prev = nullptr);
+    // Draws a wire segment plus a slight shadow behind it (helps bright wire
+    // colors stay visible in light mode) -- appends both items to `lines` so
+    // updateWires() can clean them up together on re-route.
+    void drawWire(QPointF from, QPointF to, const QColor& color,
+                  std::vector<QGraphicsLineItem*>& lines);
     void updateWires(ComponentItem* item); // re-route a component's wires from its current position
     QPointF pinLocation(int pin);
     void setZoom(qreal zoom);
@@ -91,6 +104,9 @@ private:
         std::vector<int> wire_pins;
         QColor wire_color;
         std::vector<QGraphicsLineItem*> wire_lines;
+        // Set for an I2C daisy-chain link -- updateWires() routes its wire
+        // to this item's edge instead of pinLocation(wire_pins[0]).
+        ComponentItem* chain_prev = nullptr;
     };
     QMap<ComponentItem*, ComponentInfo> componentInfo_;
 
@@ -107,15 +123,21 @@ private:
 
     QHash<int, bool> manualPolarities_; // pin -> isCommonAnode
 
+    // Per-sketch override of the board's fill color, set via ctrl+click on
+    // the board itself. Invalid (default QColor()) means "use profile_.board_color".
+    QColor boardColorOverride_;
+    QGraphicsRectItem* boardRectItem_ = nullptr; // for ctrl+click hit-testing in mousePressEvent
+
     qreal zoomLevel_ = 1.0;
     static constexpr qreal ZOOM_MIN = 0.25;
     static constexpr qreal ZOOM_MAX = 3.0;
 
     bool darkTheme_ = true;
+    bool sketchRunning_ = false;
 
     static constexpr int BOARD_X = 300;
     static constexpr int BOARD_Y = 150;
-    static constexpr int BOARD_W = 200;
+    int BOARD_W = 200;
     int BOARD_H = 300;
 
     BoardProfile profile_ = BOARD_UNO;

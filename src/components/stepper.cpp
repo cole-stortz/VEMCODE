@@ -1,9 +1,10 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QtMath>
+#include <cmath>
 
-static const QColor STEPPER_ACTIVE  ("#dcb574");
-static const QColor STEPPER_INACTIVE("#372a10");
+static const QColor STEPPER_ACTIVE("#8e5c2e");
 
 // Handles two real-world wiring styles with the same class: STEP+DIR (driver
 // boards like A4988/DRV8825) and IN1-IN4 (ULN2003 + 28BYJ-48 style, driven by
@@ -25,18 +26,47 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        bool active = fourPhase_
-            ? (phaseState_[0] || phaseState_[1] || phaseState_[2] || phaseState_[3])
-            : stepHigh_;
-        QColor fill = STEPPER_ACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
-                    QString("Stepper\npos: %1  %2").arg(position_).arg(dirCW_ ? "CW" : "CCW"));
+        QRectF r = boundingRect();
+
+        // Leads drawn under the body, extending well past its edge -- the
+        // body paints over the overlap, so the visible stubs always end up
+        // flush with the body's edge regardless of the exact radius.
+        // Steppers are outputs, so CanvasWidget::updateWires attaches wire i
+        // at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        int leadCount = fourPhase_ ? 4 : 2;
+        for (int i = 0; i < leadCount; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
+
+        // Matches HBridgeMotor's absolute radius (54 * 0.42) rather than
+        // deriving from this box's own (shorter, 44px) height, so the two
+        // read as the same size despite Stepper's bounding rect being
+        // shorter.
+        qreal rad = 54.0 * 0.42;
+        QPointF c(r.left() + rad + 6, r.center().y());
+        p->setPen(QPen(STEPPER_ACTIVE, 3));
+        p->setBrush(STEPPER_ACTIVE.darker(200));
+        p->drawEllipse(c, rad, rad);
+
+        p->setPen(QPen(QColor("#222"), 1));
+        p->setBrush(QColor("#555"));
+        p->drawEllipse(c, rad * 0.18, rad * 0.18);
+
+        // Clock-style arm instead of a directional arc -- steppers just
+        // track an accumulated position (15deg/step), not a continuous
+        // spin rate.
+        qreal a = qDegreesToRadians((double)(position_ * 15));
+        p->setPen(QPen(QColor("#1a1a1a"), 3, Qt::SolidLine, Qt::RoundCap));
+        p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
+
+        p->setPen(STEPPER_ACTIVE.lighter(200));
+        p->setFont(QFont("Courier New", 7));
+        qreal textX = r.width() * 0.6;
+        qreal textW = r.width() - textX;
+        p->drawText(QRectF(textX, r.center().y() - 14, textW, 14), Qt::AlignCenter, QString("pos:%1").arg(position_));
+        p->drawText(QRectF(textX, r.center().y(), textW, 14), Qt::AlignCenter, dirCW_ ? "CW" : "CCW");
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

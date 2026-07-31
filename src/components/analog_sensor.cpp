@@ -4,27 +4,34 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 #include <qgraphicsitem.h>
+#include <QtMath>
+#include <cmath>
 
-static const QColor LIGHT_SENSOR_FILL("#dccb74");
-static const QColor TEMPERATURE_SENSOR_FILL("#dc8674");
-static const QColor FORCE_SENSOR_FILL("#5a5a5a");
-static const QColor ANALOG_SENSOR_FILL("#8174dc");
+static const QColor LIGHT_SENSOR_FILL("#d1c23a");
+static const QColor TEMPERATURE_SENSOR_FILL("#b8522e");
+static const QColor FORCE_SENSOR_FILL("#5c7ca8");
+static const QColor ANALOG_SENSOR_FILL("#8e7ce8");
+
+// Which pictogram to draw on the sensor's PCB face -- one entry per
+// AnalogSensorItemBase subclass below.
+enum class SensorIcon { Light, Temp, Force, Chip };
 
 class AnalogSensorItemBase : public ComponentItem {
     QLineEdit* input_;
     QColor fill_;
     QString label_;
+    SensorIcon icon_;
 
 public:
-    AnalogSensorItemBase(int p, QGraphicsItem* parent, const QColor& fill, const QString& label)
-        : ComponentItem(p, parent), fill_(fill), label_(label) {
+    AnalogSensorItemBase(int p, QGraphicsItem* parent, const QColor& fill, const QString& label, SensorIcon icon)
+        : ComponentItem(p, parent), fill_(fill), label_(label), icon_(icon) {
         input_ = new QLineEdit();
         input_->setFixedSize(60, 20);
         input_->setPlaceholderText("0-1023");
         input_->setStyleSheet("background:#1a1a00; color:#ffff44; border:1px solid #ffff44;");
         auto* proxy = new QGraphicsProxyWidget(this);
         proxy->setWidget(input_);
-        proxy->setPos(34, 18);
+        proxy->setPos(34, 40);
         connect(input_, &QLineEdit::textChanged, this, [this](const QString& text) {
             bool ok;
             int val = text.toInt(&ok);
@@ -33,16 +40,67 @@ public:
         });
     }
 
-    QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
+    QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        p->setPen(QPen(fill_.darker(150), 1));
-        p->setBrush(fill_);
-        p->drawRect(boundingRect());
-        int lum = (fill_.red() * 299 + fill_.green() * 587 + fill_.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, label_);
+        QRectF r = boundingRect();
+        p->setPen(QPen(fill_.darker(180), 3));
+        p->setBrush(fill_.darker(400));
+        p->drawRoundedRect(r, 4, 4);
+
+        // Icon sits in the top band, above the QLineEdit proxy that anchors
+        // at y=40 -- the label caption goes above the icon, not the bottom,
+        // since the bottom is reserved for that widget.
+        p->setPen(fill_);
+        p->setFont(QFont("Courier New", 7));
+        p->drawText(QRectF(r.left(), r.top() + 2, r.width(), 10), Qt::AlignHCenter | Qt::AlignTop, label_);
+
+        QPointF c(r.center().x(), r.top() + 24);
+        qreal s = 7.0;
+        p->setPen(QPen(fill_, 1.6));
+        p->setBrush(Qt::NoBrush);
+
+        switch (icon_) {
+            case SensorIcon::Light:
+                p->setBrush(fill_);
+                p->drawEllipse(c, s * 0.5, s * 0.5);
+                for (int i = 0; i < 8; ++i) {
+                    qreal a = qDegreesToRadians(360.0 * i / 8);
+                    QPointF p1(c.x() + std::cos(a) * s * 0.7, c.y() + std::sin(a) * s * 0.7);
+                    QPointF p2(c.x() + std::cos(a) * s * 1.1, c.y() + std::sin(a) * s * 1.1);
+                    p->drawLine(p1, p2);
+                }
+                break;
+            case SensorIcon::Temp: {
+                QRectF stem(c.x() - s * 0.15, c.y() - s, s * 0.3, s * 1.3);
+                p->drawRoundedRect(stem, s * 0.15, s * 0.15);
+                p->setBrush(fill_);
+                p->drawEllipse(QPointF(c.x(), c.y() + s * 0.5), s * 0.4, s * 0.4);
+                break;
+            }
+            case SensorIcon::Force: {
+                QRectF arcRect(c.x() - s, c.y() - s * 0.6, s * 2, s * 1.6);
+                p->drawArc(arcRect, 20 * 16, 140 * 16);
+                p->setPen(QPen(fill_, 2));
+                p->drawLine(c, c + QPointF(s * 0.5, -s * 0.4));
+                break;
+            }
+            case SensorIcon::Chip: {
+                QRectF chip(c.x() - s * 0.7, c.y() - s * 0.5, s * 1.4, s);
+                p->drawRect(chip);
+                for (int i = 0; i < 3; ++i) {
+                    qreal x = chip.left() + chip.width() * (i + 1) / 4.0;
+                    p->drawLine(QPointF(x, chip.top()), QPointF(x, chip.top() - 4));
+                    p->drawLine(QPointF(x, chip.bottom()), QPointF(x, chip.bottom() + 4));
+                }
+                break;
+            }
+        }
+
+        // Straight lead on the right edge -- these sensors are inputs, so
+        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
     }
 
     // Called by CanvasWidget after inputChanged is connected -- see
@@ -55,25 +113,25 @@ public:
 class LightSensorItem : public AnalogSensorItemBase {
 public:
     LightSensorItem(int p, QGraphicsItem* parent)
-        : AnalogSensorItemBase(p, parent, LIGHT_SENSOR_FILL, "Light") {}
+        : AnalogSensorItemBase(p, parent, LIGHT_SENSOR_FILL, "Light", SensorIcon::Light) {}
 };
 
 class TemperatureSensorItem : public AnalogSensorItemBase {
 public:
     TemperatureSensorItem(int p, QGraphicsItem* parent)
-        : AnalogSensorItemBase(p, parent, TEMPERATURE_SENSOR_FILL, "Temp") {}
+        : AnalogSensorItemBase(p, parent, TEMPERATURE_SENSOR_FILL, "Temp", SensorIcon::Temp) {}
 };
 
 class ForceSensorItem : public AnalogSensorItemBase {
 public:
     ForceSensorItem(int p, QGraphicsItem* parent)
-        : AnalogSensorItemBase(p, parent, FORCE_SENSOR_FILL, "Force") {}
+        : AnalogSensorItemBase(p, parent, FORCE_SENSOR_FILL, "Force", SensorIcon::Force) {}
 };
 
 class AnalogSensorItem : public AnalogSensorItemBase {
 public:
     AnalogSensorItem(int p, QGraphicsItem* parent)
-        : AnalogSensorItemBase(p, parent, ANALOG_SENSOR_FILL, "Sensor") {}
+        : AnalogSensorItemBase(p, parent, ANALOG_SENSOR_FILL, "Sensor", SensorIcon::Chip) {}
 };
 
 // Registered before AnalogSensor so its more specific keywords win --

@@ -4,7 +4,7 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
-static const QColor COLOR_SENSOR_FILL("#a874dc");
+static const QColor COLOR_SENSOR_FILL("#9c5ce8");
 
 class ColorSensorItem : public ComponentItem {
     int s2Pin_ = -1;
@@ -12,6 +12,7 @@ class ColorSensorItem : public ComponentItem {
     QLineEdit* r_in_;
     QLineEdit* g_in_;
     QLineEdit* b_in_;
+    QColor lastSensed_ = COLOR_SENSOR_FILL;
 
 public:
     ColorSensorItem(int p, QGraphicsItem* parent)
@@ -27,9 +28,9 @@ public:
             return in;
         };
 
-        r_in_ = make_input("#ff4444", "#1a0000", 4);
-        g_in_ = make_input("#44ff44", "#001a00", 34);
-        b_in_ = make_input("#4444ff", "#00001a", 64);
+        r_in_ = make_input("#ff4444", "#1a0000", 7);
+        g_in_ = make_input("#44ff44", "#001a00", 37);
+        b_in_ = make_input("#4444ff", "#00001a", 67);
 
         connect(r_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
         connect(g_in_, &QLineEdit::textChanged, this, [this] { emitColor(); });
@@ -39,14 +40,33 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = COLOR_SENSOR_FILL;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "Color");
+        QRectF r = boundingRect();
+        p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 3));
+        p->setBrush(QColor(COLOR_SENSOR_FILL.darker(300)));
+        p->drawRoundedRect(r, 4, 4);
+
+        QPointF c(r.center().x(), r.top() + r.height() * 0.32);
+        qreal lensR = qMin(r.width(), r.height()) * 0.22;
+        p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 1));
+        p->setBrush(lastSensed_);
+        p->drawEllipse(c, lensR, lensR);
+
+        qreal off = qMin(r.width(), r.height()) * 0.3;
+        for (const auto& d : {QPointF(-off, -off * 0.6), QPointF(off, -off * 0.6),
+                               QPointF(-off, off * 0.6), QPointF(off, off * 0.6)}) {
+            p->setPen(QPen(QColor("#3a3a3a").darker(200), 1));
+            p->setBrush(QColor("#3a3a3a"));
+            p->drawEllipse(c + d, 3, 3);
+        }
+
+        // Straight leads on the right edge, one per OUT/S2/S3 pin slot --
+        // color sensors are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 5, ly), QPointF(r.width(), ly));
+        }
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {
@@ -67,8 +87,10 @@ private:
         int g = qBound(0, g_in_->text().toInt(&gok), 255);
         int b = qBound(0, b_in_->text().toInt(&bok), 255);
         if (rok && gok && bok) {
+            lastSensed_ = QColor(r, g, b);
             QVariantList payload{ r, g, b, s2Pin_, s3Pin_ };
             emit inputChanged(pin(), (int)ComponentEventType::ColorRGB, payload);
+            update();
         }
     }
 };

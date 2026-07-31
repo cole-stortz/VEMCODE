@@ -1,10 +1,15 @@
-0.050, SET_COLOR, ColorSensor, 0, 0, 0
-0.050, SET, DistanceSensor_PIN, 10.0
-5.005, SET, DistanceSensor_PIN, 1.0
-8.587, SET, DistanceSensor_PIN, 10.0
-8.741, SET, DistanceSensor_PIN, 100.0
-12.042, SET, DistanceSensor_PIN, 10.0
-15.302, SET_COLOR, ColorSensor, 0, 1, 0
-15.442, SET_COLOR, ColorSensor, 0, 10, 0
-15.605, SET_COLOR, ColorSensor, 0, 100, 0
-15.761, SET_COLOR, ColorSensor, 0, 255, 0
+0.006, SET_COLOR, ColorSensor0, 0, 0, 0
+0.007, SET, DistanceSensor_PIN, 10.0
+0.129, SET_COLOR, ColorSensor0, 0, 0, 0
+0.129, SET, DistanceSensor_PIN, 10.0
+8.910, SET, DistanceSensor_PIN, 1.0
+11.761, SET, DistanceSensor_PIN, 10.0
+12.020, SET, DistanceSensor_PIN, 100.0
+19.527, SET, DistanceSensor_PIN, 10.0
+23.596, SET_COLOR, ColorSensor0, 0, 1, 0
+23.842, SET_COLOR, ColorSensor0, 0, 10, 0
+24.076, SET_COLOR, ColorSensor0, 0, 100, 0
+24.327, SET_COLOR, ColorSensor0, 0, 255, 0
+27.824, SET_COLOR, ColorSensor0, 0, 0, 0
+27.824, SET, DistanceSensor_PIN, 10.0
+28, ASSERT, SERIAL_CONTAINS, "Finished"

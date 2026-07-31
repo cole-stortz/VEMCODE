@@ -3,9 +3,10 @@
 #include <QPainter>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
+#include <QtMath>
+#include <cmath>
 
-static const QColor POT_ACTIVE  ("#a8dc74");
-static const QColor POT_INACTIVE("#243710");
+static const QColor POT_ACTIVE("#7a7a2e");
 
 class PotItem : public ComponentItem {
     bool dragging_ = false;
@@ -24,18 +25,41 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        float ratio = value_ / 1023.0f;
-        int r = POT_INACTIVE.red()   + ratio * (POT_ACTIVE.red()   - POT_INACTIVE.red());
-        int g = POT_INACTIVE.green() + ratio * (POT_ACTIVE.green() - POT_INACTIVE.green());
-        int b = POT_INACTIVE.blue()  + ratio * (POT_ACTIVE.blue()  - POT_INACTIVE.blue());
-        QColor fill(r, g, b);
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, QString("Pot: %1").arg(value_));
+        QRectF r = boundingRect();
+
+        // Lead drawn under the knob, extending well past its edge -- the
+        // knob paints over the overlap, so the visible stub always ends up
+        // flush with the knob regardless of the exact radius.
+        // Potentiometers are inputs, so CanvasWidget::updateWires attaches
+        // the wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 50, 15), QPointF(r.width(), 15));
+
+        qreal ratio = value_ / 1023.0;
+
+        qreal rad = qMin(r.width(), r.height()) * 0.45;
+        QPointF c(r.center().x() + 10, r.center().y());
+        QColor knobColor = POT_ACTIVE.lighter(int(100 + ratio * 40));
+        p->setPen(QPen(knobColor.darker(180), 3));
+        p->setBrush(knobColor);
+        p->drawEllipse(c, rad, rad);
+
+        p->setPen(QPen(QColor("#111"), 1));
+        for (int i = 0; i < 11; ++i) {
+            qreal a = qDegreesToRadians(-135.0 + i * 27.0);
+            QPointF p1(c.x() + std::cos(a) * rad * 0.75, c.y() + std::sin(a) * rad * 0.75);
+            QPointF p2(c.x() + std::cos(a) * rad * 0.95, c.y() + std::sin(a) * rad * 0.95);
+            p->drawLine(p1, p2);
+        }
+
+        qreal ang = qDegreesToRadians(-135.0 + ratio * 270.0);
+        p->setPen(QPen(QColor("#1a1a1a"), 2));
+        p->drawLine(c, c + QPointF(std::cos(ang) * rad * 0.8, std::sin(ang) * rad * 0.8));
+
+        p->setPen(POT_ACTIVE);
+        p->setFont(QFont("Courier New", 7));
+        qreal textW = r.width() * 0.4;
+        p->drawText(QRectF(0, 0, textW, r.height()), Qt::AlignCenter, QString::number(value_));
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override {

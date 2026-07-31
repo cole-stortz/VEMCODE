@@ -1,8 +1,9 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QRadialGradient>
 
-static const QColor LED_ACTIVE  ("#cfdc74");
+static const QColor LED_ACTIVE  ("#e0b82e");
 static const QColor LED_INACTIVE("#323710");
 
 class LedItem : public ComponentItem {
@@ -22,14 +23,34 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = active_ ? baseColor_ : dimmed(baseColor_);
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "LED");
+        QRectF r = boundingRect();
+
+        // Lead drawn under the bulb, extending well past its edge -- the
+        // bulb paints over the overlap, so the visible stub always ends up
+        // flush with the bulb regardless of the exact radius.
+        // LEDs are outputs, so CanvasWidget::updateWires attaches the wire
+        // at local (0, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(35, 15), QPointF(0, 15));
+
+        QPointF c = r.center();
+        qreal rad = qMin(r.width(), r.height()) * 0.40;
+
+        if (active_) {
+            QRadialGradient glow(c, rad * 1.8);
+            QColor g1 = baseColor_; g1.setAlpha(140);
+            QColor g2 = baseColor_; g2.setAlpha(0);
+            glow.setColorAt(0.0, g1);
+            glow.setColorAt(1.0, g2);
+            p->setPen(Qt::NoPen);
+            p->setBrush(glow);
+            p->drawEllipse(c, rad * 2.6, rad * 2.6);
+        }
+
+        QColor body = active_ ? baseColor_ : dimmed(baseColor_);
+        p->setPen(QPen(baseColor_.darker(200), 3));
+        p->setBrush(body);
+        p->drawEllipse(c, rad, rad);
     }
 
     void onPinChanged(int, int value) override {

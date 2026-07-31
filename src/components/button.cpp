@@ -3,8 +3,32 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor BUTTON_ACTIVE  ("#dc74c2");
-static const QColor BUTTON_INACTIVE("#37102e");
+static const QColor BUTTON_ACTIVE("#e8639c");
+
+// Tactile pushbutton body: a flat dark plastic base plate with a round cap
+// that shrinks and tints on press. Shared by ButtonItem and ButtonCleanItem
+// below -- same physical shape, different pin semantics.
+static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
+    // Lead drawn under the plate, extending past its right edge -- the
+    // plate paints over the overlap, so the visible stub always ends up
+    // flush with the plate's edge without having to keep the two in sync.
+    // CanvasWidget::updateWires attaches the wire at local (width, 15).
+    p->setPen(QPen(QColor("#999"), 2));
+    p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
+
+    QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.05, -r.width() * 0.2, -r.height() * 0.05);
+    QColor plate(BUTTON_ACTIVE.darker(300));
+    p->setPen(QPen(plate.darker(180), 3));
+    p->setBrush(plate);
+    p->drawRoundedRect(base, 4, 4);
+
+    QPointF c = base.center();
+    qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40);
+    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#a6a6a6");
+    p->setPen(QPen(capColor.darker(160), 1));
+    p->setBrush(capColor);
+    p->drawEllipse(c, capR, capR);
+}
 
 class ButtonItem : public ComponentItem {
     bool pressed_ = false;
@@ -19,14 +43,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = pressed_ ? BUTTON_ACTIVE : BUTTON_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Button");
+        paintButtonCap(p, boundingRect(), pressed_);
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {
@@ -59,14 +76,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = pressed_ ? BUTTON_ACTIVE : BUTTON_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Button (Clean)");
+        paintButtonCap(p, boundingRect(), pressed_);
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {

@@ -5,6 +5,9 @@
 # portability from Linux -- see /usr/share/mingw/toolchain-mingw64.cmake
 /build-win64/
 
+# Standalone paint-preview tool's own build dir
+/tools/paint_preview/build/
+
 # App runtime files -- keep sketches folder but ignore binaries
 /app/VEMCODE
 /app/*.dll

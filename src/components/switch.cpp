@@ -3,8 +3,7 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor SWITCH_ACTIVE  ("#74dcdc");
-static const QColor SWITCH_INACTIVE("#103737");
+static const QColor SWITCH_ACTIVE("#3ac2d1");
 
 class SwitchItem : public ComponentItem {
     bool switch_ = false;
@@ -19,14 +18,31 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = switch_ ? SWITCH_ACTIVE : SWITCH_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "Switch");
+        QRectF r = boundingRect();
+
+        // Lead drawn under the body, extending past its edge -- the body
+        // paints over the overlap, so the visible stub always ends up flush
+        // with the body's edge regardless of the exact inset.
+        // Switches are inputs, so CanvasWidget::updateWires attaches the
+        // wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
+
+        QRectF body = r.adjusted(r.width() * 0.1, r.height() * 0.1, -r.width() * 0.1, -r.height() * 0.1);
+
+        QColor housing(SWITCH_ACTIVE.darker(300));
+        p->setPen(QPen(housing.darker(180), 3));
+        p->setBrush(housing);
+        p->drawRoundedRect(body, 4, 4);
+
+        QRectF trackArea = body.adjusted(4, 4, -4, -4);
+        qreal squareSize = trackArea.height();
+        QColor leverColor = switch_ ? SWITCH_ACTIVE : QColor("#666");
+        QRectF lever(switch_ ? trackArea.right() - squareSize : trackArea.left(),
+                     trackArea.top(), squareSize, squareSize);
+        p->setPen(QPen(leverColor.darker(180), 2));
+        p->setBrush(leverColor);
+        p->drawRoundedRect(lever, 2, 2);
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {

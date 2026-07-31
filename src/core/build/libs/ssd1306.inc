@@ -55,16 +55,23 @@ inline const uint8_t* lookup(char c) {
 }
 } // namespace vb_font3x5
 
+// Shared in spirit with CircuitDetector::I2C_BUS_PIN_BASE (see
+// src/core/circuit/i2cbus.h) -- the canvas key used when there's no real
+// reset pin wired (rst_pin < 0, extremely common for I2C breakout modules
+// with no dedicated RST line). Can't #include that header here (detector
+// and this injected header compile completely separately), so this stays a
+// hand-kept-in-sync base value -- but the *sequence* it produces is kept in
+// sync automatically: global objects in one translation unit construct in
+// declaration order, so this counter increments in the same order the
+// detector's regex sees the matching Adafruit_SSD1306 constructors, and the
+// two sides agree on 900, 901, 902... without either one being told the
+// other's count.
+static int g_next_i2c_bus_pin = 900;
+
 class Adafruit_SSD1306 {
 public:
     static constexpr int MAX_W = 128;
     static constexpr int MAX_H = 64;
-
-    // Shared with CircuitDetector::detect_oled -- the canvas key used when
-    // there's no real reset pin wired (rst_pin < 0, extremely common for
-    // I2C breakout modules with no dedicated RST line). Picked far outside
-    // any real board's GPIO range (largest profile, Mega, tops out ~pin 70).
-    static constexpr int NO_RESET_PIN_KEY = 900;
 
     // Real starter-kit sketches declare this as a global, before vb_init()
     // sets `api` -- must not touch api-> here, same constraint every other
@@ -72,7 +79,7 @@ public:
     Adafruit_SSD1306(uint8_t w, uint8_t h, void* twi = nullptr, int8_t rst_pin = -1,
                       uint32_t clkDuring = 400000UL, uint32_t clkAfter = 100000UL)
         : width_(w > MAX_W ? MAX_W : w), height_(h > MAX_H ? MAX_H : h),
-          pinKey_(rst_pin >= 0 ? rst_pin : NO_RESET_PIN_KEY) {
+          pinKey_(rst_pin >= 0 ? rst_pin : g_next_i2c_bus_pin++) {
         (void)twi; (void)clkDuring; (void)clkAfter;
         clearDisplay();
     }

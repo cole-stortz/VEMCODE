@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QColor>
 
 struct BoardProfile {
     const char* name;
@@ -10,13 +11,32 @@ struct BoardProfile {
     int analog_count;
     int pwm_resolution;
     int serial_count;  // number of hardware serial ports (capped at runtime support: Serial + Serial1 + Serial2)
+
+    // Default board fill color, shared by every profile below -- balanced
+    // lightness so it reads against both the dark and light canvas viewport
+    // background. Overridable per-sketch via ctrl+click on the board (see
+    // CanvasWidget::boardColorOverride_), saved in .vblayout.
+    QColor board_color = QColor("#303030");
+
+    // Board width in canvas px (height already scales with pin_count) --
+    // gives boards a distinct footprint instead of every board rendering at
+    // the same 200px width.
+    int board_width = 200;
+
+    // The board's fixed hardware I2C pins (Wire's default bus) -- matches
+    // real silicon: Uno/Nano/Teensy 4.1 dual-purpose SDA/SCL with A4/A5,
+    // Mega/Due have dedicated SDA/SCL pins outside the analog block. Used
+    // to anchor the first I2C device on canvas to a real pin instead of a
+    // generic fallback point -- see CanvasWidget::refresh().
+    int sda_pin = 18;
+    int scl_pin = 19;
 };
 
-static const BoardProfile BOARD_UNO    = {"Arduino Uno",       "ATmega328P",   20, 14,  6,  255, 1};
-static const BoardProfile BOARD_NANO   = {"Arduino Nano",      "ATmega328P",   22, 14,  8,  255, 1};
-static const BoardProfile BOARD_MEGA   = {"Arduino Mega 2560", "ATmega2560",   70, 54, 16,  255, 3};
-static const BoardProfile BOARD_DUE    = {"Arduino Due",       "AT91SAM3X8E",  66, 54, 12, 4095, 3};
-static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    42, 14, 18, 4095, 3};
+static const BoardProfile BOARD_UNO    = {"Arduino Uno",       "ATmega328P",   20, 14,  6,  255, 1, QColor("#1a1a2e"), 200, 18, 19};
+static const BoardProfile BOARD_NANO   = {"Arduino Nano",      "ATmega328P",   22, 14,  8,  255, 1, QColor("#1a1a2e"), 130, 18, 19};
+static const BoardProfile BOARD_MEGA   = {"Arduino Mega 2560", "ATmega2560",   70, 54, 16,  255, 3, QColor("#1a1a2e"), 220, 20, 21};
+static const BoardProfile BOARD_DUE    = {"Arduino Due",       "AT91SAM3X8E",  66, 54, 12, 4095, 3, QColor("#1a1a2e"), 220, 20, 21};
+static const BoardProfile BOARD_TEENSY = {"Teensy 4.1",        "IMXRT1062",    42, 14, 18, 4095, 3, QColor("#1a2e1d"), 140, 18, 19};
 
 // Looks up the profile matching a board's display name (e.g. "Arduino Mega 2560").
 // Returns false and leaves `out` untouched if `name` isn't a recognized board.

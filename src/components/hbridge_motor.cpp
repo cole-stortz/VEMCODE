@@ -1,9 +1,10 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
+#include <QPainterPath>
+#include <QLineF>
 
-static const QColor HBRIDGE_ACTIVE  ("#dc7474");
-static const QColor HBRIDGE_INACTIVE("#371010");
+static const QColor HBRIDGE_ACTIVE("#8e2e3a");
 
 class HBridgeMotorItem : public ComponentItem {
     int pwmPin_;
@@ -21,21 +22,69 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 54); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        bool active = (cwise_ || antiCwise_) && pwm_ > 0;
-        QColor fill = active ? HBRIDGE_ACTIVE : HBRIDGE_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
+        QRectF r = boundingRect();
+
+        // Leads drawn under the body -- the body paints over the overlap, so
+        // the visible stubs always end up flush with the body's edge without
+        // having to keep the two in sync.
+        // H-bridge motors are outputs, so CanvasWidget::updateWires attaches
+        // wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(10, ly), QPointF(0, ly));
+        }
 
         QString dir = (cwise_ && antiCwise_) ? "BRAKE"
                     : cwise_                 ? "CW"
                     : antiCwise_              ? "CCW"
                     :                           "STOP";
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft,
-                    dir + QString("\nPWM: %1").arg(pwm_));
+
+        qreal rad = r.height() * 0.42;
+        QPointF c(r.left() + rad + 6, r.center().y());
+        QColor body = pwm_ > 0 ? HBRIDGE_ACTIVE.darker(200) : HBRIDGE_ACTIVE.darker(400);
+        p->setPen(QPen(body.darker(180), 3));
+        p->setBrush(body);
+        p->drawEllipse(c, rad, rad);
+
+        p->setPen(QPen(QColor("#222"), 1));
+        p->setBrush(QColor("#555"));
+        p->drawEllipse(c, rad * 0.18, rad * 0.18);
+
+        if (dir == "CW" || dir == "CCW") {
+            p->setPen(QPen(HBRIDGE_ACTIVE, 2));
+            QRectF arcRect(c.x() - rad * 0.7, c.y() - rad * 0.7, rad * 1.4, rad * 1.4);
+            qreal spanDeg = dir == "CW" ? -270 : 270;
+            p->drawArc(arcRect, 0, spanDeg * 16);
+
+            // Arrowhead at the arc's terminal end -- sampled via arcMoveTo so
+            // the tangent direction always matches whatever drawArc actually
+            // rendered, rather than hand-deriving trig signs for Qt's
+            // arc-angle convention.
+            QPainterPath tipPath, backPath;
+            tipPath.arcMoveTo(arcRect, spanDeg);
+            backPath.arcMoveTo(arcRect, spanDeg - (spanDeg > 0 ? 15 : -15));
+            QPointF tip = tipPath.currentPosition();
+            QLineF dirLine(backPath.currentPosition(), tip);
+            dirLine.setLength(1);
+            QPointF dirVec = dirLine.p2() - dirLine.p1();
+            QPointF normVec(-dirVec.y(), dirVec.x());
+            qreal arrowLen = 6;
+            QPolygonF arrow;
+            arrow << tip + dirVec * arrowLen
+                  << tip + normVec * (arrowLen * 0.55) - dirVec * (arrowLen * 0.2)
+                  << tip - normVec * (arrowLen * 0.55) - dirVec * (arrowLen * 0.2);
+            p->setPen(Qt::NoPen);
+            p->setBrush(HBRIDGE_ACTIVE);
+            p->drawPolygon(arrow);
+        }
+
+        p->setPen(HBRIDGE_ACTIVE.lighter(200));
+        p->setFont(QFont("Courier New", 7));
+        qreal textX = r.width() * 0.6;
+        qreal textW = r.width() - textX;
+        p->drawText(QRectF(textX, r.center().y() - 14, textW, 14), Qt::AlignCenter, dir);
+        p->drawText(QRectF(textX, r.center().y(), textW, 14), Qt::AlignCenter, QString("pwm:%1").arg(pwm_));
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

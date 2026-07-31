@@ -79,6 +79,21 @@ static bool parse_bool_option(const std::string& value, bool& out) {
     return false;
 }
 
+// Scanned before anything else decides QCoreApplication (headless) vs
+// QApplication (GUI) -- that decision has to happen ahead of the normal
+// HeadlessOptions parsing below, since it picks which of those two classes
+// even gets constructed.
+static bool wants_gui(int argc, char* argv[]) {
+    for (int i = 2; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg.rfind("ui=", 0) == 0) {
+            bool val = false;
+            if (parse_bool_option(arg.substr(3), val)) return val;
+        }
+    }
+    return false;
+}
+
 // Sibling `<sketch>.timeline` next to the resolved sketch path -- same
 // basename, extension swapped, e.g. "Foo/Bar.cpp" -> "Foo/Bar.timeline".
 static std::string derive_timeline_path(const std::string& sketch_path) {
@@ -117,8 +132,17 @@ static bool parse_headless_args(int argc, char* argv[], HeadlessOptions& opts) {
                 std::cerr << "Bad timeline= value '" << value << "' (expected true or false)\n";
                 return false;
             }
+        } else if (key == "ui") {
+            // Already resolved by wants_gui() before main() decided to call
+            // run_headless() at all -- reaching here only happens for the
+            // explicit ui=false case, which is a no-op.
+            bool dummy;
+            if (!parse_bool_option(value, dummy)) {
+                std::cerr << "Bad ui= value '" << value << "' (expected true or false)\n";
+                return false;
+            }
         } else {
-            std::cerr << "Unknown option '" << key << "=' (expected timeout=, speed=, or timeline=)\n";
+            std::cerr << "Unknown option '" << key << "=' (expected timeout=, speed=, timeline=, or ui=)\n";
             return false;
         }
     }
@@ -319,7 +343,7 @@ static int run_headless(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc > 1) {
+    if (argc > 1 && !wants_gui(argc, argv)) {
         QCoreApplication app(argc, argv);
         app.setApplicationName("VEMCODE");
         app.setApplicationVersion("0.1");
@@ -337,6 +361,17 @@ int main(int argc, char* argv[]) {
     app.setWindowIcon(QIcon(":/logo.svg"));
 
     MainWindow window;
+
+    // `vemcode SketchName.cpp ui=true` -- resolve_sketch_path also handles a
+    // bare basename by searching the configured sketches dir (see its doc
+    // comment above), same as the headless path does.
+    if (argc > 1) {
+        std::string sketch_path;
+        if (!resolve_sketch_path(argv[1], sketch_path))
+            return 1;
+        window.openSketchFile(QString::fromStdString(sketch_path));
+    }
+
     window.show();
 
     return app.exec();

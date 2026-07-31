@@ -57,6 +57,11 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
+
+    // Loads a sketch by path the same way onOpenClicked's file dialog does --
+    // used both there and by main()'s `ui=true` startup flag.
+    void openSketchFile(const QString& path);
+
     SignalTimeline* signalTimeline_ = nullptr;
     QElapsedTimer   simTimer_;
     VariableWatch* variableWatch_ = nullptr;

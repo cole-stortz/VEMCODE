@@ -3,8 +3,7 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor IRSENSOR_ACTIVE  ("#dcc274");
-static const QColor IRSENSOR_INACTIVE("#372e10");
+static const QColor IRSENSOR_ACTIVE("#d1a52e");
 
 class IRSensorItem : public ComponentItem {
     bool IRvalue_ = false;
@@ -19,14 +18,32 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = IRvalue_ ? IRSENSOR_ACTIVE : IRSENSOR_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, "IR Sensor");
+        QRectF r = boundingRect();
+        p->setPen(QPen(IRSENSOR_ACTIVE.darker(180), 3));
+        p->setBrush(IRSENSOR_ACTIVE.darker(400));
+        p->drawRoundedRect(r, 4, 4);
+
+        QPointF ledC(r.left() + r.width() * 0.28, r.center().y() - 2);
+        qreal ledR = qMin(r.width(), r.height()) * 0.3;
+        QColor ledColor("#5a3ca0");
+        p->setPen(QPen(ledColor.darker(180), 2));
+        p->setBrush(ledColor);
+        p->drawEllipse(ledC, ledR, ledR);
+
+        QPointF ind(r.right() - r.width() * 0.25, r.center().y() - 2);
+        QColor indColor = IRvalue_ ? IRSENSOR_ACTIVE : QColor("#372e10");
+        p->setPen(QPen(indColor.darker(180), 1.5));
+        p->setBrush(indColor);
+        p->drawEllipse(ind, 6, 6);
+
+        p->setPen(IRSENSOR_ACTIVE);
+        p->setFont(QFont("Courier New", 7));
+        p->drawText(r, Qt::AlignHCenter | Qt::AlignBottom, "IR");
+
+        // Straight lead on the right edge -- IR sensors are inputs, so
+        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 5, 15), QPointF(r.width(), 15));
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {

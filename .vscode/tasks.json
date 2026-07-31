@@ -26,6 +26,13 @@
             "type": "shell",
             "command": "cmake --build build && ./app/VEMCODE",
             "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "RunPaintTest",
+            "type": "shell",
+            "command": "./scripts/run_paint.sh",
+            "group": "test"
         }
     ]
 }

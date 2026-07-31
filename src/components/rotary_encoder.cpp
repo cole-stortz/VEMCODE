@@ -3,9 +3,10 @@
 #include <QPainter>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
+#include <QtMath>
+#include <cmath>
 
-static const QColor ROTENC_ACTIVE  ("#81dc74");
-static const QColor ROTENC_INACTIVE("#153710");
+static const QColor ROTENC_ACTIVE("#1f7a52");
 
 static const int QUAD_CLK[4] = {1, 0, 0, 1};
 static const int QUAD_DT[4]  = {1, 1, 0, 0};
@@ -30,14 +31,41 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = dragging_ ? ROTENC_ACTIVE : ROTENC_INACTIVE;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 40), Qt::AlignLeft, QString("Rotary Enc: %1").arg(value_));
+        QRectF r = boundingRect();
+
+        // Leads drawn under the knob, extending well past its edge -- the
+        // knob paints over the overlap, so the visible stubs always end up
+        // flush with the knob regardless of the exact radius.
+        // Rotary encoders are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 2; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 50, ly), QPointF(r.width(), ly));
+        }
+
+        qreal rad = qMin(r.width(), r.height()) * 0.45;
+        QPointF c(r.center().x() + 10, r.center().y());
+        QColor ringColor = dragging_ ? ROTENC_ACTIVE.lighter(140) : ROTENC_ACTIVE;
+        p->setPen(QPen(ringColor.darker(180), 3));
+        p->setBrush(ringColor);
+        p->drawEllipse(c, rad, rad);
+
+        p->setPen(QPen(QColor("#111"), 1));
+        int notches = 20;
+        for (int i = 0; i < notches; ++i) {
+            qreal a = qDegreesToRadians(360.0 * i / notches);
+            QPointF p1(c.x() + std::cos(a) * rad * 0.95, c.y() + std::sin(a) * rad * 0.95);
+            QPointF p2(c.x() + std::cos(a) * rad * 0.75, c.y() + std::sin(a) * rad * 0.75);
+            p->drawLine(p1, p2);
+        }
+
+        // No clamping on the angle -- unlike the potentiometer's bounded
+        // 270deg sweep, an encoder spins freely, so the needle just keeps
+        // going around as value_ accumulates past 360deg.
+        qreal a = qDegreesToRadians(value_ * 30.0);
+        p->setPen(QPen(QColor("#1a1a1a"), 2));
+        p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
     }
 
     void configureMultiPin(const std::vector<int>& pins) override {

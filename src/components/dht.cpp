@@ -4,7 +4,7 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
-static const QColor DHT_FILL("#74a8dc");
+static const QColor DHT_FILL("#5c8ee8");
 
 class DhtItem : public ComponentItem {
     QLineEdit* temp_in_;
@@ -13,18 +13,19 @@ class DhtItem : public ComponentItem {
 public:
     DhtItem(int pin, QGraphicsItem* parent)
         : ComponentItem(pin, parent) {
-        auto make_input = [this](const char* text, int x) -> QLineEdit* {
+        auto make_input = [this](const char* text, const char* fg, const char* bg, int x) -> QLineEdit* {
             QLineEdit* in = new QLineEdit(text);
             in->setFixedSize(44, 16);
-            in->setStyleSheet("background:#0a1420; color:#74a8dc; border:1px solid #74a8dc;");
+            in->setStyleSheet(QString("background:%1; color:%2; border:1px solid %2;")
+                              .arg(bg).arg(fg));
             auto* proxy = new QGraphicsProxyWidget(this);
             proxy->setWidget(in);
             proxy->setPos(x, 42);
             return in;
         };
 
-        temp_in_  = make_input("22.0", 4);
-        humid_in_ = make_input("50.0", 52);
+        temp_in_  = make_input("22.0", "#ff8a65", "#1a0d08", 4);
+        humid_in_ = make_input("50.0", "#74a8dc", "#0a1420", 52);
 
         connect(temp_in_,  &QLineEdit::textChanged, this, [this] { emitReading(); });
         connect(humid_in_, &QLineEdit::textChanged, this, [this] { emitReading(); });
@@ -33,16 +34,29 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 64); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = DHT_FILL;
-        p->setPen(QPen(fill.darker(150), 1));
-        p->setBrush(fill);
-        p->drawRect(boundingRect());
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
-        p->setFont(QFont("Courier New", 8));
-        p->drawText(QRectF(6, 2, 88, 16), Qt::AlignLeft, "DHT");
-        p->drawText(QRectF(4, 24, 44, 16), Qt::AlignLeft, "°C");
-        p->drawText(QRectF(52, 24, 44, 16), Qt::AlignLeft, "%RH");
+        QRectF r = boundingRect();
+        QColor base = DHT_FILL;
+        p->setPen(QPen(base.darker(180), 3));
+        p->setBrush(base);
+        p->drawRoundedRect(r, 5, 5);
+
+        // Grille fills the top band only -- the bottom third is left clear for
+        // the temp_in_/humid_in_ QLineEdit proxies, which double as the
+        // human-readable readout (no point painting a duplicate screen
+        // underneath widgets that would just cover it).
+        QRectF grille = r.adjusted(6, 6, -6, -r.height() * 0.42);
+        p->setPen(QPen(base.darker(160), 1));
+        p->setBrush(base.darker(500));
+        int cols = 6, rows = 3;
+        qreal cw = grille.width() / cols, ch = grille.height() / rows;
+        for (int row = 0; row < rows; ++row)
+            for (int col = 0; col < cols; ++col)
+                p->drawRect(QRectF(grille.x() + col * cw + 1, grille.y() + row * ch + 1, cw - 2, ch - 2));
+
+        // Straight lead on the right edge -- DHT is an input, so
+        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        p->setPen(QPen(QColor("#999"), 2));
+        p->drawLine(QPointF(r.width() - 3, 15), QPointF(r.width() + 1, 15));
     }
 
     void emitInitialValue() override { emitReading(); }

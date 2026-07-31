@@ -123,6 +123,7 @@ void CircuitDetector::confirm_pin(int pin) {
 void CircuitDetector::reset() {
     components_.clear();
     warnings_.clear();
+    next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 }
 
 // Phase 1 -- parse #defines and const int scalars into a symbol table
@@ -635,9 +636,6 @@ void CircuitDetector::detect_oled(
 {
     if (!ComponentRegistry::instance().find_by_type("OLED")) return;
 
-    // Same sentinel Adafruit_SSD1306::NO_RESET_PIN_KEY uses in ssd1306.inc.
-    constexpr int NO_RESET_PIN_KEY = 900;
-
     // "Adafruit_SSD1306 display(width, height, &Wire, resetPin)" -- width
     // and height are always required, but the wire pointer and reset pin
     // are optional (both default in the real library), so the rest of the
@@ -674,7 +672,13 @@ void CircuitDetector::detect_oled(
             if (args.size() > 1) reset_pin = resolve_pin(args[1], defines);
         }
 
-        int pin_key = reset_pin >= 0 ? reset_pin : NO_RESET_PIN_KEY;
+        // No real reset pin -- each such OLED gets its own synthetic key
+        // (900, 901, ...) so multiple ones in one sketch don't collide and
+        // silently drop each other via pin_already_added below. First one
+        // (I2C_BUS_PIN_BASE) anchors to the board's real SCL pin on canvas;
+        // each subsequent one daisy-chains off the previous device instead
+        // -- see CanvasWidget::refresh().
+        int pin_key = reset_pin >= 0 ? reset_pin : next_i2c_bus_pin_++;
         if (claimed.count(pin_key) || pin_already_added(pin_key)) continue;
 
         DetectedComponent comp;

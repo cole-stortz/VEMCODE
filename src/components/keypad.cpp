@@ -5,8 +5,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QVariantList>
 
-static const QColor KEY_ACTIVE  ("#dc74c2");
-static const QColor KEY_INACTIVE("#37102e");
+static const QColor KEY_ACTIVE  ("#e0822e");
+static const QColor KEY_INACTIVE = KEY_ACTIVE.darker(400);
 static constexpr int CELL = 26;
 
 // Real 4x4/4x3 membrane keypads (the ones in Arduino starter kits) are
@@ -45,7 +45,7 @@ public:
     QRectF boundingRect() const override {
         int r = rows_ > 0 ? rows_ : 4;
         int c = cols_ > 0 ? cols_ : 4;
-        return QRectF(0, 0, c * CELL + 8, r * CELL + 8);
+        return QRectF(0, 0, c * CELL + 8, r * CELL + 6);
     }
 
     void configureRowsCols(int rows, int cols) override {
@@ -65,19 +65,35 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (rows_ <= 0 || cols_ <= 0) return;
+
+        p->setPen(QPen(KEY_ACTIVE.darker(180), 3));
+        p->setBrush(KEY_ACTIVE.darker(400));
+        p->drawRoundedRect(boundingRect(), 4, 4);
+
         p->setFont(QFont("Courier New", 9));
         for (int r = 0; r < rows_; ++r) {
             for (int c = 0; c < cols_; ++c) {
                 bool active = (r == pressedRow_ && c == pressedCol_);
                 QRectF cell(4 + c * CELL, 4 + r * CELL, CELL - 2, CELL - 2);
                 QColor fill = active ? KEY_ACTIVE : KEY_INACTIVE;
-                p->setPen(QPen(fill.darker(150), 1));
+                p->setPen(QPen(fill.darker(160), 1));
                 p->setBrush(fill);
-                p->drawRect(cell);
+                p->drawRoundedRect(cell, 3, 3);
                 int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
                 p->setPen(lum > 128 ? QColor("#1a1a1a") : QColor("#cccccc"));
                 p->drawText(cell, Qt::AlignCenter, keyLabelFor(rows_, cols_, r, c));
             }
+        }
+
+        // Straight leads on the right edge, one per row/col pin slot -- the
+        // same [row_0..row_{rows-1}, col_0..col_{cols-1}] order configureMultiPin
+        // uses. Keypads are inputs, so CanvasWidget::updateWires attaches
+        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        QRectF r = boundingRect();
+        for (int i = 0; i < rows_ + cols_; ++i) {
+            qreal ly = 15 + i * 5;
+            p->drawLine(QPointF(r.width() - 3, ly), QPointF(r.width() + 1, ly));
         }
     }
 

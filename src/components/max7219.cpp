@@ -60,7 +60,7 @@ public:
         for (int dev = 0; dev < numDevices_; ++dev) {
             float bandY = dev * 100.0f;
 
-            p->setPen(QPen(QColor("#000000"), 1));
+            p->setPen(QPen(QColor("#000000"), 3));
             p->setBrush(MATRIX_BG);
             p->drawRect(QRectF(0, bandY, 100, 100));
 
@@ -76,6 +76,15 @@ public:
                     p->drawEllipse(QPointF(cx, cy), dotD / 2.0f, dotD / 2.0f);
                 }
             }
+        }
+
+        // Straight leads on the left edge, one per CS/CLK/DIN pin slot --
+        // MAX7219 is an output, so CanvasWidget::updateWires attaches wire i
+        // at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        p->setPen(QPen(QColor("#999"), 2));
+        for (int i = 0; i < 3; ++i) {
+            float ly = 15.0f + i * 5.0f;
+            p->drawLine(QPointF(3, ly), QPointF(0, ly));
         }
     }
 
