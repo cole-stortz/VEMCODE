@@ -36,29 +36,42 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor SWITCH_ACTIVE("#74dcdc");
+static const QColor GENERIC_INPUT_ACTIVE  ("#748edc");
+static const QColor GENERIC_INPUT_INACTIVE("#101a37");
 
-static void paint(QPainter* p, const QRectF& r, bool switchOn) {
-    // Straight lead on the right edge -- switches are inputs, so
+static void paint(QPainter* p, const QRectF& r, bool active) {
+    // Straight lead on the right edge -- generic inputs are inputs, so
     // CanvasWidget::updateWires attaches the wire at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
+    p->drawLine(QPointF(r.width() - 30, 15), QPointF(r.width(), 15));
+    
+    QColor fill = active ? GENERIC_INPUT_ACTIVE : GENERIC_INPUT_INACTIVE;
+    qreal margin = 4;
+    qreal squareSize = r.height() - 2 * margin;
+    QRectF box(r.center().x() - squareSize / 2, margin, squareSize, squareSize);
 
-    QRectF body = r.adjusted(r.width() * 0.1, r.height() * 0.1, -r.width() * 0.1, -r.height() * 0.1);
+    p->setPen(QPen(fill.darker(180), 3));
+    p->setBrush(fill);
+    p->drawRoundedRect(box, 4, 4);
 
-    QColor housing(SWITCH_ACTIVE.darker(300));
-    p->setPen(QPen(housing.darker(180), 3));
-    p->setBrush(housing);
-    p->drawRoundedRect(body, 4, 4);
+    int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+    QColor tc = lum > 128 ? QColor("#1a1a1a") : QColor("#e8e8e8");
 
-    QRectF trackArea = body.adjusted(4, 4, -4, -4);
-    qreal squareSize = trackArea.height();
-    QColor leverColor = switchOn ? SWITCH_ACTIVE : QColor("#666");
-    QRectF lever(switchOn ? trackArea.right() - squareSize : trackArea.left(),
-                 trackArea.top(), squareSize, squareSize);
-    p->setPen(QPen(leverColor.darker(180), 2));
-    p->setBrush(leverColor);
-    p->drawRoundedRect(lever, 2, 2);   
+    QPointF c = box.center();
+    QPointF tip(c.x() + 10, c.y());
+    QPointF baseCenter(c.x() + 4, c.y());
+    QPolygonF arrowHead;
+    arrowHead << tip << QPointF(baseCenter.x(), baseCenter.y() - 4) << QPointF(baseCenter.x(), baseCenter.y() + 4);
+    p->setPen(Qt::NoPen);
+    p->setBrush(tc);
+    p->drawPolygon(arrowHead);
+
+    p->setPen(QPen(tc, 2, Qt::SolidLine, Qt::RoundCap));
+    p->drawLine(QPointF(c.x() - 6, c.y()), baseCenter);
+
+    p->setFont(QFont("Courier New", 7));
+    p->drawText(box.adjusted(0, 2, 0, 0), Qt::AlignHCenter | Qt::AlignTop, "IN");
+
 }
 
 // ========================= PASTE ZONE END =========================
@@ -102,7 +115,7 @@ protected:
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle switch (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle active (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));

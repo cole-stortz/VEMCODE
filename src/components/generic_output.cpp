@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
 
 static const QColor GENERIC_ACTIVE  ("#dc749b");
 static const QColor GENERIC_INACTIVE("#37101f");
@@ -16,32 +15,39 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        QColor fill = active_ ? GENERIC_ACTIVE : GENERIC_INACTIVE;
         QRectF r = boundingRect();
-        QLinearGradient bg(r.topLeft(), r.bottomLeft());
-        bg.setColorAt(0.0, fill.lighter(130));
-        bg.setColorAt(0.5, fill);
-        bg.setColorAt(1.0, fill.darker(120));
-        p->setPen(QPen(fill.darker(180), 1.2));
-        p->setBrush(bg);
-        p->drawRoundedRect(r, 4, 4);
-
-        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-        QColor tc = lum > 128 ? QColor("#1a1a1a") : QColor("#e8e8e8");
-
-        QPointF c = r.center();
-        p->setPen(QPen(tc, 2));
-        p->drawLine(c - QPointF(10, 0), c + QPointF(6, 0));
-        p->drawLine(c + QPointF(6, 0), c + QPointF(1, -5));
-        p->drawLine(c + QPointF(6, 0), c + QPointF(1, 5));
-
-        p->setFont(QFont("Courier New", 7));
-        p->drawText(r, Qt::AlignHCenter | Qt::AlignTop, "OUT");
 
         // Straight lead on the left edge -- generic outputs are outputs, so
         // CanvasWidget::updateWires attaches the wire at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
-        p->drawLine(QPointF(10, 15), QPointF(0, 15));
+        p->drawLine(QPointF(30, 15), QPointF(0, 15));
+
+        QColor fill = active_ ? GENERIC_ACTIVE : GENERIC_INACTIVE;
+        qreal margin = 4;
+        qreal squareSize = r.height() - 2 * margin;
+        QRectF box(r.center().x() - squareSize / 2, margin, squareSize, squareSize);
+
+        p->setPen(QPen(fill.darker(180), 3));
+        p->setBrush(fill);
+        p->drawRoundedRect(box, 4, 4);
+
+        int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
+        QColor tc = lum > 128 ? QColor("#1a1a1a") : QColor("#e8e8e8");
+
+        QPointF c = box.center();
+        QPointF tip(c.x() + 10, c.y());
+        QPointF baseCenter(c.x() + 4, c.y());
+        QPolygonF arrowHead;
+        arrowHead << tip << QPointF(baseCenter.x(), baseCenter.y() - 4) << QPointF(baseCenter.x(), baseCenter.y() + 4);
+        p->setPen(Qt::NoPen);
+        p->setBrush(tc);
+        p->drawPolygon(arrowHead);
+
+        p->setPen(QPen(tc, 2, Qt::SolidLine, Qt::RoundCap));
+        p->drawLine(QPointF(c.x() - 6, c.y()), baseCenter);
+
+        p->setFont(QFont("Courier New", 7));
+        p->drawText(box.adjusted(0, 2, 0, 0), Qt::AlignHCenter | Qt::AlignTop, "OUT");
     }
 
     void onPinChanged(int, int value) override {
