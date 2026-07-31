@@ -70,8 +70,12 @@ protected:
 
 private:
     void drawBoard();
+    // `chain_prev` is set for an I2C daisy-chain link (device after the
+    // first on a shared bus, see i2cbus.h) -- its wire attaches to that
+    // item instead of a board pin. Null for every normal component.
     void placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
-                         ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h);
+                         ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h,
+                         ComponentItem* chain_prev = nullptr);
     // Draws a wire segment plus a slight shadow behind it (helps bright wire
     // colors stay visible in light mode) -- appends both items to `lines` so
     // updateWires() can clean them up together on re-route.
@@ -100,6 +104,9 @@ private:
         std::vector<int> wire_pins;
         QColor wire_color;
         std::vector<QGraphicsLineItem*> wire_lines;
+        // Set for an I2C daisy-chain link -- updateWires() routes its wire
+        // to this item's edge instead of pinLocation(wire_pins[0]).
+        ComponentItem* chain_prev = nullptr;
     };
     QMap<ComponentItem*, ComponentInfo> componentInfo_;
 

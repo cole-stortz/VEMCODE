@@ -1,5 +1,6 @@
 #include "src/ui/canvaswidget.h"
 #include "src/core/circuit/componentregistry.h"
+#include "src/core/circuit/i2cbus.h"
 #include <QGraphicsRectItem>
 #include <QGraphicsLineItem>
 #include <QGraphicsTextItem>
@@ -174,6 +175,28 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
     if (draggedItem_) {
         draggedItem_->setPos(mapToScene(event->pos()) + dragOffset_);
         updateWires(draggedItem_);
+
+        // Cascade: an I2C chain link's wire depends on the position of the
+        // device it's chained to (see ComponentInfo::chain_prev), not a
+        // fixed board pin, so moving that device leaves any wire *into* it
+        // stale unless its dependents are re-routed too. Chains are a
+        // simple linked list, so repeatedly re-scanning until nothing new
+        // moves is enough -- no need for a precomputed reverse map at the
+        // component counts this canvas deals with.
+        ComponentItem* moved = draggedItem_;
+        bool foundDependent = true;
+        while (foundDependent) {
+            foundDependent = false;
+            for (auto it = componentInfo_.begin(); it != componentInfo_.end(); ++it) {
+                if (it.value().chain_prev == moved) {
+                    updateWires(it.key());
+                    moved = it.key();
+                    foundDependent = true;
+                    break;
+                }
+            }
+        }
+
         event->accept();
         return;
     }
@@ -329,6 +352,11 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         float comp_x;
         int comp_w, comp_h;
         float target_y;
+        // Set for an I2C daisy-chain link (device after the first on a
+        // shared bus, see i2cbus.h) -- Phase 3 positions it relative to
+        // this item instead of comp_x/target_y above, which are unused
+        // (left zeroed) for chain links.
+        ComponentItem* chain_prev;
     };
 
     // Without this, the two left-side columns land on the same X when every
@@ -337,6 +365,14 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
 
     std::vector<Placement> placements;
     std::vector<Placement> manualPlacements; // user-dragged -- placed as-is, no auto-stacking
+    std::vector<Placement> chainPlacements;  // I2C daisy-chain links after the first -- positioned in Phase 3
+
+    // Tracks the previous device on the shared I2C bus, in source order, as
+    // components are visited below -- lets each chain link find its
+    // predecessor without a separate pass, since detect_oled hands out
+    // 900, 901, 902... in the same order they appear in `components`.
+    ComponentItem* i2c_chain_prev = nullptr;
+
     for (const auto& comp : components) {
         if (comp.pin < 0) continue;
         const ComponentDefinition* def = ComponentRegistry::instance().find_by_type(comp.type_name);
@@ -353,9 +389,20 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         int comp_w = (int)box.width();
         int comp_h = (int)box.height();
 
+        bool on_i2c_bus = comp.pin >= I2C_BUS_PIN_BASE && comp.pin <= I2C_BUS_PIN_MAX;
+        bool is_chain_link = comp.pin > I2C_BUS_PIN_BASE && comp.pin <= I2C_BUS_PIN_MAX;
+        ComponentItem* chain_prev = is_chain_link ? i2c_chain_prev : nullptr;
+
         auto manual = manualPositions_.find(comp.pin);
         if (manual != manualPositions_.end()) {
-            manualPlacements.push_back({&comp, def, item, (float)manual->x(), comp_w, comp_h, (float)manual->y()});
+            manualPlacements.push_back({&comp, def, item, (float)manual->x(), comp_w, comp_h, (float)manual->y(), chain_prev});
+            if (on_i2c_bus) i2c_chain_prev = item;
+            continue;
+        }
+
+        if (is_chain_link) {
+            chainPlacements.push_back({&comp, def, item, 0.0f, comp_w, comp_h, 0.0f, chain_prev});
+            i2c_chain_prev = item;
             continue;
         }
 
@@ -373,7 +420,8 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         }
         float target_y = pin_pos.y() - comp_h / 2.0f;
 
-        placements.push_back({&comp, def, item, comp_x, comp_w, comp_h, target_y});
+        placements.push_back({&comp, def, item, comp_x, comp_w, comp_h, target_y, nullptr});
+        if (on_i2c_bus) i2c_chain_prev = item; // true here only for the bus's first device
     }
 
     // Phase 2: stack each column top-to-bottom, pushing components down past
@@ -393,11 +441,22 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
             comp_y = std::max(comp_y, it->second + V_GAP);
         column_bottom_y[p.comp_x] = comp_y + p.comp_h;
 
-        placeComponent(*p.comp, p.def, p.item, p.comp_x, comp_y, p.comp_w, p.comp_h);
+        placeComponent(*p.comp, p.def, p.item, p.comp_x, comp_y, p.comp_w, p.comp_h, p.chain_prev);
     }
 
     for (auto& p : manualPlacements)
-        placeComponent(*p.comp, p.def, p.item, p.comp_x, p.target_y, p.comp_w, p.comp_h);
+        placeComponent(*p.comp, p.def, p.item, p.comp_x, p.target_y, p.comp_w, p.comp_h, p.chain_prev);
+
+    // Phase 3: place I2C daisy-chain links adjacent to whichever device
+    // precedes them on the bus, now that every earlier device's actual
+    // on-screen position (auto-placed or dragged) is final.
+    for (auto& p : chainPlacements) {
+        ComponentItem* prev = p.chain_prev;
+        float comp_x = prev ? (float)(prev->x() + prev->boundingRect().width() + H_GAP)
+                             : (float)(BOARD_X + BOARD_W + 80); // defensive: no predecessor found
+        float comp_y = prev ? (float)prev->y() : p.target_y;
+        placeComponent(*p.comp, p.def, p.item, comp_x, comp_y, p.comp_w, p.comp_h, prev);
+    }
 }
 
 void CanvasWidget::updatePin(int pin, int value) {
@@ -591,7 +650,7 @@ void CanvasWidget::drawBoard() {
 
 void CanvasWidget::placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
                                    ComponentItem* item, float comp_x, float comp_y,
-                                   int comp_w, int comp_h) {
+                                   int comp_w, int comp_h, ComponentItem* chain_prev) {
     bool is_output = def->is_output;
 
     item->setPos(comp_x, comp_y);
@@ -653,7 +712,7 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     else
         wire_pins = { comp.pin };
 
-    componentInfo_[item] = ComponentInfo{ comp.pin, is_output, wire_pins, def->wire_color, {} };
+    componentInfo_[item] = ComponentInfo{ comp.pin, is_output, wire_pins, def->wire_color, {}, chain_prev };
     updateWires(item);
 }
 
@@ -690,6 +749,20 @@ void CanvasWidget::updateWires(ComponentItem* item) {
     float comp_x = item->x();
     float comp_y = item->y();
     int comp_w = (int)item->boundingRect().width();
+
+    // I2C daisy-chain link (device after the first on a shared bus, see
+    // i2cbus.h) -- wired directly to the previous device instead of a
+    // board pin, as one short module-to-module jump rather than the
+    // routed 3-segment board wire below. Right edge of the previous device
+    // to this device's own left-edge lead point (local (0,15), the same
+    // point OledItem::paint() itself draws its lead at).
+    if (info.chain_prev) {
+        QPointF comp_edge(comp_x, comp_y + 15.0f);
+        QPointF prev_edge(info.chain_prev->x() + info.chain_prev->boundingRect().width(),
+                           info.chain_prev->y() + 15.0f);
+        drawWire(prev_edge, comp_edge, info.wire_color, info.wire_lines);
+        return;
+    }
 
     int i = 0;
     for (int wpin : info.wire_pins) {
@@ -746,6 +819,13 @@ int CanvasWidget::digitalPinIndex(int pin) const {
 }
 
 QPointF CanvasWidget::pinLocation(int pin) {
+    // The first device on a shared I2C bus (see i2cbus.h) has no real GPIO
+    // of its own -- anchor it to the board's actual SCL pin instead of
+    // falling through to the generic default below. Devices after the
+    // first (901+) never reach this function for their wire target; they
+    // route to the previous device instead (see updateWires()).
+    if (pin == I2C_BUS_PIN_BASE) return pinLocation(profile_.scl_pin);
+
     if (isAnalogPin(pin)) {
         float spacing = (float)BOARD_H / (float)(profile_.analog_count + 1);
         float y = BOARD_Y + spacing * (pin - profile_.analog_offset + 1);

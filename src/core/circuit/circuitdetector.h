@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include "src/core/circuit/componentregistry.h"
+#include "src/core/circuit/i2cbus.h"
 
 // A single detected component
 struct DetectedComponent {
@@ -126,6 +127,12 @@ private:
 
     std::vector<DetectedComponent> components_;
     std::vector<std::string>       warnings_;
+
+    // Next synthetic pin handed to an I2C device with no real GPIO to key
+    // by (see detect_oled) -- increments per assignment so multiple such
+    // devices in one sketch get distinct keys instead of colliding on the
+    // same value and silently dropping each other via pin_already_added.
+    int next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 
     std::map<std::string, std::string> parse_defines(const std::string& source);
 
