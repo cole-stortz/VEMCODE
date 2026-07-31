@@ -44,8 +44,8 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        p->setPen(QPen(QColor("#000"), 3));
-        p->setBrush(QColor("#1c1c1c"));
+        p->setPen(QPen(fill_.darker(180), 3));
+        p->setBrush(fill_.darker(400));
         p->drawRoundedRect(r, 4, 4);
 
         // Icon sits in the top band, above the QLineEdit proxy that anchors

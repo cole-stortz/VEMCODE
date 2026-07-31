@@ -17,7 +17,7 @@ static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
     p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
 
     QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.05, -r.width() * 0.2, -r.height() * 0.05);
-    QColor plate("#3a3a3a");
+    QColor plate(BUTTON_ACTIVE.darker(300));
     p->setPen(QPen(plate.darker(180), 3));
     p->setBrush(plate);
     p->drawRoundedRect(base, 4, 4);
