@@ -6,7 +6,7 @@
 #include <QtMath>
 #include <cmath>
 
-static const QColor POT_ACTIVE("#a8dc74");
+static const QColor POT_ACTIVE("#7a7a2e");
 
 class PotItem : public ComponentItem {
     bool dragging_ = false;

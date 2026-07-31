@@ -4,7 +4,7 @@
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 
-static const QColor JOY_ACTIVE("#74dcb5");
+static const QColor JOY_ACTIVE("#6cb83a");
 
 class JoystickItem : public ComponentItem {
     bool dragging_ = false;
@@ -44,7 +44,7 @@ public:
 
         QRectF r = boundingRect();
         QRectF body = r.adjusted(2, 2, -2, -2);
-        QColor housing("#1c2b26");
+        QColor housing(JOY_ACTIVE.darker(400));
         p->setPen(QPen(housing.darker(180), 3));
         p->setBrush(housing);
         p->drawRoundedRect(body, 6, 6);

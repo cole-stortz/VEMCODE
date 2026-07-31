@@ -2,8 +2,8 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor GENERIC_ACTIVE  ("#dc749b");
-static const QColor GENERIC_INACTIVE("#37101f");
+static const QColor GENERIC_ACTIVE  ("#c23a9c");
+static const QColor GENERIC_INACTIVE = GENERIC_ACTIVE.darker(400);
 
 class GenericOutputItem : public ComponentItem {
     bool active_ = false;

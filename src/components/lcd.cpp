@@ -2,7 +2,7 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor LCD_FILL("#cf74dc");
+static const QColor LCD_FILL("#c26ce8");
 
 class LCDItem : public ComponentItem {
     QString row0_ = QString(16, ' ');

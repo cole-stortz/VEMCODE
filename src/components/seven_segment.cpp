@@ -2,8 +2,7 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor SEVENSEG_FILL ("#1a1a1a");
-static const QColor SEVENSEG_DIGIT("#dc4a4a");
+static const QColor SEVENSEG_DIGIT("#d13a5c");
 
 // Renders the lit segment pattern as the actual digit character (e.g. "7")
 // rather than drawing 7 individual segment rectangles -- much simpler, and
@@ -23,8 +22,8 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        p->setPen(QPen(QColor("#000000"), 1));
-        p->setBrush(SEVENSEG_FILL);
+        p->setPen(QPen(SEVENSEG_DIGIT.darker(180), 3));
+        p->setBrush(SEVENSEG_DIGIT.darker(400));
         p->drawRect(r);
 
         QRectF area = r.adjusted(r.width() * 0.3, r.height() * 0.12, -r.width() * 0.3, -r.height() * 0.12);

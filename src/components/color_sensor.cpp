@@ -4,7 +4,7 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
-static const QColor COLOR_SENSOR_FILL("#a874dc");
+static const QColor COLOR_SENSOR_FILL("#9c5ce8");
 
 class ColorSensorItem : public ComponentItem {
     int s2Pin_ = -1;

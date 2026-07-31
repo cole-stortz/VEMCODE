@@ -3,7 +3,7 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor SWITCH_ACTIVE("#74dcdc");
+static const QColor SWITCH_ACTIVE("#3ac2d1");
 
 class SwitchItem : public ComponentItem {
     bool switch_ = false;

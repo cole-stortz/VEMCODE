@@ -4,7 +4,7 @@
 #include <QPainterPath>
 #include <QLineF>
 
-static const QColor HBRIDGE_ACTIVE("#dc7474");
+static const QColor HBRIDGE_ACTIVE("#8e2e3a");
 
 class HBridgeMotorItem : public ComponentItem {
     int pwmPin_;
@@ -42,8 +42,8 @@ public:
 
         qreal rad = r.height() * 0.42;
         QPointF c(r.left() + rad + 6, r.center().y());
-        QColor body = QColor("#888").lighter(pwm_ > 0 ? 110 : 80);
-        p->setPen(QPen(QColor("#333"), 3));
+        QColor body = pwm_ > 0 ? HBRIDGE_ACTIVE.darker(200) : HBRIDGE_ACTIVE.darker(400);
+        p->setPen(QPen(body.darker(180), 3));
         p->setBrush(body);
         p->drawEllipse(c, rad, rad);
 
@@ -79,7 +79,7 @@ public:
             p->drawPolygon(arrow);
         }
 
-        p->setPen(HBRIDGE_ACTIVE);
+        p->setPen(HBRIDGE_ACTIVE.lighter(200));
         p->setFont(QFont("Courier New", 7));
         qreal textX = r.width() * 0.6;
         qreal textW = r.width() - textX;

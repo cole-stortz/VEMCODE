@@ -3,7 +3,7 @@
 #include <QPainter>
 #include <QRadialGradient>
 
-static const QColor LED_ACTIVE  ("#cfdc74");
+static const QColor LED_ACTIVE  ("#e0b82e");
 static const QColor LED_INACTIVE("#323710");
 
 class LedItem : public ComponentItem {

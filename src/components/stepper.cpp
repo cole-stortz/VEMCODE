@@ -4,7 +4,7 @@
 #include <QtMath>
 #include <cmath>
 
-static const QColor STEPPER_ACTIVE("#dcb574");
+static const QColor STEPPER_ACTIVE("#8e5c2e");
 
 // Handles two real-world wiring styles with the same class: STEP+DIR (driver
 // boards like A4988/DRV8825) and IN1-IN4 (ULN2003 + 28BYJ-48 style, driven by
@@ -61,7 +61,7 @@ public:
         p->setPen(QPen(QColor("#1a1a1a"), 3, Qt::SolidLine, Qt::RoundCap));
         p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
 
-        p->setPen(STEPPER_ACTIVE);
+        p->setPen(STEPPER_ACTIVE.lighter(200));
         p->setFont(QFont("Courier New", 7));
         qreal textX = r.width() * 0.6;
         qreal textW = r.width() - textX;

@@ -2,7 +2,7 @@
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
 
-static const QColor BUZZER_ACTIVE("#dc9b74");
+static const QColor BUZZER_ACTIVE("#e8825c");
 
 class BuzzerItem : public ComponentItem {
     bool active_;

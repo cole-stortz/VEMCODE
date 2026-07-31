@@ -6,7 +6,7 @@
 #include <QtMath>
 #include <cmath>
 
-static const QColor ROTENC_ACTIVE("#81dc74");
+static const QColor ROTENC_ACTIVE("#1f7a52");
 
 static const int QUAD_CLK[4] = {1, 0, 0, 1};
 static const int QUAD_DT[4]  = {1, 1, 0, 0};

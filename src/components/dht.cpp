@@ -4,7 +4,7 @@
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
 
-static const QColor DHT_FILL("#74a8dc");
+static const QColor DHT_FILL("#5c8ee8");
 
 class DhtItem : public ComponentItem {
     QLineEdit* temp_in_;

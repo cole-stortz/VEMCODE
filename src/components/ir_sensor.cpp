@@ -3,7 +3,7 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor IRSENSOR_ACTIVE("#dcc274");
+static const QColor IRSENSOR_ACTIVE("#d1a52e");
 
 class IRSensorItem : public ComponentItem {
     bool IRvalue_ = false;
@@ -19,8 +19,8 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        p->setPen(QPen(QColor("#0f0a05"), 3));
-        p->setBrush(QColor("#241a0f"));
+        p->setPen(QPen(IRSENSOR_ACTIVE.darker(180), 3));
+        p->setBrush(IRSENSOR_ACTIVE.darker(400));
         p->drawRoundedRect(r, 4, 4);
 
         QPointF ledC(r.left() + r.width() * 0.28, r.center().y() - 2);

@@ -3,7 +3,7 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor BUTTON_ACTIVE("#dc74c2");
+static const QColor BUTTON_ACTIVE("#e8639c");
 
 // Tactile pushbutton body: a flat dark plastic base plate with a round cap
 // that shrinks and tints on press. Shared by ButtonItem and ButtonCleanItem

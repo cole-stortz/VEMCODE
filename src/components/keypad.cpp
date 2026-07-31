@@ -5,8 +5,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QVariantList>
 
-static const QColor KEY_ACTIVE  ("#dc74c2");
-static const QColor KEY_INACTIVE("#37102e");
+static const QColor KEY_ACTIVE  ("#e0822e");
+static const QColor KEY_INACTIVE = KEY_ACTIVE.darker(400);
 static constexpr int CELL = 26;
 
 // Real 4x4/4x3 membrane keypads (the ones in Arduino starter kits) are
@@ -66,8 +66,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (rows_ <= 0 || cols_ <= 0) return;
 
-        p->setPen(QPen(QColor("#000"), 3));
-        p->setBrush(QColor("#111"));
+        p->setPen(QPen(KEY_ACTIVE.darker(180), 3));
+        p->setBrush(KEY_ACTIVE.darker(400));
         p->drawRoundedRect(boundingRect(), 4, 4);
 
         p->setFont(QFont("Courier New", 9));

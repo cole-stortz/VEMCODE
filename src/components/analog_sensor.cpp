@@ -7,10 +7,10 @@
 #include <QtMath>
 #include <cmath>
 
-static const QColor LIGHT_SENSOR_FILL("#dccb74");
-static const QColor TEMPERATURE_SENSOR_FILL("#dc8674");
-static const QColor FORCE_SENSOR_FILL("#5a5a5a");
-static const QColor ANALOG_SENSOR_FILL("#8174dc");
+static const QColor LIGHT_SENSOR_FILL("#d1c23a");
+static const QColor TEMPERATURE_SENSOR_FILL("#b8522e");
+static const QColor FORCE_SENSOR_FILL("#5c7ca8");
+static const QColor ANALOG_SENSOR_FILL("#8e7ce8");
 
 // Which pictogram to draw on the sensor's PCB face -- one entry per
 // AnalogSensorItemBase subclass below.

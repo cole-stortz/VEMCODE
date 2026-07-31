@@ -3,8 +3,8 @@
 #include <QPainter>
 #include <QCursor>
 
-static const QColor GENERIC_INPUT_ACTIVE  ("#748edc");
-static const QColor GENERIC_INPUT_INACTIVE("#101a37");
+static const QColor GENERIC_INPUT_ACTIVE  ("#6c5cd1");
+static const QColor GENERIC_INPUT_INACTIVE = GENERIC_INPUT_ACTIVE.darker(400);
 
 class GenericInputItem : public ComponentItem {
     bool active_ = false;

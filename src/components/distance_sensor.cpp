@@ -5,7 +5,7 @@
 #include <QGraphicsProxyWidget>
 #include <cmath>
 
-static const QColor DISTANCE_SENSOR_ACCENT("#74ffff");
+static const QColor DISTANCE_SENSOR_ACCENT("#2e9c8e");
 
 class DistanceSensorItem : public ComponentItem {
     QLineEdit* input_;

@@ -4,7 +4,7 @@
 #include <QtMath>
 #include <cmath>
 
-static const QColor SERVO_FILL("#74dc8e");
+static const QColor SERVO_FILL("#5ce0c2");
 
 class ServoItem : public ComponentItem {
     int angle_;
