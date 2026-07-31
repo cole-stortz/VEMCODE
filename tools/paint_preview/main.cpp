@@ -36,45 +36,29 @@
 
 // ======================== PASTE ZONE START ========================
 
-static const QColor STEPPER_ACTIVE("#dcb574");
+static const QColor SWITCH_ACTIVE("#74dcdc");
 
-static void paint(QPainter* p, const QRectF& r, long position, bool dirCW, int leadCount) {
-    // Leads drawn under the body, extending well past its edge -- the body
-    // paints over the overlap, so the visible stubs always end up flush
-    // with the body's edge regardless of the exact radius.
-    // Steppers are outputs, so CanvasWidget::updateWires attaches wire i at
-    // local (0, 15 + i*5), same spacing as WIRE_SPACING.
+static void paint(QPainter* p, const QRectF& r, bool switchOn) {
+    // Straight lead on the right edge -- switches are inputs, so
+    // CanvasWidget::updateWires attaches the wire at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
-    for (int i = 0; i < leadCount; ++i) {
-        qreal ly = 15 + i * 5;
-        p->drawLine(QPointF(10, ly), QPointF(0, ly));
-    }
+    p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
 
-    // Matches HBridgeMotor's absolute radius (54 * 0.42) rather than deriving
-    // from this box's own (shorter, 44px) height, so the two read as the
-    // same size despite Stepper's bounding rect being shorter.
-    qreal rad = 54.0 * 0.42;
-    QPointF c(r.left() + rad + 6, r.center().y());
-    p->setPen(QPen(STEPPER_ACTIVE, 3));
-    p->setBrush(STEPPER_ACTIVE.darker(200));
-    p->drawEllipse(c, rad, rad);
+    QRectF body = r.adjusted(r.width() * 0.1, r.height() * 0.1, -r.width() * 0.1, -r.height() * 0.1);
 
-    p->setPen(QPen(QColor("#222"), 1));
-    p->setBrush(QColor("#555"));
-    p->drawEllipse(c, rad * 0.18, rad * 0.18);
+    QColor housing(SWITCH_ACTIVE.darker(300));
+    p->setPen(QPen(housing.darker(180), 3));
+    p->setBrush(housing);
+    p->drawRoundedRect(body, 4, 4);
 
-    // Clock-style arm instead of a directional arc -- steppers just track
-    // an accumulated position (15deg/step), not a continuous spin rate.
-    qreal a = qDegreesToRadians((double)(position * 15));
-    p->setPen(QPen(QColor("#1a1a1a"), 3, Qt::SolidLine, Qt::RoundCap));
-    p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
-
-    p->setPen(STEPPER_ACTIVE);
-    p->setFont(QFont("Courier New", 7));
-    qreal textX = r.width() * 0.6;
-    qreal textW = r.width() - textX;
-    p->drawText(QRectF(textX, r.center().y() - 14, textW, 14), Qt::AlignCenter, QString("pos:%1").arg(position));
-    p->drawText(QRectF(textX, r.center().y(), textW, 14), Qt::AlignCenter, dirCW ? "CW" : "CCW");
+    QRectF trackArea = body.adjusted(4, 4, -4, -4);
+    qreal squareSize = trackArea.height();
+    QColor leverColor = switchOn ? SWITCH_ACTIVE : QColor("#666");
+    QRectF lever(switchOn ? trackArea.right() - squareSize : trackArea.left(),
+                 trackArea.top(), squareSize, squareSize);
+    p->setPen(QPen(leverColor.darker(180), 2));
+    p->setBrush(leverColor);
+    p->drawRoundedRect(lever, 2, 2);   
 }
 
 // ========================= PASTE ZONE END =========================
@@ -112,14 +96,14 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_ ? 12 : 0, !pressed_, pressed_ ? 4 : 2);
+        paint(&p, boundsRect, pressed_);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle STEP+DIR vs 4-phase (%1)   d: theme (%2)   wheel: zoom (%3x)")
-                       .arg(pressed_ ? "4-phase" : "STEP+DIR")
+                   QString("click: toggle switch (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                       .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));
     }

@@ -1,7 +1,6 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
 #include <QPainter>
-#include <QLinearGradient>
 #include <QCursor>
 
 static const QColor SWITCH_ACTIVE("#74dcdc");
@@ -20,34 +19,30 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        QRectF body = r.adjusted(r.width() * 0.2, r.height() * 0.15, -r.width() * 0.2, -r.height() * 0.15);
 
-        QColor housing("#333");
-        QLinearGradient bg(body.topLeft(), body.bottomLeft());
-        bg.setColorAt(0.0, housing.lighter(130));
-        bg.setColorAt(0.5, housing);
-        bg.setColorAt(1.0, housing.darker(120));
-        p->setPen(QPen(housing.darker(180), 1.2));
-        p->setBrush(bg);
-        p->drawRoundedRect(body, body.width() * 0.3, body.width() * 0.3);
-
-        QRectF leverArea = body.adjusted(body.width() * 0.15, body.height() * 0.12,
-                                          -body.width() * 0.15, -body.height() * 0.12);
-        QColor leverColor = switch_ ? SWITCH_ACTIVE : QColor("#666");
-        QRectF lever(leverArea.x(), switch_ ? leverArea.y() : leverArea.center().y(),
-                     leverArea.width(), leverArea.height() / 2);
-        QLinearGradient lg(lever.topLeft(), lever.bottomLeft());
-        lg.setColorAt(0.0, leverColor.lighter(130));
-        lg.setColorAt(0.5, leverColor);
-        lg.setColorAt(1.0, leverColor.darker(120));
-        p->setPen(QPen(leverColor.darker(180), 1.2));
-        p->setBrush(lg);
-        p->drawRoundedRect(lever, lever.width() * 0.3, lever.width() * 0.3);
-
-        // Straight lead on the right edge -- switches are inputs, so
-        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        // Lead drawn under the body, extending past its edge -- the body
+        // paints over the overlap, so the visible stub always ends up flush
+        // with the body's edge regardless of the exact inset.
+        // Switches are inputs, so CanvasWidget::updateWires attaches the
+        // wire at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
+
+        QRectF body = r.adjusted(r.width() * 0.1, r.height() * 0.1, -r.width() * 0.1, -r.height() * 0.1);
+
+        QColor housing(SWITCH_ACTIVE.darker(300));
+        p->setPen(QPen(housing.darker(180), 3));
+        p->setBrush(housing);
+        p->drawRoundedRect(body, 4, 4);
+
+        QRectF trackArea = body.adjusted(4, 4, -4, -4);
+        qreal squareSize = trackArea.height();
+        QColor leverColor = switch_ ? SWITCH_ACTIVE : QColor("#666");
+        QRectF lever(switch_ ? trackArea.right() - squareSize : trackArea.left(),
+                     trackArea.top(), squareSize, squareSize);
+        p->setPen(QPen(leverColor.darker(180), 2));
+        p->setBrush(leverColor);
+        p->drawRoundedRect(lever, 2, 2);
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {
