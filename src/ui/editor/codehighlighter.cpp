@@ -45,7 +45,10 @@ void CodeHighlighter::buildRules(bool dark) {
         "true", "false", "nullptr", "new", "delete",
         "public", "private", "protected", "namespace",
         "using", "include", "define", "ifdef", "ifndef",
-        "endif", "byte", "word", "boolean", "String"
+        "endif", "byte", "word", "boolean", "String",
+        "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+        "int8_t", "int16_t", "int32_t", "int64_t", "size_t",
+        "PROGMEM"
     };
     for (const QString& kw : keywords) {
         rule.pattern = QRegularExpression(
@@ -62,11 +65,26 @@ void CodeHighlighter::buildRules(bool dark) {
         "delay", "delayMicroseconds", "millis", "micros",
         "setup", "loop",
         "tone", "noTone",
-        "attachInterrupt", "detachInterrupt",
-        "Serial", "Serial1", "Serial2", "begin", "print", "println", "available", "read",
+        "attachInterrupt", "detachInterrupt", "noInterrupts", "interrupts",
+        "Serial", "Serial1", "Serial2", "SoftwareSerial",
+        "begin", "print", "println", "available", "read", "write", "flush",
+        "peek", "listen", "isListening", "overflow",
         "map", "constrain", "abs", "min", "max", "random", "randomSeed",
         "pulseIn", "shiftIn", "shiftOut",
-        "watch_variable"
+        "Wire", "beginTransmission", "endTransmission", "requestFrom",
+        "SPI", "SPISettings", "transfer", "beginTransaction", "endTransaction",
+        "Servo", "attach", "detach", "attached",
+        "EEPROM", "update",
+        "LedControl", "shutdown", "setIntensity", "setLed", "setRow", "setColumn", "clearDisplay", "dim",
+        "Adafruit_NeoPixel", "show", "setPixelColor", "setBrightness", "numPixels", "fill", "Color",
+        "Adafruit_SSD1306", "Adafruit_GFX", "display", "drawPixel", "drawLine", "drawRect", "drawCircle",
+        "fillRect", "fillCircle", "fillScreen", "setTextSize", "setTextColor", "setTextWrap",
+        "invertDisplay", "drawBitmap", "drawChar",
+        "LiquidCrystal", "createChar", "clear", "setCursor",
+        "Keypad", "getKey", "makeKeymap",
+        "DHT", "readTemperature", "readHumidity",
+        "F", "digitalPinToInterrupt", "analogReference",
+        "watch_variable", "ISR"
     };
     for (const QString& fn : arduino_fns) {
         rule.pattern = QRegularExpression(
@@ -82,6 +100,20 @@ void CodeHighlighter::buildRules(bool dark) {
         "LED_BUILTIN", "A0", "A1", "A2", "A3", "A4", "A5",
         "CHANGE", "RISING", "FALLING",
         "PI", "TWO_PI", "HALF_PI",
+        "HEX", "DEC", "OCT", "BIN",
+        "MSBFIRST", "LSBFIRST", "SPI_MODE0", "SPI_MODE1", "SPI_MODE2", "SPI_MODE3",
+        "DDRB", "DDRC", "DDRD", "PORTB", "PORTC", "PORTD", "PINB", "PINC", "PIND",
+        "PB0", "PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7",
+        "PC0", "PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7",
+        "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7",
+        "TCCR1A", "TCCR1B", "TCNT1", "OCR1A", "OCR1B", "TIMSK1", "ICR1",
+        "TCCR2A", "TCCR2B", "TCNT2", "OCR2A", "OCR2B", "TIMSK2",
+        "CS10", "CS11", "CS12", "CS20", "CS21", "CS22",
+        "WGM10", "WGM11", "WGM12", "WGM13", "WGM20", "WGM21", "WGM22",
+        "COM1A0", "COM1A1", "COM1B0", "COM1B1", "COM2A0", "COM2A1", "COM2B0", "COM2B1",
+        "TOIE1", "TOIE2", "OCIE1A", "OCIE1B", "OCIE2A", "OCIE2B",
+        "TIMER1_OVF_vect", "TIMER1_COMPA_vect", "TIMER1_COMPB_vect",
+        "TIMER2_OVF_vect", "TIMER2_COMPA_vect", "TIMER2_COMPB_vect",
         "true", "false", "null", "NULL"
     };
     for (const QString& c : constants) {

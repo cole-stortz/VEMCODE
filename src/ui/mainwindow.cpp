@@ -1657,6 +1657,7 @@ void MainWindow::setAppTheme(bool dark) {
     if (signalTimeline_) signalTimeline_->setDarkTheme(dark);
     if (serialPlotter_) serialPlotter_->setDarkTheme(dark);
     if (lineNumbers_) lineNumbers_->setDarkTheme(dark);
+    if (codeEditor_) codeEditor_->setDarkTheme(dark);
     if (findReplaceBar_) findReplaceBar_->setHighlightColor(highlightColors_.find_match_bg);
 }
 
