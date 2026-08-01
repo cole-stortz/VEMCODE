@@ -7,7 +7,7 @@
 
 // Themed like CanvasWidget::drawBoard(): dark theme darkens off the accent,
 // light theme forces a consistent light lightness off the same hue instead.
-inline QColor themedHousing(const QColor& accent, bool dark, int darkAmount = 300, int lightL = 150) {
+inline QColor themedHousing(const QColor& accent, bool dark, int darkAmount = 300, int lightL = 175) {
     if (dark) return accent.darker(darkAmount);
     int h, s, l, a;
     accent.getHsl(&h, &s, &l, &a);

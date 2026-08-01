@@ -32,7 +32,7 @@ public:
         p->drawEllipse(ledC, ledR, ledR);
 
         QPointF ind(r.right() - r.width() * 0.25, r.center().y() - 2);
-        QColor indColor = IRvalue_ ? IRSENSOR_ACTIVE : themedHousing(IRSENSOR_ACTIVE, dark, 400);
+        QColor indColor = IRvalue_ ? QColor("#4ec94e") : themedHousing(IRSENSOR_ACTIVE, dark, 400);
         p->setPen(QPen(indColor.darker(180), 1.5));
         p->setBrush(indColor);
         p->drawEllipse(ind, 6, 6);

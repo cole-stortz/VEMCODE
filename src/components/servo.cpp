@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QtMath>
 #include <cmath>
+#include <qcolor.h>
 
 static const QColor SERVO_FILL("#5ce0c2");
 
@@ -31,10 +32,10 @@ public:
 
         qreal a = qDegreesToRadians(angle_ - 90.0);
         QPointF tip = pivot + QPointF(std::cos(a) * hornLen, std::sin(a) * hornLen);
-        p->setPen(QPen(SERVO_FILL, 3));
+        p->setPen(QPen(QColor("#050505"), 3));
         p->drawLine(pivot, tip);
         p->setPen(Qt::NoPen);
-        p->setBrush(SERVO_FILL);
+        p->setBrush(QColor("#050505"));
         p->drawEllipse(tip, 4, 4);
 
         p->setPen(isDarkTheme() ? SERVO_FILL : SERVO_FILL.darker(200));
