@@ -63,7 +63,7 @@ void CodeHighlighter::buildRules(bool dark) {
         "setup", "loop",
         "tone", "noTone",
         "attachInterrupt", "detachInterrupt",
-        "Serial", "begin", "print", "println", "available", "read",
+        "Serial", "Serial1", "Serial2", "begin", "print", "println", "available", "read",
         "map", "constrain", "abs", "min", "max", "random", "randomSeed",
         "pulseIn", "shiftIn", "shiftOut",
         "watch_variable"

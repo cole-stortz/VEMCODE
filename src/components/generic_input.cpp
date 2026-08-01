@@ -4,7 +4,6 @@
 #include <QCursor>
 
 static const QColor GENERIC_INPUT_ACTIVE  ("#6c5cd1");
-static const QColor GENERIC_INPUT_INACTIVE = GENERIC_INPUT_ACTIVE.darker(400);
 
 class GenericInputItem : public ComponentItem {
     bool active_ = false;
@@ -27,7 +26,7 @@ public:
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 30, 15), QPointF(r.width(), 15));
 
-        QColor fill = active_ ? GENERIC_INPUT_ACTIVE : GENERIC_INPUT_INACTIVE;
+        QColor fill = active_ ? GENERIC_INPUT_ACTIVE : themedHousing(GENERIC_INPUT_ACTIVE, isDarkTheme(), 400);
         qreal margin = 4;
         qreal squareSize = r.height() - 2 * margin;
         QRectF box(r.center().x() - squareSize / 2, margin, squareSize, squareSize);

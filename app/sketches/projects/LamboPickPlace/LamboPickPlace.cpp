@@ -221,18 +221,22 @@ void loop() {
   Serial.print("--- Case: ");
   Serial.println(robot_case);
   if(robot_case == 0){
+    Serial1.println("Pick up box case...");
     pickUpBox();
   } else if(robot_case == 1){
+    Serial1.println("Follow Line to Podium case...");
     PWM_VAL = 100;
     readColorSensors();
     ultrasonicRead();
     followLine();
     delay(10);
   } else if(robot_case == 2){
+    Serial1.println("Place the box on Podium case...");
     readColorSensors();
     ultrasonicRead();
     placeBox();
   } else if(robot_case == 3){
+    Serial1.println("Follow line reverse back to start...");
     readColorSensors();
     ultrasonicRead();
     followLineReverse();

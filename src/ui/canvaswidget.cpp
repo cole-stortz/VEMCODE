@@ -379,6 +379,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         if (!def) continue;
 
         ComponentItem* item = def->create_item(comp.pin, nullptr);
+        item->setDarkTheme(darkTheme_);
         // Must happen before boundingRect() below -- device count changes
         // the item's rendered size, and this is the only phase where
         // boundingRect() gets queried for layout math.

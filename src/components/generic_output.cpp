@@ -3,7 +3,6 @@
 #include <QPainter>
 
 static const QColor GENERIC_ACTIVE  ("#c23a9c");
-static const QColor GENERIC_INACTIVE = GENERIC_ACTIVE.darker(400);
 
 class GenericOutputItem : public ComponentItem {
     bool active_ = false;
@@ -22,7 +21,7 @@ public:
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(30, 15), QPointF(0, 15));
 
-        QColor fill = active_ ? GENERIC_ACTIVE : GENERIC_INACTIVE;
+        QColor fill = active_ ? GENERIC_ACTIVE : themedHousing(GENERIC_ACTIVE, isDarkTheme(), 400);
         qreal margin = 4;
         qreal squareSize = r.height() - 2 * margin;
         QRectF box(r.center().x() - squareSize / 2, margin, squareSize, squareSize);

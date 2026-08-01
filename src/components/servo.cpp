@@ -19,7 +19,7 @@ public:
         QRectF r = boundingRect();
         QRectF body = r.adjusted(2, 2, -2, -2);
         p->setPen(QPen(SERVO_FILL.darker(180), 3));
-        p->setBrush(SERVO_FILL.darker(400));
+        p->setBrush(themedHousing(SERVO_FILL, isDarkTheme(), 400));
         p->drawRoundedRect(body, 4, 4);
 
         QPointF pivot(body.left() + 20, r.center().y());
@@ -37,7 +37,7 @@ public:
         p->setBrush(SERVO_FILL);
         p->drawEllipse(tip, 4, 4);
 
-        p->setPen(SERVO_FILL);
+        p->setPen(isDarkTheme() ? SERVO_FILL : SERVO_FILL.darker(200));
         p->setFont(QFont("Courier New", 8));
         qreal textX = pivot.x() + hornLen + 10;
         p->drawText(QRectF(textX, 0, r.width() - textX, r.height()), Qt::AlignCenter, QString("%1°").arg(angle_));

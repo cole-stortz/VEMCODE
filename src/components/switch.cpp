@@ -30,7 +30,7 @@ public:
 
         QRectF body = r.adjusted(r.width() * 0.1, r.height() * 0.1, -r.width() * 0.1, -r.height() * 0.1);
 
-        QColor housing(SWITCH_ACTIVE.darker(300));
+        QColor housing = themedHousing(SWITCH_ACTIVE, isDarkTheme(), 300);
         p->setPen(QPen(housing.darker(180), 3));
         p->setBrush(housing);
         p->drawRoundedRect(body, 4, 4);

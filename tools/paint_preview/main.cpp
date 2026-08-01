@@ -35,43 +35,38 @@
 #include <cmath>
 
 // ======================== PASTE ZONE START ========================
+// themedHousing/themedShade mirror src/core/circuit/componentitem.h's copy --
+// kept duplicated here so this tool stays free of VEMCODE includes.
 
-static const QColor GENERIC_INPUT_ACTIVE  ("#748edc");
-static const QColor GENERIC_INPUT_INACTIVE("#101a37");
+inline QColor themedHousing(const QColor& accent, bool dark, int darkAmount = 300, int lightL = 205) {
+    if (dark) return accent.darker(darkAmount);
+    int h, s, l, a;
+    accent.getHsl(&h, &s, &l, &a);
+    return QColor::fromHsl(h, s, lightL, a);
+}
 
-static void paint(QPainter* p, const QRectF& r, bool active) {
-    // Straight lead on the right edge -- generic inputs are inputs, so
-    // CanvasWidget::updateWires attaches the wire at local (width, 15).
+inline QColor themedShade(const QColor& base, int amount, bool dark) {
+    return dark ? base.lighter(amount) : base.darker(amount);
+}
+
+static const QColor BUTTON_ACTIVE("#e8639c");
+
+static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed, bool dark) {
     p->setPen(QPen(QColor("#999"), 2));
-    p->drawLine(QPointF(r.width() - 30, 15), QPointF(r.width(), 15));
-    
-    QColor fill = active ? GENERIC_INPUT_ACTIVE : GENERIC_INPUT_INACTIVE;
-    qreal margin = 4;
-    qreal squareSize = r.height() - 2 * margin;
-    QRectF box(r.center().x() - squareSize / 2, margin, squareSize, squareSize);
+    p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
 
-    p->setPen(QPen(fill.darker(180), 3));
-    p->setBrush(fill);
-    p->drawRoundedRect(box, 4, 4);
+    QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.05, -r.width() * 0.2, -r.height() * 0.05);
+    QColor plate = themedHousing(BUTTON_ACTIVE, dark);
+    p->setPen(QPen(plate.darker(180), 3));
+    p->setBrush(plate);
+    p->drawRoundedRect(base, 4, 4);
 
-    int lum = (fill.red() * 299 + fill.green() * 587 + fill.blue() * 114) / 1000;
-    QColor tc = lum > 128 ? QColor("#1a1a1a") : QColor("#e8e8e8");
-
-    QPointF c = box.center();
-    QPointF tip(c.x() + 10, c.y());
-    QPointF baseCenter(c.x() + 4, c.y());
-    QPolygonF arrowHead;
-    arrowHead << tip << QPointF(baseCenter.x(), baseCenter.y() - 4) << QPointF(baseCenter.x(), baseCenter.y() + 4);
-    p->setPen(Qt::NoPen);
-    p->setBrush(tc);
-    p->drawPolygon(arrowHead);
-
-    p->setPen(QPen(tc, 2, Qt::SolidLine, Qt::RoundCap));
-    p->drawLine(QPointF(c.x() - 6, c.y()), baseCenter);
-
-    p->setFont(QFont("Courier New", 7));
-    p->drawText(box.adjusted(0, 2, 0, 0), Qt::AlignHCenter | Qt::AlignTop, "IN");
-
+    QPointF c = base.center();
+    qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40);
+    QColor capColor = pressed ? BUTTON_ACTIVE : (dark ? QColor("#a6a6a6") : QColor("#787878"));
+    p->setPen(QPen(capColor.darker(160), 1));
+    p->setBrush(capColor);
+    p->drawEllipse(c, capR, capR);
 }
 
 // ========================= PASTE ZONE END =========================
@@ -109,13 +104,13 @@ protected:
         p.setBrush(Qt::NoBrush);
         p.drawRect(boundsRect);
 
-        paint(&p, boundsRect, pressed_);
+        paintButtonCap(&p, boundsRect, pressed_, dark_);
 
         p.restore();
 
         p.setPen(dark_ ? Qt::white : Qt::black);
         p.drawText(10, height() - 10,
-                   QString("click: toggle active (%1)   d: theme (%2)   wheel: zoom (%3x)")
+                   QString("click: toggle pressed (%1)   d: theme (%2)   wheel: zoom (%3x)")
                        .arg(pressed_ ? "on" : "off")
                        .arg(dark_ ? "dark" : "light")
                        .arg(zoom_, 0, 'f', 1));

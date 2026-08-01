@@ -15,7 +15,7 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
-        QColor housing(LCD_FILL.darker(400));
+        QColor housing = themedHousing(LCD_FILL, isDarkTheme(), 400);
         p->setPen(QPen(housing.darker(180), 3));
         p->setBrush(housing);
         p->drawRoundedRect(r, 4, 4);

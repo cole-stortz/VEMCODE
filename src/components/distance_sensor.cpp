@@ -35,7 +35,7 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
         p->setPen(QPen(DISTANCE_SENSOR_ACCENT.darker(400), 3));
-        p->setBrush(DISTANCE_SENSOR_ACCENT.darker(600));
+        p->setBrush(themedHousing(DISTANCE_SENSOR_ACCENT, isDarkTheme(), 600));
         p->drawRoundedRect(r, 4, 4);
 
         // "Eyes" live in the top band only -- the bottom is reserved for the

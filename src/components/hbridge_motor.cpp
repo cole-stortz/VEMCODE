@@ -35,6 +35,7 @@ public:
             p->drawLine(QPointF(10, ly), QPointF(0, ly));
         }
 
+        bool dark = isDarkTheme();
         QString dir = (cwise_ && antiCwise_) ? "BRAKE"
                     : cwise_                 ? "CW"
                     : antiCwise_              ? "CCW"
@@ -42,7 +43,7 @@ public:
 
         qreal rad = r.height() * 0.42;
         QPointF c(r.left() + rad + 6, r.center().y());
-        QColor body = pwm_ > 0 ? HBRIDGE_ACTIVE.darker(200) : HBRIDGE_ACTIVE.darker(400);
+        QColor body = pwm_ > 0 ? themedHousing(HBRIDGE_ACTIVE, dark, 200) : themedHousing(HBRIDGE_ACTIVE, dark, 400);
         p->setPen(QPen(body.darker(180), 3));
         p->setBrush(body);
         p->drawEllipse(c, rad, rad);
@@ -79,7 +80,7 @@ public:
             p->drawPolygon(arrow);
         }
 
-        p->setPen(HBRIDGE_ACTIVE.lighter(200));
+        p->setPen(themedShade(HBRIDGE_ACTIVE, 200, dark));
         p->setFont(QFont("Courier New", 7));
         qreal textX = r.width() * 0.6;
         qreal textW = r.width() - textX;

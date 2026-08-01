@@ -6,7 +6,6 @@
 #include <QVariantList>
 
 static const QColor KEY_ACTIVE  ("#e0822e");
-static const QColor KEY_INACTIVE = KEY_ACTIVE.darker(400);
 static constexpr int CELL = 26;
 
 // Real 4x4/4x3 membrane keypads (the ones in Arduino starter kits) are
@@ -65,9 +64,10 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (rows_ <= 0 || cols_ <= 0) return;
+        bool dark = isDarkTheme();
 
         p->setPen(QPen(KEY_ACTIVE.darker(180), 3));
-        p->setBrush(KEY_ACTIVE.darker(400));
+        p->setBrush(themedHousing(KEY_ACTIVE, dark, 400));
         p->drawRoundedRect(boundingRect(), 4, 4);
 
         p->setFont(QFont("Courier New", 9));
@@ -75,7 +75,7 @@ public:
             for (int c = 0; c < cols_; ++c) {
                 bool active = (r == pressedRow_ && c == pressedCol_);
                 QRectF cell(4 + c * CELL, 4 + r * CELL, CELL - 2, CELL - 2);
-                QColor fill = active ? KEY_ACTIVE : KEY_INACTIVE;
+                QColor fill = active ? KEY_ACTIVE : themedHousing(KEY_ACTIVE, dark, 400);
                 p->setPen(QPen(fill.darker(160), 1));
                 p->setBrush(fill);
                 p->drawRoundedRect(cell, 3, 3);

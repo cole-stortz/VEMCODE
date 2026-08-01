@@ -2,7 +2,22 @@
 #include <QGraphicsObject>
 #include <QVariant>
 #include <QByteArray>
+#include <QColor>
 #include <vector>
+
+// Themed like CanvasWidget::drawBoard(): dark theme darkens off the accent,
+// light theme forces a consistent light lightness off the same hue instead.
+inline QColor themedHousing(const QColor& accent, bool dark, int darkAmount = 300, int lightL = 150) {
+    if (dark) return accent.darker(darkAmount);
+    int h, s, l, a;
+    accent.getHsl(&h, &s, &l, &a);
+    return QColor::fromHsl(h, s, lightL, a);
+}
+
+// Direction-flipped shading step off a base color -- lighter in dark mode, darker in light mode.
+inline QColor themedShade(const QColor& base, int amount, bool dark) {
+    return dark ? base.lighter(amount) : base.darker(amount);
+}
 
 enum class ComponentEventType {
     DigitalPress,
@@ -77,12 +92,18 @@ public:
     // both run before the caller can connect to a freshly-created item.
     virtual void emitInitialValue();
 
+    // Set fresh on each newly-built item -- a theme change triggers a full
+    // refresh() rather than updating this on already-placed items.
+    void setDarkTheme(bool dark) { darkTheme_ = dark; }
+
 Q_SIGNALS:
     void inputChanged(int pin, int eventType, QVariant value);
 
 protected:
     int pin() const { return pin_; }
+    bool isDarkTheme() const { return darkTheme_; }
 
 private:
     int pin_;
+    bool darkTheme_ = true;
 };

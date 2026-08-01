@@ -44,10 +44,11 @@ public:
         // deriving from this box's own (shorter, 44px) height, so the two
         // read as the same size despite Stepper's bounding rect being
         // shorter.
+        bool dark = isDarkTheme();
         qreal rad = 54.0 * 0.42;
         QPointF c(r.left() + rad + 6, r.center().y());
         p->setPen(QPen(STEPPER_ACTIVE, 3));
-        p->setBrush(STEPPER_ACTIVE.darker(200));
+        p->setBrush(themedHousing(STEPPER_ACTIVE, dark, 200));
         p->drawEllipse(c, rad, rad);
 
         p->setPen(QPen(QColor("#222"), 1));
@@ -61,7 +62,7 @@ public:
         p->setPen(QPen(QColor("#1a1a1a"), 3, Qt::SolidLine, Qt::RoundCap));
         p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
 
-        p->setPen(STEPPER_ACTIVE.lighter(200));
+        p->setPen(themedShade(STEPPER_ACTIVE, 200, dark));
         p->setFont(QFont("Courier New", 7));
         qreal textX = r.width() * 0.6;
         qreal textW = r.width() - textX;

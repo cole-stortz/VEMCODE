@@ -23,7 +23,7 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
         p->setPen(QPen(SEVENSEG_DIGIT.darker(180), 3));
-        p->setBrush(SEVENSEG_DIGIT.darker(400));
+        p->setBrush(isDarkTheme() ? SEVENSEG_DIGIT.darker(400) : SEVENSEG_DIGIT.darker(175));
         p->drawRect(r);
 
         QRectF area = r.adjusted(r.width() * 0.3, r.height() * 0.12, -r.width() * 0.3, -r.height() * 0.12);
