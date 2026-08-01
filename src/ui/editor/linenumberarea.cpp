@@ -206,7 +206,9 @@ void EditorWithLines::contextMenuEvent(QContextMenuEvent* event) {
             // any outside click or Escape, no hover-tracking involved.
             auto* popup = new QWidget(this, Qt::Popup);
             popup->setAttribute(Qt::WA_DeleteOnClose);
-            popup->setStyleSheet("background:#2d2d30; color:#dcdcdc; border:1px solid #555555;");
+            popup->setStyleSheet(dark_
+                ? "background:#2d2d30; color:#dcdcdc; border:1px solid #555555;"
+                : "background:#f3f3f3; color:#1e1e1e; border:1px solid #b0b0b0;");
             auto* layout = new QVBoxLayout(popup);
             auto* label = new QLabel(html, popup);
             label->setTextFormat(Qt::RichText);

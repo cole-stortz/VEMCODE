@@ -42,7 +42,7 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
         p->setPen(QPen(COLOR_SENSOR_FILL.darker(500), 3));
-        p->setBrush(QColor(COLOR_SENSOR_FILL.darker(300)));
+        p->setBrush(themedHousing(COLOR_SENSOR_FILL, isDarkTheme(), 300));
         p->drawRoundedRect(r, 4, 4);
 
         QPointF c(r.center().x(), r.top() + r.height() * 0.32);

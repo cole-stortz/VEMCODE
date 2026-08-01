@@ -8,7 +8,7 @@ static const QColor BUTTON_ACTIVE("#e8639c");
 // Tactile pushbutton body: a flat dark plastic base plate with a round cap
 // that shrinks and tints on press. Shared by ButtonItem and ButtonCleanItem
 // below -- same physical shape, different pin semantics.
-static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
+static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed, bool dark) {
     // Lead drawn under the plate, extending past its right edge -- the
     // plate paints over the overlap, so the visible stub always ends up
     // flush with the plate's edge without having to keep the two in sync.
@@ -17,14 +17,14 @@ static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed) {
     p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
 
     QRectF base = r.adjusted(r.width() * 0.2, r.height() * 0.05, -r.width() * 0.2, -r.height() * 0.05);
-    QColor plate(BUTTON_ACTIVE.darker(300));
+    QColor plate = themedHousing(BUTTON_ACTIVE, dark);
     p->setPen(QPen(plate.darker(180), 3));
     p->setBrush(plate);
     p->drawRoundedRect(base, 4, 4);
 
     QPointF c = base.center();
     qreal capR = qMin(base.width(), base.height()) * (pressed ? 0.35 : 0.40);
-    QColor capColor = pressed ? BUTTON_ACTIVE : QColor("#a6a6a6");
+    QColor capColor = pressed ? BUTTON_ACTIVE : (dark ? QColor("#a6a6a6") : QColor("#787878"));
     p->setPen(QPen(capColor.darker(160), 1));
     p->setBrush(capColor);
     p->drawEllipse(c, capR, capR);
@@ -43,7 +43,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        paintButtonCap(p, boundingRect(), pressed_);
+        paintButtonCap(p, boundingRect(), pressed_, isDarkTheme());
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {
@@ -76,7 +76,7 @@ public:
     QRectF boundingRect() const override { return QRectF(0, 0, 100, 44); }
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
-        paintButtonCap(p, boundingRect(), pressed_);
+        paintButtonCap(p, boundingRect(), pressed_, isDarkTheme());
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent*) override {

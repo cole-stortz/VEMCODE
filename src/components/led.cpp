@@ -12,8 +12,8 @@ class LedItem : public ComponentItem {
 
     // Derives a dimmed "off" color from the current base color, same
     // proportions as the original hardcoded LED_ACTIVE/LED_INACTIVE pair.
-    static QColor dimmed(const QColor& c) {
-        return c.darker(400);
+    static QColor dimmed(const QColor& c, bool dark) {
+        return themedHousing(c, dark, 400);
     }
 
 public:
@@ -47,7 +47,7 @@ public:
             p->drawEllipse(c, rad * 2.6, rad * 2.6);
         }
 
-        QColor body = active_ ? baseColor_ : dimmed(baseColor_);
+        QColor body = active_ ? baseColor_ : dimmed(baseColor_, isDarkTheme());
         p->setPen(QPen(baseColor_.darker(200), 3));
         p->setBrush(body);
         p->drawEllipse(c, rad, rad);

@@ -44,7 +44,7 @@ public:
 
         QRectF r = boundingRect();
         QRectF body = r.adjusted(2, 2, -2, -2);
-        QColor housing(JOY_ACTIVE.darker(400));
+        QColor housing = themedHousing(JOY_ACTIVE, isDarkTheme(), 400);
         p->setPen(QPen(housing.darker(180), 3));
         p->setBrush(housing);
         p->drawRoundedRect(body, 6, 6);

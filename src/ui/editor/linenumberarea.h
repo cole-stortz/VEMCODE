@@ -36,6 +36,11 @@ public:
     // addition to the raw key comparisons in keyPressEvent below.
     void duplicateCurrentLine();
 
+    // Pushed from MainWindow::setAppTheme alongside LineNumberArea/CodeHighlighter
+    // -- used by contextMenuEvent's API Reference popup, the only themeable
+    // thing this widget owns directly.
+    void setDarkTheme(bool dark) { dark_ = dark; }
+
     // Toggles "// " on every line touched by the selection (or just the
     // current line with no selection). Uncomments if every non-blank line in
     // range already starts with "//", otherwise comments every non-blank line.
@@ -58,6 +63,7 @@ private:
     QKeySequence completionKey_;
     QKeySequence duplicateLineKey_;
     QKeySequence commentToggleKey_;
+    bool dark_ = true;
 };
 
 class LineNumberArea : public QWidget {

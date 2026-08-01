@@ -25,7 +25,7 @@ public:
 
         QPointF c = r.center();
         qreal rad = qMin(r.width(), r.height()) * 0.45;
-        QColor base = active_ ? BUZZER_ACTIVE : QColor("#4a3624");
+        QColor base = active_ ? BUZZER_ACTIVE : themedHousing(BUZZER_ACTIVE, isDarkTheme());
 
         p->setPen(QPen(base.darker(180), 3));
         p->setBrush(base);

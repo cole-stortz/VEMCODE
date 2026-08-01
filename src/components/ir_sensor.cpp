@@ -19,8 +19,9 @@ public:
 
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
+        bool dark = isDarkTheme();
         p->setPen(QPen(IRSENSOR_ACTIVE.darker(180), 3));
-        p->setBrush(IRSENSOR_ACTIVE.darker(400));
+        p->setBrush(themedHousing(IRSENSOR_ACTIVE, dark, 400));
         p->drawRoundedRect(r, 4, 4);
 
         QPointF ledC(r.left() + r.width() * 0.28, r.center().y() - 2);
@@ -31,7 +32,7 @@ public:
         p->drawEllipse(ledC, ledR, ledR);
 
         QPointF ind(r.right() - r.width() * 0.25, r.center().y() - 2);
-        QColor indColor = IRvalue_ ? IRSENSOR_ACTIVE : QColor("#372e10");
+        QColor indColor = IRvalue_ ? IRSENSOR_ACTIVE : themedHousing(IRSENSOR_ACTIVE, dark, 400);
         p->setPen(QPen(indColor.darker(180), 1.5));
         p->setBrush(indColor);
         p->drawEllipse(ind, 6, 6);
