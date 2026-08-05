@@ -454,11 +454,12 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
     if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, frequency);
     if (duration_ms == 0) return;
     ArduinoRuntime* rt = g_runtime;
-    std::thread t([pin, duration_ms, rt]() {
+    rt->reap_tone_threads();
+    auto done = std::make_shared<std::atomic<bool>>(false);
+    std::thread t([pin, duration_ms, rt, done]() {
         unsigned long scaled_duration = (unsigned long)(duration_ms * rt->speed_multiplier_);
         unsigned long elapsed = 0;
-        while (elapsed < scaled_duration) {
-            if (rt->stop_requested_) return;
+        while (elapsed < scaled_duration && !rt->stop_requested_) {
             unsigned long chunk = std::min(10UL, scaled_duration - elapsed);
             std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
             elapsed += chunk;
@@ -475,9 +476,10 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
             if (rt->on_pin_changed) rt->on_pin_changed(pin, 0);
             rt->state_.exec_mtx_.unlock();
         }
+        done->store(true);
     });
     std::lock_guard<std::mutex> lock(rt->tone_threads_mtx_);
-    rt->tone_threads_.push_back(std::move(t));
+    rt->tone_threads_.push_back({std::move(t), done});
 }
 
 void ArduinoRuntime::impl_noTone(int pin) {
@@ -951,11 +953,23 @@ void ArduinoRuntime::stop_timer_thread() {
 }
 
 void ArduinoRuntime::stop_tone_threads() {
-    std::vector<std::thread> threads;
+    std::vector<ToneThread> threads;
     {
         std::lock_guard<std::mutex> lock(tone_threads_mtx_);
         threads.swap(tone_threads_);
     }
-    for (auto& t : threads)
-        if (t.joinable()) t.join();
+    for (auto& tt : threads)
+        if (tt.thread.joinable()) tt.thread.join();
+}
+
+void ArduinoRuntime::reap_tone_threads() {
+    std::lock_guard<std::mutex> lock(tone_threads_mtx_);
+    tone_threads_.erase(
+        std::remove_if(tone_threads_.begin(), tone_threads_.end(),
+            [](ToneThread& tt) {
+                if (!tt.done->load()) return false;
+                if (tt.thread.joinable()) tt.thread.join();
+                return true;
+            }),
+        tone_threads_.end());
 }

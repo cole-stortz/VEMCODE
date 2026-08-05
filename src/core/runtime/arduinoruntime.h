@@ -322,9 +322,14 @@ private:
     std::atomic<bool> timer_thread_stop_{false};
     std::atomic<bool> timer_thread_started_{false};
 
+    struct ToneThread {
+        std::thread thread;
+        std::shared_ptr<std::atomic<bool>> done;
+    };
     void stop_tone_threads();
+    void reap_tone_threads(); // joins+erases already-finished entries, called on every tone()
     std::mutex tone_threads_mtx_;
-    std::vector<std::thread> tone_threads_;
+    std::vector<ToneThread> tone_threads_;
 
     std::deque<char> serial_buffer_;
     BoardProfile profile_;
