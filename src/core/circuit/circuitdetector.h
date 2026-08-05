@@ -55,6 +55,7 @@ public:
     bool pin_already_added(int pin) const;
     std::string to_upper(const std::string& str);
     void add_detected_component(const DetectedComponent& comp, std::set<int>& claimed);
+    int next_i2c_bus_pin() { return next_i2c_bus_pin_++; }
 
 private:
     std::map<std::string, std::vector<int>> parse_arrays(const std::string& source);
@@ -78,13 +79,6 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
-    // OLED (SSD1306, I2C): resetPin is often -1 (no reset line on I2C breakouts), leaving no
-    // GPIO to key the canvas item by, so it falls back to a fixed sentinel
-    // (Adafruit_SSD1306::NO_RESET_PIN_KEY in ssd1306.inc, kept in sync by hand).
-    void detect_oled(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
     void detect_custom_components(const std::string& source,
         const std::map<std::string, std::string>& defines,
         const std::map<std::string, std::vector<int>>& arrays,
@@ -103,8 +97,8 @@ private:
     std::vector<std::string>       warnings_;
     int max_pin_ = 69;
 
-    // Synthetic pin for I2C devices with no real GPIO (see detect_oled); increments per
-    // assignment so multiple such devices get distinct keys instead of colliding.
+    // Synthetic pin for I2C devices with no real GPIO (see next_i2c_bus_pin()); increments
+    // per assignment so multiple such devices get distinct keys instead of colliding.
     int next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 
     std::map<std::string, std::string> parse_defines(const std::string& source);
