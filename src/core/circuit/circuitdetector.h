@@ -46,6 +46,17 @@ public:
     const std::vector<std::string>&       warnings()   const { return warnings_; }
     void reset();
 
+    // Available to ComponentDefinition::detect_custom callbacks.
+    int resolve_pin(const std::string& token,
+                    const std::map<std::string, std::string>& defines,
+                    int depth = 0);
+    bool contains_any(const std::string& str,
+                      const std::vector<std::string>& keywords);
+    bool pin_already_added(int pin) const;
+    std::string to_upper(const std::string& str);
+    void add_detected_component(const DetectedComponent& comp, std::set<int>& claimed);
+    int next_i2c_bus_pin() { return next_i2c_bus_pin_++; }
+
 private:
     std::map<std::string, std::vector<int>> parse_arrays(const std::string& source);
     std::set<int> detect_multipin(
@@ -68,39 +79,10 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
-    // Keypad: row/col pin counts are read straight from the sketch, not fixed, so it can't
-    // use the fixed-role-count MultiPinStrategy engine and is handled on its own.
-    void detect_keypad_matrix(const std::string& source,
+    void detect_custom_components(const std::string& source,
         const std::map<std::string, std::string>& defines,
         const std::map<std::string, std::vector<int>>& arrays,
         std::set<int>& claimed);
-
-    // DHT: "DHT dht(DHTPIN, DHTTYPE)" -- 2nd arg is a sensor-type selector, not a pin, so
-    // detect_constructor_pattern's "every arg is a pin" rule doesn't apply.
-    void detect_dht(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
-    // MAX7219: pins are almost always raw literals/const ints in the constructor call, not
-    // named #defines, so the generic MultiPinStrategy engine can't find them -- same as Keypad/DHT.
-    void detect_max7219(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
-    // NeoPixel: "Adafruit_NeoPixel strip(count, pin[, type])" -- same constructor-read shape
-    // as Max7219, except pin is the 2nd arg (1st is LED count); optional 3rd arg (color
-    // order/speed flags) is never a plain \w+ token, so it's matched loosely and ignored.
-    void detect_neopixel(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
-    // OLED (SSD1306, I2C): resetPin is often -1 (no reset line on I2C breakouts), leaving no
-    // GPIO to key the canvas item by, so it falls back to a fixed sentinel
-    // (Adafruit_SSD1306::NO_RESET_PIN_KEY in ssd1306.inc, kept in sync by hand).
-    void detect_oled(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
     void detect_pattern_matches(const std::string& source,
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);
     void detect_method_call_pattern(const ComponentDefinition& def, const std::string& pattern,
@@ -115,8 +97,8 @@ private:
     std::vector<std::string>       warnings_;
     int max_pin_ = 69;
 
-    // Synthetic pin for I2C devices with no real GPIO (see detect_oled); increments per
-    // assignment so multiple such devices get distinct keys instead of colliding.
+    // Synthetic pin for I2C devices with no real GPIO (see next_i2c_bus_pin()); increments
+    // per assignment so multiple such devices get distinct keys instead of colliding.
     int next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 
     std::map<std::string, std::string> parse_defines(const std::string& source);
@@ -131,11 +113,4 @@ private:
         const std::map<std::string, std::string>& defines);
 
     std::string infer_type(const std::string& name, const std::string& mode);
-    int resolve_pin(const std::string& token,
-                    const std::map<std::string, std::string>& defines,
-                    int depth = 0);
-    bool contains_any(const std::string& str,
-                      const std::vector<std::string>& keywords);
-    bool pin_already_added(int pin) const;
-    std::string to_upper(const std::string& str);
 };

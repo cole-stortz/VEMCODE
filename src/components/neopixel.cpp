@@ -1,7 +1,9 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
+#include "src/core/circuit/circuitdetector.h"
 #include <QPainter>
 #include <algorithm>
+#include <regex>
 
 static const QColor STRIP_BG ("#1a1a1a");
 static const QColor STRIP_OFF("#2a2a2a");
@@ -72,13 +74,47 @@ static bool registered_neopixel = []() {
         "NeoPixel",
         {"NEOPIXEL", "WS2812", "PIXELS", "PIXEL", "STRIP"},
         {},    // detect_multi -- none, single-pin component
-        {},    // detect_pattern -- none, handled by CircuitDetector::detect_neopixel (1st arg is LED count, not a keyword-matched pin)
+        {},    // detect_pattern -- none, handled by detect_custom below (1st arg is LED count, not a keyword-matched pin)
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new NeoPixelItem(pin, parent);
         }
     };
     def.wire_color = NEOPIXEL_ACCENT;
+
+    // "Adafruit_NeoPixel strip(count, pin[, type])" -- optional 3rd arg (color order/speed
+    // flags) is matched loosely since it's often an expression like "NEO_GRB + NEO_KHZ800".
+    def.detect_custom = [](CircuitDetector& ctx, const std::string& source,
+                            const std::map<std::string, std::string>& defines,
+                            const std::map<std::string, std::vector<int>>&,
+                            std::set<int>& claimed) {
+        static const std::regex ctor_re(
+            R"(\bAdafruit_NeoPixel\s+(\w+)\s*(?:=\s*Adafruit_NeoPixel\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(?:,[^)]*)?\))");
+
+        for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+             it != std::sregex_iterator(); ++it) {
+            std::string obj_name = (*it)[1].str();
+            int count = ctx.resolve_pin((*it)[2].str(), defines);
+            int pin   = ctx.resolve_pin((*it)[3].str(), defines);
+            if (pin < 0) continue;
+            if (claimed.count(pin) || ctx.pin_already_added(pin)) continue;
+
+            int strip_length = count < 1 ? 1 : std::min(count, 256);
+
+            DetectedComponent comp;
+            comp.type_name    = "NeoPixel";
+            comp.pin          = pin;
+            comp.pins         = {pin};
+            comp.pin_name     = obj_name;
+            comp.confirmed    = false;
+            comp.strip_length = strip_length;
+            comp.label = "NeoPixel " + obj_name + " (pin " + std::to_string(pin) +
+                         ", pixels=" + std::to_string(strip_length) + ")";
+
+            ctx.add_detected_component(comp, claimed);
+        }
+    };
+
     ComponentRegistry::instance().register_component(def);
     return true;
 }();
