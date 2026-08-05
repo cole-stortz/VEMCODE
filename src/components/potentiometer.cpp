@@ -27,11 +27,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Lead drawn under the knob, extending well past its edge -- the
-        // knob paints over the overlap, so the visible stub always ends up
-        // flush with the knob regardless of the exact radius.
-        // Potentiometers are inputs, so CanvasWidget::updateWires attaches
-        // the wire at local (width, 15).
+        // Lead drawn under the knob, extending past its edge, so the stub stays flush
+        // regardless of radius; wire attaches at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 50, 15), QPointF(r.width(), 15));
 

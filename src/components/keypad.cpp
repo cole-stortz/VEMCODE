@@ -8,9 +8,8 @@
 static const QColor KEY_ACTIVE  ("#e0822e");
 static constexpr int CELL = 26;
 
-// Real 4x4/4x3 membrane keypads (the ones in Arduino starter kits) are
-// silkscreened with this exact layout -- match it so the canvas grid reads
-// like the physical part, not an arbitrary numbering.
+// Real 4x4/4x3 membrane keypads (Arduino starter kit style) are silkscreened with this
+// exact layout -- match it so the canvas grid reads like the physical part.
 static QString keyLabelFor(int rows, int cols, int r, int c) {
     if (rows == 4 && cols == 4) {
         static const char* K[4][4] = {
@@ -52,8 +51,8 @@ public:
         cols_ = cols;
     }
 
-    // Called after configureRowsCols, so rows_/cols_ are already known --
-    // pins arrives as [row_0..row_{rows-1}, col_0..col_{cols-1}].
+    // Called after configureRowsCols, so rows_/cols_ are known; pins arrives as
+    // [row_0..row_{rows-1}, col_0..col_{cols-1}].
     void configureMultiPin(const std::vector<int>& pins) override {
         if (rows_ <= 0 || cols_ <= 0 || (int)pins.size() < rows_ + cols_) return;
         rowPins_.assign(pins.begin(), pins.begin() + rows_);
@@ -85,10 +84,8 @@ public:
             }
         }
 
-        // Straight leads on the right edge, one per row/col pin slot -- the
-        // same [row_0..row_{rows-1}, col_0..col_{cols-1}] order configureMultiPin
-        // uses. Keypads are inputs, so CanvasWidget::updateWires attaches
-        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the right edge, one per row/col pin slot, same order
+        // configureMultiPin uses; wire i attaches at local (width, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         QRectF r = boundingRect();
         for (int i = 0; i < rows_ + cols_; ++i) {
@@ -105,8 +102,8 @@ public:
         pressedRow_ = r;
         pressedCol_ = c;
         update();
-        // Addressed by actual pin number (not row/col index) so the runtime
-        // side needs no notion of "which keypad" -- pins are globally unique.
+        // Addressed by actual pin number (not row/col index) so the runtime needs no
+        // notion of "which keypad" -- pins are globally unique.
         emit inputChanged(pin(), (int)ComponentEventType::KeypadPress,
                            QVariantList{rowPins_[r], colPins_[c], 1});
     }
@@ -120,8 +117,8 @@ public:
     }
 
 private:
-    // Payload: [numCols, col_pin_0.., row_pin_0..] -- pin numbers, not indices,
-    // so the runtime can key everything by pin and stay keypad-instance-agnostic.
+    // Payload: [numCols, col_pin_0.., row_pin_0..] -- pin numbers, not indices, so the
+    // runtime stays keypad-instance-agnostic.
     void emitWiring() {
         QVariantList payload;
         payload << (int)colPins_.size();

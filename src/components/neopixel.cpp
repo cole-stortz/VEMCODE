@@ -7,9 +7,8 @@ static const QColor STRIP_BG ("#1a1a1a");
 static const QColor STRIP_OFF("#2a2a2a");
 static const QColor NEOPIXEL_ACCENT("#4ade80");
 
-// Rendered as a grid of dots wrapping every COLS pixels within the standard
-// 100px-wide footprint, growing downward as pixel count increases -- same
-// "square footprint that stacks" shape MAX7219 uses for its device chain.
+// Rendered as a grid of dots wrapping every COLS pixels within the standard 100px-wide
+// footprint, growing downward as pixel count increases (same shape MAX7219 uses for its device chain).
 class NeoPixelItem : public ComponentItem {
     static constexpr int MAX_PIXELS = 256;
     static constexpr int COLS = 10;
@@ -50,14 +49,12 @@ public:
             p->drawEllipse(QPointF(cx, cy), dotD / 2.0f, dotD / 2.0f);
         }
 
-        // Straight lead on the left edge -- NeoPixel is an output, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        // Straight lead on the left edge; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(5, 15), QPointF(0, 15));
     }
 
-    // Whole-strip update, sent once per show() -- rgb is pixelCount_*3
-    // interleaved bytes, same order the runtime hook packs them in.
+    // Whole-strip update sent once per show(); rgb is pixelCount_*3 interleaved bytes.
     void updateStripPixels(const QByteArray& rgb) override {
         int n = std::min(pixelCount_, (int)(rgb.size() / 3));
         for (int i = 0; i < n; ++i) {
@@ -75,8 +72,7 @@ static bool registered_neopixel = []() {
         "NeoPixel",
         {"NEOPIXEL", "WS2812", "PIXELS", "PIXEL", "STRIP"},
         {},    // detect_multi -- none, single-pin component
-        {},    // detect_pattern -- none, handled by CircuitDetector::detect_neopixel
-               // (constructor's 1st arg is LED count, not a keyword-matched pin)
+        {},    // detect_pattern -- none, handled by CircuitDetector::detect_neopixel (1st arg is LED count, not a keyword-matched pin)
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new NeoPixelItem(pin, parent);

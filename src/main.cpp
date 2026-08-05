@@ -30,9 +30,7 @@ static void handle_sigint(int) {
     if (g_headless_runtime) g_headless_runtime->request_stop();
 }
 
-// If `given` doesn't exist as-is, search the configured sketch location
-// recursively for a file with that basename so `vemcode InputTest.cpp` works
-// without a full path.
+// Falls back to a recursive search of the configured sketch location by basename, e.g. `vemcode InputTest.cpp`.
 static bool resolve_sketch_path(const std::string& given, std::string& resolved) {
     if (std::filesystem::exists(given)) {
         resolved = given;
@@ -79,10 +77,7 @@ static bool parse_bool_option(const std::string& value, bool& out) {
     return false;
 }
 
-// Scanned before anything else decides QCoreApplication (headless) vs
-// QApplication (GUI) -- that decision has to happen ahead of the normal
-// HeadlessOptions parsing below, since it picks which of those two classes
-// even gets constructed.
+// Must run before QCoreApplication/QApplication is constructed -- it decides which one gets built.
 static bool wants_gui(int argc, char* argv[]) {
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -102,9 +97,7 @@ static std::string derive_timeline_path(const std::string& sketch_path) {
     return base + ".timeline";
 }
 
-// Parses argv[2..argc-1]: a bare arg (no '=') is the optional timeline file
-// path (error if more than one given); a key=value arg sets an option.
-// Prints an error and returns false on any bad input.
+// A bare arg (no '=') is the optional timeline file path; a key=value arg sets an option.
 static bool parse_headless_args(int argc, char* argv[], HeadlessOptions& opts) {
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -133,9 +126,7 @@ static bool parse_headless_args(int argc, char* argv[], HeadlessOptions& opts) {
                 return false;
             }
         } else if (key == "ui") {
-            // Already resolved by wants_gui() before main() decided to call
-            // run_headless() at all -- reaching here only happens for the
-            // explicit ui=false case, which is a no-op.
+            // Already resolved by wants_gui(); only reached for the explicit ui=false no-op case.
             bool dummy;
             if (!parse_bool_option(value, dummy)) {
                 std::cerr << "Bad ui= value '" << value << "' (expected true or false)\n";
@@ -149,9 +140,7 @@ static bool parse_headless_args(int argc, char* argv[], HeadlessOptions& opts) {
     return true;
 }
 
-// Compiles and runs a single sketch on the current thread with no GUI,
-// streaming Serial output to stdout until Ctrl+C. Mirrors the compile/detect/
-// run sequence MainWindow::onRunClicked drives interactively.
+// Compiles and runs a sketch with no GUI, streaming Serial to stdout until Ctrl+C.
 static int run_headless(int argc, char* argv[]) {
     std::string sketch_path;
     if (!resolve_sketch_path(argv[1], sketch_path))
@@ -236,7 +225,7 @@ static int run_headless(int argc, char* argv[]) {
     }
 
     CircuitDetector detector;
-    detector.detect(source);
+    detector.detect(source, profile.pin_count - 1);
     std::cout << "=== Components detected ===\n";
     for (const auto& comp : detector.components())
         std::cout << comp.to_string() << "\n";
@@ -274,12 +263,8 @@ static int run_headless(int argc, char* argv[]) {
     };
 
     {
-        // setup() runs inside load(), on this same thread, before the main
-        // loop below ever locks exec_mutex() -- but setup() can itself call
-        // delay()/delayMicroseconds(), which unconditionally unlock/relock
-        // exec_mtx_ to let ISRs preempt them. Without holding the lock here
-        // first, that unlock() targets a mutex this thread doesn't actually
-        // own (undefined behavior, observed to hang later lock attempts).
+        // setup() (called inside load()) may call delay(), which unlocks/relocks exec_mtx_ for ISR preemption --
+        // must already hold the lock here or that unlock() hits a mutex this thread doesn't own (UB, observed hangs).
         std::lock_guard<std::mutex> exec_lock(runtime.exec_mutex());
         if (!host.load(result.dll_path)) {
             std::cerr << "Failed to load compiled sketch\n";
@@ -290,14 +275,8 @@ static int run_headless(int argc, char* argv[]) {
     g_headless_runtime = &runtime;
     std::signal(SIGINT, handle_sigint);
 
-    // A timeout can't just be a between-iterations check: a single
-    // host.run_loop() call can block for real seconds inside the sketch's
-    // own delay()/pulseIn() (e.g. a sketch that does delay(100000) once some
-    // finish condition is reached), and that only returns early if
-    // stop_requested_ is set *while it's sleeping* -- the same mechanism
-    // SIGINT already uses via request_stop(). So timeout=N is implemented
-    // the same way: a watchdog thread that calls request_stop() itself
-    // rather than a flag this loop merely polls between calls.
+    // A single run_loop() call can block for real seconds inside delay()/pulseIn(), so timeout=N needs its own
+    // watchdog thread calling request_stop() (same mechanism as SIGINT) rather than a flag polled between calls.
     std::mutex              timeout_mtx;
     std::condition_variable timeout_cv;
     bool                    loop_done = false;
@@ -351,10 +330,7 @@ int main(int argc, char* argv[]) {
     }
 
     QApplication app(argc, argv);
-    // The Fusion style fully honors QPalette/QSS everywhere; native platform
-    // styles (GTK/Breeze/Adwaita integration) partially ignore both for some
-    // native-rendered elements (checkbox labels, header sections, tab bar
-    // fill), which is what caused patches of the light theme to stay dark.
+    // Native platform styles (GTK/Breeze/Adwaita) partially ignore QPalette/QSS on some elements; Fusion honors both fully.
     app.setStyle(QStyleFactory::create("Fusion"));
     app.setApplicationName("VEMCODE");
     app.setApplicationVersion("0.1");
@@ -362,9 +338,7 @@ int main(int argc, char* argv[]) {
 
     MainWindow window;
 
-    // `vemcode SketchName.cpp ui=true` -- resolve_sketch_path also handles a
-    // bare basename by searching the configured sketches dir (see its doc
-    // comment above), same as the headless path does.
+    // `vemcode SketchName.cpp ui=true` -- resolve_sketch_path handles a bare basename too, same as headless.
     if (argc > 1) {
         std::string sketch_path;
         if (!resolve_sketch_path(argv[1], sketch_path))

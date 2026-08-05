@@ -17,8 +17,7 @@ void CodeHighlighter::buildRules(bool dark) {
     rules_.clear();
     HighlightRule rule;
 
-    // Same hue families in both themes, darkened/desaturated for light mode
-    // so text stays legible on a white-ish background instead of washing out.
+    // Same hue families in both themes, darkened/desaturated for light mode so text stays legible.
     QColor preprocessor_color = dark ? QColor("#c586c0") : QColor("#9a3fa0");
     QColor keyword_color      = dark ? QColor("#569cd6") : QColor("#0451a5");
     QColor arduino_color      = dark ? QColor("#dcdcaa") : QColor("#7a5c00");
@@ -172,8 +171,7 @@ void CodeHighlighter::highlightBlock(const QString& text) {
         }
     }
 
-    // Single-line comment -- find the first "//" that isn't part of a string
-    // literal (e.g. a "http://..." URL) and color it through end of line.
+    // Find the first "//" that isn't part of a string literal (e.g. a "http://..." URL).
     {
         QRegularExpressionMatchIterator it = sl_comment_start_.globalMatch(text);
         while (it.hasNext()) {

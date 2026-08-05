@@ -4,10 +4,8 @@
 #include <QMap>
 #include "src/core/runtime/boardprofile.h"
 
-// Static analysis over sketch source text -- pin-range/PWM/ISR/etc. checks
-// and compiler-error humanization. No Qt-widget dependency: everything here
-// is a pure function of the source text (and, for checkSource, the target
-// board), so it doesn't need a MainWindow to run.
+// Static analysis over sketch source text -- pin-range/PWM/ISR checks and error humanization.
+// No Qt-widget dependency: a pure function of source text (and board, for checkSource).
 namespace SketchLinter {
 
 // Pin range, PWM, ISR, and similar warnings for the given board.

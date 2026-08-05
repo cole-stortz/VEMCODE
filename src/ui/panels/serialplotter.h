@@ -11,20 +11,15 @@ struct PlotSample {
     double value;
 };
 
-// SerialPlotter graphs numeric values printed via Serial.println(), matching
-// the Arduino IDE Serial Plotter protocol: each line is one or more tokens
-// separated by whitespace/commas, each either "label:value" or a bare number
-// (bare numbers get default names "Value"/"Value 2"/...). Each label becomes
-// its own scrolling line trace sharing one auto-scaled Y axis.
+// Graphs numeric values from Serial.println(), matching the Arduino IDE Serial Plotter
+// protocol: whitespace/comma-separated "label:value" or bare number tokens per line.
 class SerialPlotter : public QWidget {
     Q_OBJECT
 
 public:
     explicit SerialPlotter(QWidget* parent = nullptr);
 
-    // Feed raw Serial output text as it arrives -- buffers partial lines
-    // internally (Serial.print() calls without a trailing '\n' are common)
-    // and only parses once a '\n' completes a line.
+    // Feed raw Serial output as it arrives; buffers partial lines and only parses on '\n'.
     void ingest(const QString& text, qint64 time_ms);
 
     // Clear all recorded data -- call when a new sketch starts.
@@ -55,9 +50,7 @@ private:
     qint64 time_window_ms_   = 5000; // visible window width
     qint64 scroll_offset_ms_ = 0;    // horizontal scroll position
 
-    // Y axis range only ever grows to fit new samples, never shrinks back
-    // down when values settle -- constant rescaling reads as an annoying
-    // pulse, and it's rare that a real signal's range needs to be reclaimed.
+    // Y axis range only grows, never shrinks -- constant rescaling reads as an annoying pulse.
     double range_min_ = 0;
     double range_max_ = 0;
     bool   has_range_ = false;

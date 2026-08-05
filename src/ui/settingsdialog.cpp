@@ -58,7 +58,6 @@ QWidget* SettingsDialog::buildGeneralTab() {
     QWidget*     tab    = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(tab);
 
-    // Compiler path row
     QHBoxLayout* compilerRow = new QHBoxLayout();
     compilerRow->addWidget(new QLabel("Compiler path:"));
     compilerEdit_ = new QLineEdit();
@@ -73,7 +72,6 @@ QWidget* SettingsDialog::buildGeneralTab() {
     compilerRow->addWidget(browseCompiler);
     layout->addLayout(compilerRow);
 
-    // Project root row
     QHBoxLayout* rootRow = new QHBoxLayout();
     rootRow->addWidget(new QLabel("Project root:"));
     rootEdit_ = new QLineEdit();
@@ -84,7 +82,6 @@ QWidget* SettingsDialog::buildGeneralTab() {
     rootRow->addWidget(browseRoot);
     layout->addLayout(rootRow);
 
-    // Default sketch location row
     QHBoxLayout* sketchLocationRow = new QHBoxLayout();
     sketchLocationRow->addWidget(new QLabel("Default sketch location:"));
     sketchLocationEdit_ = new QLineEdit();
@@ -95,7 +92,6 @@ QWidget* SettingsDialog::buildGeneralTab() {
     sketchLocationRow->addWidget(browseSketchLocation);
     layout->addLayout(sketchLocationRow);
 
-    // Board selector row
     QHBoxLayout* boardRow = new QHBoxLayout();
     boardRow->addWidget(new QLabel("Board:"));
     boardCombo_ = new QComboBox();
@@ -107,15 +103,12 @@ QWidget* SettingsDialog::buildGeneralTab() {
     boardRow->addWidget(boardCombo_);
     layout->addLayout(boardRow);
 
-    // Simulation options
     analogNoiseCheck_ = new QCheckBox("Analog noise (gaussian ±2 ADC counts on analogRead)");
     layout->addWidget(analogNoiseCheck_);
 
-    // Editor options
     autoCompileCheck_ = new QCheckBox("Auto-compile on save (Ctrl+R still runs manually)");
     layout->addWidget(autoCompileCheck_);
 
-    // Canvas options
     darkThemeCheck_ = new QCheckBox("Dark theme");
     darkThemeCheck_->setChecked(true);
     layout->addWidget(darkThemeCheck_);

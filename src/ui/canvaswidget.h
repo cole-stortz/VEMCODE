@@ -24,7 +24,7 @@ public:
     void updateMatrixRow(int pin, int addr, int row, int bits);
     void updateNeopixelShow(int pin, QByteArray rgb);
     void updateOledDisplay(int pin, QByteArray pixels, int width, int height);
-    void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; BOARD_W = p.board_width; }
+    void setProfile(BoardProfile p);
 
     // Layout mode: components become draggable instead of receiving their
     // normal interactive mouse events (button press, slider drag, etc).
@@ -38,23 +38,18 @@ public:
     // explicit Save/Save As only -- not autosaved.
     void saveLayout(const QString& sketchPath) const;
 
-    // Loads "<sketchPath>.vblayout" if present, else clears to defaults. Call
-    // when switching to a different sketch so it doesn't inherit another
-    // sketch's layout. Positions apply on the next refresh(); zoom applies now.
+    // Loads "<sketchPath>.vblayout" if present, else clears to defaults; call when switching sketches.
+    // Positions apply on the next refresh(); zoom applies now.
     void loadLayout(const QString& sketchPath);
 
     void zoomIn();
     void zoomOut();
 
-    // Only affects the viewport background (the empty area outside the
-    // board) so the canvas matches the app-wide theme -- board/chip/pin
-    // chrome and every component's own colors are fixed regardless.
+    // Only affects the viewport background outside the board -- board/chip/pin chrome and component colors are fixed.
     void setDarkTheme(bool dark);
     bool isDarkTheme() const { return darkTheme_; }
 
-    // Drives the board's power-indicator LED -- lit and glowing while the
-    // sketch is running, dim otherwise. Called from MainWindow alongside its
-    // stopButton_ enabled state.
+    // Drives the board's power-indicator LED -- lit while running, dim otherwise.
     void setSketchRunning(bool running);
 
 signals:
@@ -70,15 +65,11 @@ protected:
 
 private:
     void drawBoard();
-    // `chain_prev` is set for an I2C daisy-chain link (device after the
-    // first on a shared bus, see i2cbus.h) -- its wire attaches to that
-    // item instead of a board pin. Null for every normal component.
+    // `chain_prev` set for an I2C daisy-chain link (see i2cbus.h) -- its wire attaches to that item, not a board pin.
     void placeComponent(const DetectedComponent& comp, const ComponentDefinition* def,
                          ComponentItem* item, float comp_x, float comp_y, int comp_w, int comp_h,
                          ComponentItem* chain_prev = nullptr);
-    // Draws a wire segment plus a slight shadow behind it (helps bright wire
-    // colors stay visible in light mode) -- appends both items to `lines` so
-    // updateWires() can clean them up together on re-route.
+    // Draws a wire plus a shadow behind it (keeps bright colors visible in light mode); both appended to `lines`.
     void drawWire(QPointF from, QPointF to, const QColor& color,
                   std::vector<QGraphicsLineItem*>& lines);
     void updateWires(ComponentItem* item); // re-route a component's wires from its current position
@@ -95,9 +86,7 @@ private:
     QGraphicsScene*             scene_;
     QMap<int, ComponentItem*>   pinItems_;
 
-    // Wire routing info kept per component so a drag can re-route its wires
-    // without touching the rest of the circuit, plus enough identity (primary_pin)
-    // to persist a dragged position across the next refresh().
+    // Per-component wire routing info so a drag can re-route without touching the rest of the circuit.
     struct ComponentInfo {
         int primary_pin;
         bool is_output;

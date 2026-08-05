@@ -8,11 +8,9 @@ static const QColor BEZEL_BG   ("#111111");
 static const QColor SCREEN_OFF ("#04141a");
 static const QColor SCREEN_ON  ("#7fe8ff");
 
-// Rendered as a scaled-up bitmap of the real monochrome framebuffer inside a
-// bezel -- real pixel dimensions vary per sketch (128x64, 128x32, ...), so
-// the footprint scales with configureDisplaySize() rather than using the
-// fixed 100px "long side" every other component's rectangle uses (same
-// "semi custom" exception MAX7219's square already established).
+// Rendered as a scaled-up bitmap of the real monochrome framebuffer inside a bezel -- real
+// dimensions vary per sketch (128x64, 128x32, ...), so the footprint scales with
+// configureDisplaySize() rather than the fixed 100px "long side" (same exception MAX7219's square established).
 class OledItem : public ComponentItem {
     static constexpr float PX_SCALE = 1.5f;
     static constexpr float MARGIN = 8.0f;
@@ -51,14 +49,13 @@ public:
         p->setRenderHint(QPainter::SmoothPixmapTransform, false);
         p->drawImage(screenRect, img_);
 
-        // Straight lead on the left edge -- OLED is an output, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        // Straight lead on the left edge; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(5, 15), QPointF(-1, 15));
     }
 
-    // Whole-framebuffer update, sent once per display() -- pixels is
-    // width*height bytes, one per pixel (0/1), row-major.
+    // Whole-framebuffer update sent once per display(); pixels is width*height bytes, one
+    // per pixel (0/1), row-major.
     void updateOledFramebuffer(const QByteArray& pixels, int width, int height) override {
         if (width != width_ || height != height_) return; // stale/mismatched flush, ignore
         if (pixels.size() < width * height) return;
@@ -77,8 +74,7 @@ static bool registered_oled = []() {
         "OLED",
         {"OLED", "SSD1306", "DISPLAY", "SCREEN"},
         {},    // detect_multi -- none, I2C has no dedicated GPIO pin
-        {},    // detect_pattern -- none, handled by CircuitDetector::detect_oled
-               // (constructor's 1st/2nd args are width/height, not keyword-matched pins)
+        {},    // detect_pattern -- none, handled by CircuitDetector::detect_oled (width/height args, not keyword-matched pins)
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new OledItem(pin, parent);

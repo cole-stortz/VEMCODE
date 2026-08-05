@@ -59,9 +59,8 @@ public:
             p->drawEllipse(c + d, 3, 3);
         }
 
-        // Straight leads on the right edge, one per OUT/S2/S3 pin slot --
-        // color sensors are inputs, so CanvasWidget::updateWires attaches
-        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the right edge, one per OUT/S2/S3 slot; wire i attaches at
+        // local (width, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal ly = 15 + i * 5;
@@ -74,8 +73,8 @@ public:
         if (pins.size() > 2) s3Pin_ = pins[2];
     }
 
-    // Called by CanvasWidget after inputChanged is connected and
-    // configureMultiPin has run, so s2Pin_/s3Pin_ are already valid.
+    // Called by CanvasWidget after inputChanged is connected and configureMultiPin has run,
+    // so s2Pin_/s3Pin_ are valid.
     void emitInitialValue() override {
         emitColor();
     }
@@ -105,7 +104,7 @@ static bool registered = []() {
             {"S3",  {"S3"}},
         },
         {"pulseIn("},
-        false, // is_output — this is an input component
+        false, // is_output -- this is an input component
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new ColorSensorItem(pin, parent);
         },
@@ -115,9 +114,8 @@ static bool registered = []() {
     def.wire_color = COLOR_SENSOR_FILL;
     ComponentRegistry::instance().register_component(def);
 
-    // Separate entry for the array-of-pins style (e.g. `const int S2[] = {A2};`)
-    // some ported sketches use instead of plain #defines -- same type_name/
-    // create_item, same tradeoff HBridgeMotor's bare ENA/IN1/IN2 entry accepts.
+    // Separate entry for the array-of-pins style (e.g. `const int S2[] = {A2};`) some ported
+    // sketches use instead of #defines -- same tradeoff as HBridgeMotor's bare ENA/IN1/IN2 entry.
     ComponentDefinition arrayDef = def;
     arrayDef.multi_pin_strategy = MultiPinStrategy::Array;
     ComponentRegistry::instance().register_component(arrayDef);

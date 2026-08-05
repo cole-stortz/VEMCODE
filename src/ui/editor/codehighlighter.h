@@ -6,8 +6,6 @@
 #include <utility>
 
 // Arduino C++ syntax highlighter for QPlainTextEdit.
-// Highlights: keywords, types, Arduino functions, strings,
-// comments, numbers, preprocessor directives, and constants.
 class CodeHighlighter : public QSyntaxHighlighter {
     Q_OBJECT
 
@@ -29,10 +27,7 @@ private:
 
     QVector<HighlightRule> rules_;
 
-    // String literals are matched separately (not through rules_) so the
-    // comment handling below can check "is this position inside a string"
-    // before coloring a // or /* */ that's actually just part of a string's
-    // text (e.g. a "http://..." URL).
+    // Matched separately from rules_ so comment detection can skip a // or /* */ that's actually inside a string.
     QRegularExpression string_pattern_;
 
     // Single-line comment state

@@ -3,10 +3,8 @@
 #include <cstdint>
 #include <vector>
 
-// Parses a comma-separated list of ints (accepts "0x.." hex or decimal, per
-// QString::toInt's base-0 auto-detect) into bytes, truncated to the low 8
-// bits. Used by the virtual I2C/SPI device panels to read their
-// response-byte edit fields.
+// Parses a comma-separated list of ints (0x.. hex or decimal, base-0 auto-detect) into
+// bytes truncated to the low 8 bits; used by the virtual I2C/SPI panels' response fields.
 inline std::vector<uint8_t> parseByteList(const QString& text) {
     std::vector<uint8_t> bytes;
     for (const QString& tok : text.split(',', Qt::SkipEmptyParts)) {

@@ -8,8 +8,7 @@
 #  define VB_EXPORT __attribute__((visibility("default")))
 #endif
 
-// The Arduino API contract.
-// This struct is filled by the host and injected into every sketch DLL.
+// The Arduino API contract, filled by the host and injected into every sketch DLL.
 // Adding new fields at the END is backwards-compatible.
 struct ArduinoAPI {
     // GPIO
@@ -49,15 +48,12 @@ struct ArduinoAPI {
     // device (0 for a single module); one call per fully-latched row byte
     void (*matrix_set_row)(int pin, int addr, int row, int bits);
 
-    // NeoPixel/WS2812 strip -- keyed by data pin; rgb is count*3 interleaved
-    // bytes (r,g,b per pixel), sent once per show() rather than per-pixel,
-    // matching the real library's buffer-then-flush semantics.
+    // NeoPixel/WS2812 strip -- keyed by data pin; rgb is count*3 interleaved bytes (r,g,b per
+    // pixel), sent once per show() rather than per-pixel, matching the real library's semantics.
     void (*neopixel_show)(int pin, const uint8_t* rgb, int count);
 
-    // SSD1306 OLED -- keyed by reset pin, or a fixed sentinel (900, see
-    // Adafruit_SSD1306::NO_RESET_PIN_KEY) when the sketch has no real reset
-    // line, which is the common case for I2C breakout modules. pixels is
-    // width*height bytes, one per pixel (0/1), sent once per display().
+    // SSD1306 OLED -- keyed by reset pin, or sentinel 900 (Adafruit_SSD1306::NO_RESET_PIN_KEY)
+    // for I2C breakouts with no reset line. pixels is width*height bytes (0/1), sent once per display().
     void (*oled_display)(int pin, const uint8_t* pixels, int width, int height);
 
     // DHT11/DHT22 -- canvas-injected readings, keyed by data pin

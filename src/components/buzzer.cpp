@@ -16,10 +16,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Lead drawn under the body, extending past its left edge -- the
-        // body paints over the overlap, so the visible stub always ends up
-        // flush with the body's edge without having to keep the two in sync.
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        // Lead drawn under the body, extending past its left edge, so the stub stays flush
+        // without keeping in sync; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(40, 15), QPointF(0, 15));
 
@@ -59,8 +57,8 @@ static bool registered = []() {
     ComponentDefinition def{
         "Buzzer",
         {"BUZZER", "BUZZ", "SPEAKER", "TONE", "PIEZO"},
-        {},    // detect_multi — none
-        {},    // detect_pattern — none
+        {},    // detect_multi -- none
+        {},    // detect_pattern -- none
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new BuzzerItem(pin, parent);

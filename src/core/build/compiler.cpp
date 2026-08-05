@@ -61,7 +61,6 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
 
     Preprocessor preprocessor;
 
-    // Extract // @board <name> hint and surface it to the caller via result
     result.board_hint = preprocessor.extract_board_profile(source);
 
     std::string transformed = preprocessor.process(source);
@@ -73,8 +72,8 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
     temp_file << transformed;
     temp_file.close(); 
 
-    // Collect any extra .cpp files in the sketch folder (multi-file sketch support).
-    // The main sketch file is already preprocessed into _vb_temp.cpp, so skip both.
+    // Collect extra .cpp files for multi-file sketches; skip _vb_temp.cpp and the
+    // main sketch (already preprocessed).
     std::string extra_sources;
     try {
         namespace fs = std::filesystem;
@@ -92,23 +91,14 @@ CompileResult Compiler::compile(const std::string& sketch_path) {
         << " -shared"
         << " -fPIC"
         << " -Wall"
-        // Without this, an ordinary sketch global whose name happens to
-        // collide with a weak symbol already loaded in the process (e.g.
-        // glibc's internal `step` from its legacy random() implementation)
-        // can get resolved to that library's definition instead of the
-        // sketch's own -- writing to it then corrupts whatever that other
-        // symbol actually is (observed: a plain `int step` global writing
-        // into glibc's read-only .text and segfaulting). -Bsymbolic forces
-        // the sketch's own references to bind to its own definitions first,
-        // without hiding the symbols -- Variable Watch's dlsym-by-name still
-        // needs them visible in the dynamic symbol table.
+        // -Bsymbolic: a sketch global colliding with an already-loaded weak symbol (e.g.
+        // glibc's `step`) could otherwise resolve to it and corrupt it (observed: segfault). Symbols stay visible for Variable Watch's dlsym.
         << " -Wl,-Bsymbolic"
 #ifdef _WIN32
         << " -static-libgcc"
         << " -static-libstdc++"
-        // MinGW doesn't export DLL symbols by default the way a Linux .so
-        // does -- Variable Watch's dlsym-by-name polling needs every sketch
-        // global visible, not just the VB_EXPORT-marked vb_init/setup/loop.
+        // MinGW doesn't export DLL symbols by default like a Linux .so; Variable Watch's
+        // dlsym-by-name needs every sketch global visible, not just VB_EXPORT ones.
         << " -Wl,--export-all-symbols"
 #endif
         << " -o \"" << result.dll_path << "\""
@@ -204,7 +194,7 @@ std::string Compiler::run_command(const std::string& cmd) {
 std::vector<CompileError> Compiler::parse_errors(const std::string& output) {
     std::vector<CompileError> errors;
 
-    std::regex pattern(R"(([^:]+):(\d+):(\d+):\s*(error|warning):\s*(.+))");
+    std::regex pattern(R"(((?:[A-Za-z]:)?[^:]+):(\d+):(\d+):\s*(error|warning):\s*(.+))");
     std::istringstream stream(output);
     std::string line;
 

@@ -3,10 +3,8 @@
 #include <csignal>
 #include <setjmp.h>
 
-// Windows has no sigaction/sigsetjmp/siglongjmp -- plain signal()/setjmp()/
-// longjmp() cover the same SIGFPE/SIGSEGV recovery there (and the CRT
-// already resets the handler to SIG_DFL before invoking it, same as
-// SA_RESETHAND below).
+// Windows has no sigaction/sigsetjmp/siglongjmp; signal()/setjmp()/longjmp() cover the
+// same recovery there (CRT resets the handler to SIG_DFL first, like SA_RESETHAND below).
 #ifdef _WIN32
 static thread_local jmp_buf     tl_crash_jmp;
 #else
@@ -42,7 +40,6 @@ SketchThread::SketchThread(QObject* parent)
 }
 
 void SketchThread::startSketch(const QString& dll_path) {
-    // If already running, stop first
     stopSketch();
 
     dll_path_ = dll_path;
@@ -58,12 +55,10 @@ void SketchThread::stopSketch() {
 }
 
 void SketchThread::run() {
-    // Wire up the runtime callbacks BEFORE loading the sketch.
-    // We replace the std::cout calls with Qt signal emissions.
-    // The UI connects to these signals to receive output.
+    // Must be wired up before loading the sketch; these replace the runtime's std::cout
+    // calls with Qt signal emissions the UI connects to.
     auto& runtime = host_.runtime();
 
-    // Override Serial output -- emit signal instead of printing to console
     runtime.on_serial_output = [this](const std::string& text) {
         emit serialOutput(QString::fromStdString(text));
         if (timelineRunner_) timelineRunner_->onSerialOutput(text);
@@ -81,54 +76,43 @@ void SketchThread::run() {
         emit softSerialOutput(rxPin, QString::fromStdString(text));
     };
 
-    // Override pin change -- emit signal instead of printing to console
     runtime.on_pin_changed = [this](int pin, int value) {
         emit pinChanged(pin, value);
         if (timelineRunner_) timelineRunner_->onPinChanged(pin, value);
     };
 
-    // Check to see if a variable changed and emit that signal
     runtime.on_variable_changed = [this](const std::string& name, int value) {
         emit variableChanged(QString::fromStdString(name), QString::number(value));
     };
 
-    // LCD text output
     runtime.on_lcd_print = [this](int pin, int row, const std::string& text) {
         emit lcdPrint(pin, row, QString::fromStdString(text));
     };
 
-    // LED Matrix (MAX7219) row output
     runtime.on_matrix_row = [this](int pin, int addr, int row, int bits) {
         emit matrixRowChanged(pin, addr, row, bits);
     };
 
-    // NeoPixel/WS2812 strip output -- whole buffer, once per show()
+    // Whole buffer, once per show()
     runtime.on_neopixel_show = [this](int pin, std::vector<uint8_t> rgb) {
         emit neopixelShow(pin, QByteArray(reinterpret_cast<const char*>(rgb.data()), (int)rgb.size()));
     };
 
-    // SSD1306 OLED framebuffer output -- whole buffer, once per display()
+    // Whole buffer, once per display()
     runtime.on_oled_display = [this](int pin, std::vector<uint8_t> pixels, int width, int height) {
         emit oledDisplay(pin, QByteArray(reinterpret_cast<const char*>(pixels.data()), (int)pixels.size()), width, height);
     };
 
-    // Watchdog
     runtime.on_watchdog_reset = [this](){
         emit watchdogReset();
     };
 
-    // Sleep
     runtime.on_sleep_changed = [this](bool sleeping) {
         emit sleepChanged(sleeping);
     };
 
-    // Load the sketch DLL. setup() runs inside load(), on this same thread,
-    // before the while(running_) loop below ever locks exec_mutex() -- but
-    // setup() can itself call delay()/delayMicroseconds(), which
-    // unconditionally unlock/relock exec_mtx_ to let ISRs preempt them.
-    // Without holding the lock here first, that unlock() targets a mutex
-    // this thread doesn't actually own (undefined behavior, observed to
-    // hang later lock attempts).
+    // Must hold exec_mutex() before load() -- setup() can call delay(), which unlocks/relocks
+    // exec_mtx_; unlocking a mutex this thread doesn't hold is UB (observed to hang).
     bool loaded;
     {
         std::lock_guard<std::mutex> exec_lock(runtime.exec_mutex());
@@ -215,8 +199,7 @@ void SketchThread::run() {
                 emit sketchReloaded();
         }
 
-        // Polled here (same thread as vb_loop()) so reads of the sketch's own
-        // globals never race its writes.
+        // Polled here (same thread as vb_loop()) so reads never race the sketch's own writes.
         if (now - last_watch_poll >= std::chrono::milliseconds(100)) {
             last_watch_poll = now;
             std::vector<std::pair<QString, QString>> watches;
@@ -242,11 +225,13 @@ void SketchThread::run() {
 }
 void SketchThread::injectPin(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_pin(pin, value);
 }
 
 void SketchThread::injectButtonBounce(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_button_bounce(pin, value);
 }
 
@@ -275,6 +260,7 @@ void SketchThread::armTimeline(std::vector<DetectedComponent> components, std::v
 
 void SketchThread::injectSerial(const QString& data) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_serial(data.toStdString());
 }
 

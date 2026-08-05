@@ -15,9 +15,8 @@ namespace {
         return (r != 0 && ((r < 0) != (b < 0))) ? q - 1 : q;
     }
 
-    // Number of times the free-running tick counter crosses a value congruent
-    // to `target` mod `modulus` while advancing from prevRaw to currRaw --
-    // i.e. how many overflow/compare-match events happened since the last poll.
+    // Number of times the free-running tick counter crosses a value congruent to `target` mod
+    // `modulus` while advancing prevRaw->currRaw -- i.e. overflow/compare-match events since the last poll.
     long long avr_count_crossings(long long prevRaw, long long currRaw, long long target, long long modulus) {
         if (currRaw <= prevRaw) return 0;
         return avr_floor_div(currRaw - target, modulus) - avr_floor_div(prevRaw - target, modulus);
@@ -217,9 +216,8 @@ int ArduinoRuntime::impl_digitalRead(int pin) {
         g_runtime->state_.pin_bounce_until_.erase(bounce_it);
         return settled;
     }
-    // Keypad matrix: this column's electrical value depends on which row is
-    // currently driven active by the injected Keypad class's own scan loop --
-    // pulled high (idle) unless the actively-driven row's key is held.
+    // Keypad matrix: this column's value depends on which row the injected Keypad class's
+    // scan loop currently drives active -- pulled high (idle) unless that row's key is held.
     {
         std::lock_guard<std::mutex> lock(g_runtime->state_.keypad_mtx_);
         auto it = g_runtime->state_.keypad_col_rows_.find(pin);
@@ -265,9 +263,8 @@ void ArduinoRuntime::impl_delay(unsigned long ms) {
     if (!g_runtime) return;
     unsigned long scaled = (unsigned long)(ms * g_runtime->speed_multiplier_);
 
-    // Sleep in 10ms chunks so stop requests are handled quickly, releasing
-    // exec_mtx_ each chunk so ISR handlers can still preempt a delay() call,
-    // same as real interrupts firing during a busy-wait.
+    // Sleep in 10ms chunks so stop requests are handled quickly; releases exec_mtx_ each
+    // chunk so ISR handlers can still preempt a delay() call, like real interrupts would.
     unsigned long elapsed = 0;
     while (elapsed < scaled) {
         if (g_runtime->stop_requested_) return;
@@ -454,30 +451,28 @@ void ArduinoRuntime::impl_tone(int pin, int frequency, int duration_ms) {
     if (g_runtime->on_pin_changed) g_runtime->on_pin_changed(pin, frequency);
     if (duration_ms == 0) return;
     ArduinoRuntime* rt = g_runtime;
-    std::thread t([pin, duration_ms, rt]() {
+    rt->reap_tone_threads();
+    auto done = std::make_shared<std::atomic<bool>>(false);
+    std::thread t([pin, duration_ms, rt, done]() {
         unsigned long scaled_duration = (unsigned long)(duration_ms * rt->speed_multiplier_);
         unsigned long elapsed = 0;
-        while (elapsed < scaled_duration) {
-            if (rt->stop_requested_) return;
+        while (elapsed < scaled_duration && !rt->stop_requested_) {
             unsigned long chunk = std::min(10UL, scaled_duration - elapsed);
             std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
             elapsed += chunk;
         }
         if (!rt->stop_requested_) {
-            // Unlike the watchdog/timer threads' ISR dispatch, this write and
-            // callback used to fire with no lock at all -- a race against the
-            // main thread's own on_pin_changed calls (and against
-            // tone_frequencies_ itself) for any pin activity happening around
-            // the same moment. exec_mtx_ is what every other background
-            // thread already serializes sketch-state mutation through.
+            // This used to fire with no lock at all -- a race against the main thread's
+            // on_pin_changed/tone_frequencies_ activity. Now locked like every other background thread.
             rt->state_.exec_mtx_.lock();
             rt->state_.tone_frequencies_[pin] = 0;
             if (rt->on_pin_changed) rt->on_pin_changed(pin, 0);
             rt->state_.exec_mtx_.unlock();
         }
+        done->store(true);
     });
     std::lock_guard<std::mutex> lock(rt->tone_threads_mtx_);
-    rt->tone_threads_.push_back(std::move(t));
+    rt->tone_threads_.push_back({std::move(t), done});
 }
 
 void ArduinoRuntime::impl_noTone(int pin) {
@@ -951,11 +946,23 @@ void ArduinoRuntime::stop_timer_thread() {
 }
 
 void ArduinoRuntime::stop_tone_threads() {
-    std::vector<std::thread> threads;
+    std::vector<ToneThread> threads;
     {
         std::lock_guard<std::mutex> lock(tone_threads_mtx_);
         threads.swap(tone_threads_);
     }
-    for (auto& t : threads)
-        if (t.joinable()) t.join();
+    for (auto& tt : threads)
+        if (tt.thread.joinable()) tt.thread.join();
+}
+
+void ArduinoRuntime::reap_tone_threads() {
+    std::lock_guard<std::mutex> lock(tone_threads_mtx_);
+    tone_threads_.erase(
+        std::remove_if(tone_threads_.begin(), tone_threads_.end(),
+            [](ToneThread& tt) {
+                if (!tt.done->load()) return false;
+                if (tt.thread.joinable()) tt.thread.join();
+                return true;
+            }),
+        tone_threads_.end());
 }

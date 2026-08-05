@@ -13,13 +13,9 @@ struct PinEvent {
     qint64 time_ms;    // milliseconds since simulation started
 };
 
-// SignalTimeline renders a logic analyzer style waveform for each pin the
-// user has explicitly added to watch (via the pin-number input at the top).
-// addEvent() silently ignores pins that haven't been added -- it's called
-// unconditionally for every pin change from MainWindow::onPinChanged, so all
-// filtering happens here rather than upstream.
-// Call clear() when a new sketch starts -- this resets recorded event data
-// only, the watched pin list survives across runs.
+// Logic analyzer style waveform for pins the user has explicitly added to watch.
+// addEvent() is called unconditionally from MainWindow::onPinChanged for every pin
+// change, so it silently ignores unwatched pins -- all filtering happens here.
 class SignalTimeline : public QWidget {
     Q_OBJECT
 
@@ -35,8 +31,7 @@ public:
     // Set the visible time window in milliseconds (default 5000ms)
     void setTimeWindow(qint64 ms) { time_window_ms_ = ms; update(); }
 
-    // Background/grid/label chrome only -- per-pin trace colors (trackColor)
-    // stay fixed in both themes, same as every other component's identity color.
+    // Background/grid/label chrome only -- per-pin trace colors stay fixed across themes.
     void setDarkTheme(bool dark) { dark_ = dark; update(); }
 
 protected:
@@ -47,12 +42,10 @@ private:
     void onAddPinClicked();
     void onRemovePinClicked();
 
-    // One track per watched pin -- ordered list of events. A pin present
-    // as a key here (even with an empty vector) counts as "watched".
+    // A pin present as a key here (even with an empty vector) counts as "watched".
     QMap<int, QVector<PinEvent>> tracks_;
 
-    // Ordered list of watched pins (for consistent track order, and doubles
-    // as "is anything being watched at all" for the empty-state message)
+    // Ordered list of watched pins; also doubles as the empty-state check.
     QVector<int> pin_order_;
 
     QLineEdit* pinInput_ = nullptr;

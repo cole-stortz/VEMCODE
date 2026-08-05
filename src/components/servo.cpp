@@ -43,8 +43,7 @@ public:
         qreal textX = pivot.x() + hornLen + 10;
         p->drawText(QRectF(textX, 0, r.width() - textX, r.height()), Qt::AlignCenter, QString("%1°").arg(angle_));
 
-        // Straight lead on the left edge -- servos are outputs, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        // Straight lead on the left edge; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(5, 15), QPointF(0, 15));
     }
@@ -59,7 +58,7 @@ static bool registered = []() {
     ComponentDefinition def{
         "Servo",
         {"SERVO", "SRV"},
-        {},    // detect_multi — none
+        {},    // detect_multi -- none
         {".attach("},
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {

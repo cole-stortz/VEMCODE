@@ -8,11 +8,8 @@
 #include "src/core/circuit/circuitdetector.h"
 #include "src/core/circuit/componentitem.h"
 
-// Captures canvas interactions and Serial sends into `.timeline`-format
-// lines (see src/core/host/timeline.h for the format this mirrors, and
-// TestRunner::dispatchAction there for the verb/arg shape per component
-// type) while active, so a manual GUI run can be exported and replayed
-// headlessly. Purely a writer -- src/core/host/timeline.* is the reader.
+// Records canvas interactions and Serial sends as `.timeline` lines for headless replay.
+// Purely a writer -- see src/core/host/timeline.h (format) and TestRunner::dispatchAction (verb shapes) for the reader.
 class TimelineRecorder {
 public:
     void clear();
@@ -20,9 +17,7 @@ public:
     bool isActive() const { return active_; }
     bool isEmpty() const { return lines_.isEmpty(); }
 
-    // Not every ComponentEventType/type_name combination has a matching
-    // verb in TestRunner::dispatchAction (Keypad, DHT) -- those are
-    // silently skipped rather than producing an unparseable line.
+    // Keypad/DHT have no matching verb in TestRunner::dispatchAction -- silently skipped.
     void recordComponentInput(int pin, ComponentEventType type, const QVariant& value,
                                double time_s, const std::vector<DetectedComponent>& components);
     void recordSerialSend(const QString& text, double time_s);
@@ -35,9 +30,7 @@ private:
     void appendLine(double time_s, const QString& verb, const QString& target,
                      const QStringList& args = {});
 
-    // Per-joystick last-known axis value (keyed by the joystick's VRX pin,
-    // i.e. pins[0]), since a single-axis AnalogValue event still needs a
-    // full MOVE <x> <y> -- the format has no per-axis SET for Joystick.
+    // Per-joystick last-known axis value (keyed by VRX pin) -- format has no per-axis SET, only full MOVE <x> <y>.
     QMap<int, QPointF> joystickAxes_;
     QStringList lines_;
     bool active_ = false;

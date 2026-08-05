@@ -20,11 +20,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Lead drawn under the body, extending past its edge -- the body
-        // paints over the overlap, so the visible stub always ends up flush
-        // with the body's edge regardless of the exact inset.
-        // Switches are inputs, so CanvasWidget::updateWires attaches the
-        // wire at local (width, 15).
+        // Lead drawn under the body, extending past its edge, so the stub stays flush
+        // regardless of inset; wire attaches at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
 

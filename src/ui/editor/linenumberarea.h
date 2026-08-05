@@ -6,10 +6,8 @@
 #include <QKeySequence>
 #include <QContextMenuEvent>
 
-// The sketch editor widget. Exposes protected QPlainTextEdit methods needed
-// by LineNumberArea, and owns editor-only key handling (tab-insert,
-// auto-indent, bracket auto-close/skip, dedent, duplicate-line,
-// comment-toggle) that only makes sense while the editor itself has focus.
+// The sketch editor widget: exposes protected QPlainTextEdit methods for LineNumberArea,
+// plus editor-only key handling (indent, bracket auto-close, comment-toggle, etc.).
 class EditorWithLines : public QPlainTextEdit {
     Q_OBJECT
 public:
@@ -22,37 +20,29 @@ public:
     QPointF     contentOff()    { return contentOffset(); }
     void setLeftMargin(int margin) { setViewportMargins(margin, 0, 0, 0); }
 
-    // code_completion/duplicate_line/comment_toggle have no QShortcut of
-    // their own (kept as raw key comparisons so they only fire while the
-    // editor itself has focus) -- owned by MainWindow's KeybindManager,
-    // pushed in here whenever they're loaded or remapped.
+    // Raw key comparisons (not QShortcut) so these only fire while the editor has focus;
+    // owned by MainWindow's KeybindManager, pushed in here on load/remap.
     void setActionKeybinds(QKeySequence completion, QKeySequence duplicateLine, QKeySequence commentToggle) {
         completionKey_    = completion;
         duplicateLineKey_ = duplicateLine;
         commentToggleKey_ = commentToggle;
     }
 
-    // Exposed so MainWindow's Edit menu can trigger these directly, in
-    // addition to the raw key comparisons in keyPressEvent below.
+    // Exposed so MainWindow's Edit menu can trigger this directly too, not just via keyPressEvent.
     void duplicateCurrentLine();
 
-    // Pushed from MainWindow::setAppTheme alongside LineNumberArea/CodeHighlighter
-    // -- used by contextMenuEvent's API Reference popup, the only themeable
-    // thing this widget owns directly.
+    // Pushed from MainWindow::setAppTheme; used by contextMenuEvent's API Reference popup.
     void setDarkTheme(bool dark) { dark_ = dark; }
 
-    // Toggles "// " on every line touched by the selection (or just the
-    // current line with no selection). Uncomments if every non-blank line in
-    // range already starts with "//", otherwise comments every non-blank line.
+    // Toggles "// " on every non-blank line in the selection (or current line);
+    // uncomments only if all lines already start with "//".
     void toggleCommentSelection();
 
 signals:
-    // completion has no self-contained handling here -- it needs MainWindow's
-    // QCompleter, so this just asks MainWindow to show the popup.
+    // No self-contained handling here -- needs MainWindow's QCompleter, so this just requests the popup.
     void completionRequested();
 
-    // Fired right after a '.' is inserted, so MainWindow can look up the
-    // receiver's type and pop up just its members (no idle wait).
+    // Fired right after a '.' is inserted so MainWindow can pop up just the receiver's members immediately.
     void dotTyped();
 
 protected:

@@ -35,9 +35,8 @@ void EditorWithLines::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // Auto-close (, [, {, " and skip over an already-present closer instead of
-    // doubling it. Checked ahead of the Key_BraceRight dedent handler below so a
-    // skip-over "}" takes priority over that block's plain-text-insert fallback.
+    // Auto-close and skip-over-closer, checked ahead of the Key_BraceRight dedent handler
+    // below so a skip-over "}" takes priority over that block's plain-text-insert fallback.
     {
         QString typedText = event->text();
         if (typedText.size() == 1) {
@@ -160,9 +159,8 @@ void EditorWithLines::toggleCommentSelection() {
     cursor.endEditBlock();
 }
 
-// Right-click API reference lookup -- tries "Receiver.word" first (Serial.print,
-// Wire.begin, ...) since those share plain names with unrelated identifiers,
-// then falls back to the bare word (pinMode, delay, ...).
+// Tries "Receiver.word" first (Serial.print, ...) since those share plain names with
+// unrelated identifiers, then falls back to the bare word (pinMode, delay, ...).
 void EditorWithLines::contextMenuEvent(QContextMenuEvent* event) {
     QMenu* menu = createStandardContextMenu();
 
@@ -198,12 +196,9 @@ void EditorWithLines::contextMenuEvent(QContextMenuEvent* event) {
             if (!doc->returns.isEmpty())
                 html += QString("<b>Returns:</b> %1").arg(doc->returns.toHtmlEscaped());
 
-            // A self-owned Qt::Popup instead of QToolTip -- QToolTip's
-            // mouse-hover-tracking visibility logic doesn't play well with
-            // being shown from a QAction that just closed a QMenu (it flashed
-            // and vanished immediately). Qt::Popup is the same window type
-            // QMenu itself uses, so it behaves predictably here: closes on
-            // any outside click or Escape, no hover-tracking involved.
+            // Qt::Popup, not QToolTip -- QToolTip's hover-tracking flashed and vanished
+            // immediately when shown right after a QMenu closed; Qt::Popup is the same
+            // window type QMenu uses, so it closes predictably on outside click/Escape.
             auto* popup = new QWidget(this, Qt::Popup);
             popup->setAttribute(Qt::WA_DeleteOnClose);
             popup->setStyleSheet(dark_

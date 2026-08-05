@@ -17,33 +17,24 @@ struct TimelineEvent {
     int line_number;
 };
 
-// Parses a `.timeline` file. Blank lines and lines starting with '#' are
-// skipped. Throws std::runtime_error (message prefixed "<path>:<line>: ")
-// on any malformed line.
+// Parses a `.timeline` file; blank lines and lines starting with '#' are skipped.
+// Throws std::runtime_error (message prefixed "<path>:<line>: ") on malformed lines.
 std::vector<TimelineEvent> parse_timeline_file(const std::string& path);
 
-// Drives a running sketch through a parsed timeline: fires action events
-// (button presses, analog values, Serial data, ...) via SketchHost's
-// inject_* methods and checks ASSERT events against pin state / Serial
-// output captured through ArduinoRuntime's on_pin_changed/on_serial_output
-// callbacks.
+// Drives a running sketch through a parsed timeline: fires action events via SketchHost's
+// inject_* methods, checks ASSERTs against pin state / Serial output from ArduinoRuntime callbacks.
 class TestRunner {
 public:
     TestRunner(SketchHost& host, std::vector<DetectedComponent> components,
                std::vector<TimelineEvent> events);
 
-    // Fed by the caller's own on_pin_changed/on_serial_output callbacks --
-    // not installed directly, since ArduinoRuntime only has one callback
-    // slot of each and run_headless's own callbacks (stdout echo) need to
-    // keep running too.
+    // Fed by the caller's own on_pin_changed/on_serial_output callbacks, not installed
+    // directly -- ArduinoRuntime has only one slot of each, and run_headless's stdout echo needs it too.
     void onPinChanged(int pin, int value) { pinState_[pin] = value; }
     void onSerialOutput(const std::string& text) { serialBuffer_ += text; }
 
-    // Fires at most one due event (time <= sketchSeconds) per call -- never
-    // more, even if several are already due -- so the sketch's own loop()
-    // always gets to run (via the caller's host.run_loop(), once per
-    // main-loop iteration) between any two consecutive events. Call once per
-    // main-loop iteration, inside the same lock that guards host.run_loop().
+    // Fires at most one due event per call (never a whole batch) so the sketch's own loop()
+    // gets to run between events. Call once per main-loop iteration, inside the run_loop() lock.
     void fireDueEvents(double sketchSeconds);
 
     bool finished() const { return nextEvent_ >= events_.size(); }
@@ -52,9 +43,8 @@ public:
     int assertFailedCount() const { return assertFailed_; }
     void printSummary() const;
 
-    // Optional -- if set, called from checkAssert() alongside the existing
-    // stdout PASS/FAIL line, so a GUI caller can surface results without
-    // needing to scrape stdout. Not used by run_headless.
+    // Optional: called from checkAssert() alongside the stdout PASS/FAIL line so a GUI
+    // caller doesn't need to scrape stdout. Not used by run_headless.
     std::function<void(bool pass, double time, const std::string& message)> on_assert_result;
 
 private:

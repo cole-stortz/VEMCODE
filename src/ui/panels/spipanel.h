@@ -12,8 +12,7 @@ class SpiPanel : public QWidget {
 public:
     explicit SpiPanel(QWidget* parent = nullptr);
 
-    // Re-emits bytesChanged with the current field -- used to repopulate the
-    // runtime's response sequence after a sketch reload wipes RuntimeState.
+    // Re-emits bytesChanged; repopulates the runtime's sequence after a sketch reload wipes RuntimeState.
     void pushAll();
 
 signals:

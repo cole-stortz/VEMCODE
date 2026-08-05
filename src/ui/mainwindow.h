@@ -128,28 +128,19 @@ private:
     // toolbar/sketch thread. Shared by the Settings dialog and the Board menu.
     void applyBoardChange(const BoardProfile& profile);
 
-    // Window menu -- shows/hides a debug tab and persists the choice; insert
-    // position is derived from debugTabToggles_ order so re-showing a tab
-    // lands back where it started relative to the other visible tabs.
+    // Shows/hides a debug tab and persists the choice; insert position derives from debugTabToggles_ order.
     void setDebugTabVisible(DebugTabEntry& entry, bool visible);
     int  debugTabInsertIndex(const DebugTabEntry& entry) const;
 
-    // Re-checks every Window menu toggle (routes through the same QActions
-    // users click, so it stays a single source of truth) and restores the
-    // default splitter sizes.
+    // Re-checks every Window menu toggle (routes through the same QActions users click) and resets splitter sizes.
     void resetWindowLayout();
 
     void populateRecentMenu(QMenu* menu);
 
-    // Mirrors enabled state across the three run-triggering buttons (Run,
-    // Record, Play Timeline) -- doesn't touch stopButton_, which has its
-    // own separate timing (only enabled once the sketch actually starts,
-    // not just while compiling).
+    // Mirrors enabled state across Run/Record/Play Timeline -- stopButton_ has its own timing, not touched here.
     void setRunTriggersEnabled(bool enabled);
 
-    // Ends a Record-triggered run: if nothing was captured, just a status
-    // message; otherwise prompts for a save path and exports. No-op if the
-    // run that just stopped wasn't started via Record.
+    // Ends a Record-triggered run: prompts for a save path and exports, or just a status message if nothing was captured.
     void finishRecordingIfActive();
 
     // Toolbar

@@ -91,8 +91,7 @@ void TimelineRecorder::recordComponentInput(int pin, ComponentEventType type, co
         case ComponentEventType::KeypadWiring:
         case ComponentEventType::KeypadPress:
         case ComponentEventType::DhtReading:
-            // No matching verb in TestRunner::dispatchAction -- not
-            // recordable yet.
+            // No matching verb in TestRunner::dispatchAction yet.
             break;
     }
 }

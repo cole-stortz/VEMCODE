@@ -7,17 +7,14 @@
 #include <QList>
 #include <QColor>
 
-// Find/replace bar for the sketch editor: owns its own widget tree, match
-// state, and search/replace logic against the QPlainTextEdit it's given.
-// Hidden until showBar() is called (Ctrl+F).
+// Find/replace bar for the sketch editor. Hidden until showBar() is called (Ctrl+F).
 class FindReplaceBar : public QWidget {
     Q_OBJECT
 
 public:
     explicit FindReplaceBar(QPlainTextEdit* editor, QWidget* parent = nullptr);
 
-    // Shows the bar, seeds the search text from the editor's current
-    // selection (if any), focuses it, and runs an initial search.
+    // Shows the bar, seeding the search text from the editor's current selection if any.
     void showBar();
 
     // Hides the bar and clears all match state/highlights.
@@ -26,9 +23,7 @@ public:
     void setHighlightColor(QColor color);
 
 signals:
-    // Emitted whenever the highlighted-match set changes (including going
-    // empty on hideBar()) -- the owner merges this into its own
-    // extra-selections layers.
+    // Emitted whenever the match set changes; owner merges this into its own extra-selections layers.
     void matchesChanged(QList<QTextEdit::ExtraSelection> selections);
 
     // Replace All's result -- the owner has the QStatusBar, this widget doesn't.

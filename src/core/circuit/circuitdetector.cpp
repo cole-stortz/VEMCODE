@@ -8,8 +8,9 @@
 #include <map>
 #include <string>
 
-void CircuitDetector::detect(const std::string& source) {
+void CircuitDetector::detect(const std::string& source, int max_pin) {
     reset();
+    max_pin_ = max_pin;
 
     auto defines  = parse_defines(source);
     auto arrays   = parse_arrays(source);                         
@@ -45,7 +46,6 @@ void CircuitDetector::detect(const std::string& source) {
         }
     }
 
-    // detect components from analogRead calls
     static const std::regex analog_re(R"((?:api->)?analogRead\s*\(\s*(\w+)\s*\))");
     auto ab = std::sregex_iterator(source.begin(), source.end(), analog_re);
     auto ae = std::sregex_iterator();
@@ -60,7 +60,7 @@ void CircuitDetector::detect(const std::string& source) {
         if (pin_already_added(pin)) {
             for (const auto& existing : components_) {
                 if (existing.pin == pin) {
-                    std::string label = "Analog Sensor (pin " + std::to_string(pin) + ")";
+                    std::string label = infer_type(token, "ANALOG") + " (pin " + std::to_string(pin) + ")";
                     warnings_.push_back(
                         "WARNING: Pin " + std::to_string(pin) +
                         " is used by both '" + existing.label + "' and '" + label +
@@ -82,7 +82,6 @@ void CircuitDetector::detect(const std::string& source) {
         components_.push_back(comp);
     }
 
-    // Check for Serial.begin()
     if (source.find("Serial.begin") != std::string::npos ||
         source.find("Serial_begin") != std::string::npos) {
         DetectedComponent serial;
@@ -103,7 +102,6 @@ void CircuitDetector::detect(const std::string& source) {
     for (auto& c : components_) {
         if (type_counts[c.type_name] > 1) {
             int idx = type_idx[c.type_name]++;
-            // Insert [n] before the " (pin ...)" suffix, or append if no suffix
             auto paren = c.label.find(" (");
             if (paren != std::string::npos)
                 c.label.insert(paren, "[" + std::to_string(idx) + "]");
@@ -126,14 +124,12 @@ void CircuitDetector::reset() {
     next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 }
 
-// Phase 1 -- parse #defines and const int scalars into a symbol table
-// Handles: #define NAME VALUE, #define NAME (VALUE), and const int NAME = VALUE;
+// Phase 1: parse #defines and const int scalars (#define NAME VALUE, const int NAME = VALUE) into a symbol table.
 std::map<std::string, std::string> CircuitDetector::parse_defines(
     const std::string& source)
 {
     std::map<std::string, std::string> defines;
 
-    // Match: #define IDENTIFIER value
     static const std::regex define_re(R"(#\s*define\s+(\w+)\s+\(?\s*(\w+)\s*\)?)");
     auto begin = std::sregex_iterator(source.begin(), source.end(), define_re);
     auto end   = std::sregex_iterator();
@@ -142,8 +138,7 @@ std::map<std::string, std::string> CircuitDetector::parse_defines(
         defines[m[1].str()] = m[2].str();
     }
 
-    // Also match: const int NAME = VALUE; (single value, not arrays)
-    // This lets pin names like "const int trigPin1 = 9;" resolve just like #defines.
+    // Also match const int NAME = VALUE; so pin names declared this way resolve like #defines.
     static const std::regex const_int_re(R"(const\s+int\s+(\w+)\s*=\s*(\w+)\s*;)");
     begin = std::sregex_iterator(source.begin(), source.end(), const_int_re);
     end   = std::sregex_iterator();
@@ -161,7 +156,6 @@ std::map<std::string, std::vector<int>> CircuitDetector::parse_arrays(
     std::map<std::string, std::vector<int>> arrays;
     std::map<std::string, std::string> empty_defines;
 
-    // Match: const int NAME[anything] = {v1, v2, v3, v4};
     static const std::regex pattern(R"(const\s+int\s+(\w+)\s*\[.*?\]\s*=\s*\{([^}]+)\})");
     auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
     auto end   = std::sregex_iterator();
@@ -171,12 +165,10 @@ std::map<std::string, std::vector<int>> CircuitDetector::parse_arrays(
         std::string name     = m[1].str();
         std::string contents = m[2].str();  // "33, 31, 14, 19"
 
-        // Split contents on commas, resolve each token to a pin number
         std::vector<int> pins;
         std::stringstream ss(contents);
         std::string token;
         while (std::getline(ss, token, ',')) {
-            // trim whitespace
             token.erase(0, token.find_first_not_of(" \t\r\n"));
             token.erase(token.find_last_not_of(" \t\r\n") + 1);
             int pin = resolve_pin(token, empty_defines);
@@ -281,7 +273,6 @@ void CircuitDetector::detect_prefix_group(
     const std::map<std::string, std::string>& defines,
     std::set<int>& claimed)
 {
-    static constexpr int MAX_PIN = 53;
     std::vector<std::string> all_keywords;
     for (const auto& role : def.detect_multi)
         for (const auto& kw : role.keywords)
@@ -291,7 +282,7 @@ void CircuitDetector::detect_prefix_group(
     for (const auto& d : defines) {
         std::string upper = to_upper(d.first);
         int pin = resolve_pin(d.second, defines);
-        if (pin < 0 || pin > MAX_PIN) continue;
+        if (pin < 0 || pin > max_pin_) continue;
         if (!contains_any(upper, all_keywords)) continue;
         size_t pos = upper.find('_');
         if (pos == std::string::npos) continue;
@@ -302,12 +293,8 @@ void CircuitDetector::detect_prefix_group(
         const auto& members = g.second;
         if (members.size() < 2) continue;
 
-        // Every role here has keywords that distinguish it from its siblings
-        // (PWM/ANTI/CWISE etc.) -- only assign a role its keyword-matched
-        // pin. A leftover-member fallback used to fill any still-unfilled
-        // role with whatever unused member came next in map order, which
-        // could wire an unrelated pin sharing the same prefix (e.g. an extra
-        // enable pin) into a role it was never named for.
+        // Only assign a role its keyword-matched pin -- a leftover-member fallback used to
+        // wire whatever member came next in map order, misassigning an unrelated same-prefix pin.
         std::vector<int> pins(def.detect_multi.size(), -1);
         std::vector<bool> used(members.size(), false);
         for (size_t r = 0; r < def.detect_multi.size(); ++r) {
@@ -408,8 +395,8 @@ void CircuitDetector::detect_keypad_matrix(
     (void)arrays; // rowPins[]/colPins[] use byte/int, not the const-int-only shared array parser
     static constexpr int MIN_LINES = 2, MAX_LINES = 4;
 
-    // Require actual keypad usage, not just any ROW/COL-named pin, so this
-    // never fires on an unrelated matrix/grid sketch.
+    // Require actual keypad usage, not just ROW/COL-named pins, so this doesn't fire on
+    // unrelated matrix/grid sketches.
     if (source.find("Keypad") == std::string::npos) return;
     if (!ComponentRegistry::instance().find_by_type("Keypad")) return;
 
@@ -417,8 +404,7 @@ void CircuitDetector::detect_keypad_matrix(
         return upper.find(kw) != std::string::npos;
     };
 
-    // Preferred: rowPins[]/colPins[] arrays of independent length -- the shape
-    // every real Keypad.h tutorial sketch declares (byte rowPins[ROWS] = {...}).
+    // Preferred: rowPins[]/colPins[] arrays, the shape every real Keypad.h tutorial sketch uses.
     auto scan_pin_array = [&](const char* keyword) -> std::vector<int> {
         static const std::regex arr_re(
             R"((?:const\s+)?(?:byte|int|uint8_t)\s+(\w+)\s*\[[^\]]*\]\s*=\s*\{([^}]+)\})");
@@ -503,8 +489,8 @@ void CircuitDetector::detect_dht(
 {
     if (!ComponentRegistry::instance().find_by_type("DHT")) return;
 
-    // "DHT dht(DHTPIN, DHTTYPE)" -- DHTTYPE only needs to resolve for the
-    // display label, not for placement, so it isn't required to be a pin.
+    // "DHT dht(DHTPIN, DHTTYPE)" -- DHTTYPE only needs to resolve for the label, not
+    // placement, so it needn't be a pin.
     static const std::regex ctor_re(
         R"(\bDHT\s+(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
     auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
@@ -542,10 +528,8 @@ void CircuitDetector::detect_max7219(
 {
     if (!ComponentRegistry::instance().find_by_type("Max7219")) return;
 
-    // Matches both "LedControl lc(a, b, c[, d]);" and
-    // "LedControl lc = LedControl(a, b, c[, d]);" -- real usage almost always
-    // takes the assignment form. Args are positional per the real LedControl
-    // API: (dataPin, clkPin, csPin, numDevices).
+    // Matches both "LedControl lc(a,b,c[,d])" and "LedControl lc = LedControl(...)";
+    // args are positional: dataPin, clkPin, csPin, numDevices.
     static const std::regex ctor_re(
         R"(\bLedControl\s+(\w+)\s*(?:=\s*LedControl\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
 
@@ -597,10 +581,8 @@ void CircuitDetector::detect_neopixel(
 {
     if (!ComponentRegistry::instance().find_by_type("NeoPixel")) return;
 
-    // "Adafruit_NeoPixel strip(count, pin[, type])" -- count and pin are
-    // positional per the real library's constructor; the optional 3rd arg
-    // (color order/speed flags) is matched loosely since it's often an
-    // expression like "NEO_GRB + NEO_KHZ800" rather than a single token.
+    // "Adafruit_NeoPixel strip(count, pin[, type])" -- optional 3rd arg (color order/speed
+    // flags) is matched loosely since it's often an expression like "NEO_GRB + NEO_KHZ800".
     static const std::regex ctor_re(
         R"(\bAdafruit_NeoPixel\s+(\w+)\s*(?:=\s*Adafruit_NeoPixel\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(?:,[^)]*)?\))");
 
@@ -636,12 +618,9 @@ void CircuitDetector::detect_oled(
 {
     if (!ComponentRegistry::instance().find_by_type("OLED")) return;
 
-    // "Adafruit_SSD1306 display(width, height, &Wire, resetPin)" -- width
-    // and height are always required, but the wire pointer and reset pin
-    // are optional (both default in the real library), so the rest of the
-    // argument list is captured as one blob and split by hand rather than
-    // matched positionally -- much less regex-fragile than nested optional
-    // groups for an argument count that varies 2-4 wide.
+    // "Adafruit_SSD1306 display(width, height, &Wire, resetPin)" -- wire/reset are optional,
+    // so the rest of the arg list is captured as one blob and split by hand instead of
+    // matched positionally (avoids fragile nested-optional regex groups).
     static const std::regex ctor_re(
         R"(\bAdafruit_SSD1306\s+(\w+)\s*(?:=\s*Adafruit_SSD1306\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(,\s*[^)]*)?\))");
 
@@ -672,12 +651,9 @@ void CircuitDetector::detect_oled(
             if (args.size() > 1) reset_pin = resolve_pin(args[1], defines);
         }
 
-        // No real reset pin -- each such OLED gets its own synthetic key
-        // (900, 901, ...) so multiple ones in one sketch don't collide and
-        // silently drop each other via pin_already_added below. First one
-        // (I2C_BUS_PIN_BASE) anchors to the board's real SCL pin on canvas;
-        // each subsequent one daisy-chains off the previous device instead
-        // -- see CanvasWidget::refresh().
+        // No real reset pin: gets a synthetic key (900, 901, ...) so multiple such OLEDs
+        // don't collide via pin_already_added. First one anchors to the board's real SCL pin;
+        // later ones daisy-chain off the previous device (see CanvasWidget::refresh()).
         int pin_key = reset_pin >= 0 ? reset_pin : next_i2c_bus_pin_++;
         if (claimed.count(pin_key) || pin_already_added(pin_key)) continue;
 
@@ -858,7 +834,6 @@ std::vector<CircuitDetector::PinModeCall> CircuitDetector::parse_pinmodes(
 {
     std::vector<PinModeCall> calls;
 
-    // Match: pinMode(token, MODE) or api->pinMode(token, MODE)
     static const std::regex pattern(
         R"((?:api->)?pinMode\s*\(\s*(\w+)\s*,\s*(INPUT_PULLUP|INPUT|OUTPUT)\s*\))"
     );
@@ -909,7 +884,6 @@ int CircuitDetector::resolve_pin(
     const std::map<std::string, std::string>& defines,
     int depth)
 {
-    // Direct number
     if (!token.empty() && std::isdigit(token[0]))
         return std::stoi(token);
 
@@ -917,19 +891,16 @@ int CircuitDetector::resolve_pin(
     if (token.size() >= 2 && token[0] == 'A' && std::isdigit(token[1]))
         return 14 + (token[1] - '0');
 
-    // Guard against self-referential #define chains (e.g. "#define A B" /
-    // "#define B A") recursing forever and stack-overflowing the app -- a
-    // valid chain can pass through at most defines.size() distinct keys
-    // before it must terminate or repeat.
+    // Guard against self-referential #define chains (e.g. "#define A B"/"#define B A")
+    // recursing forever -- a valid chain visits at most defines.size() distinct keys.
     if (depth > (int)defines.size())
         return -1;
 
-    // Look up in defines
     auto it = defines.find(token);
     if (it != defines.end())
-        return resolve_pin(it->second, defines, depth + 1); // recurse in case of chained defines
+        return resolve_pin(it->second, defines, depth + 1);
 
-    return -1; // unresolvable
+    return -1;
 }
 
 bool CircuitDetector::contains_any(
@@ -956,7 +927,6 @@ bool CircuitDetector::pin_already_added(int pin) const {
 }
 
 std::string DetectedComponent::to_string() const {
-    // pull the pin or pins, pin_name, and label
     std::string result;
 
     if (!pin_name.empty()){

@@ -6,7 +6,6 @@
 #include "src/core/circuit/componentregistry.h"
 #include "src/core/circuit/i2cbus.h"
 
-// A single detected component
 struct DetectedComponent {
     std::string type_name;
     int           pin;          // -1 for non-pin components like Serial
@@ -33,14 +32,15 @@ struct DetectedComponent {
     int display_width  = 128;
     int display_height = 64;
 
-    // String return
     std::string to_string() const;
 };
 
 // Parses Arduino sketch source to infer what components are connected to which pins.
 class CircuitDetector {
 public:
-    void detect(const std::string& source);
+    // max_pin: highest valid pin for the board; rejects non-pin #defines sharing a keyword
+    // prefix with a real pin (see detect_prefix_group). Defaults to Mega's range (largest board).
+    void detect(const std::string& source, int max_pin = 69);
     void confirm_pin(int pin);
     const std::vector<DetectedComponent>& components() const { return components_; }
     const std::vector<std::string>&       warnings()   const { return warnings_; }
@@ -68,49 +68,35 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
-    // Keypad matrix: one component whose row-pin count and col-pin count are
-    // independent and read straight from the sketch, so it can't go through
-    // the fixed-role-count MultiPinStrategy engine above -- handled on its own.
+    // Keypad: row/col pin counts are read straight from the sketch, not fixed, so it can't
+    // use the fixed-role-count MultiPinStrategy engine and is handled on its own.
     void detect_keypad_matrix(const std::string& source,
         const std::map<std::string, std::string>& defines,
         const std::map<std::string, std::vector<int>>& arrays,
         std::set<int>& claimed);
 
-    // DHT11/DHT22: "DHT dht(DHTPIN, DHTTYPE)" -- the second constructor arg is
-    // a sensor-type selector, not a pin, so detect_constructor_pattern's
-    // "every arg must resolve to a pin" rule can't be reused for it either.
+    // DHT: "DHT dht(DHTPIN, DHTTYPE)" -- 2nd arg is a sensor-type selector, not a pin, so
+    // detect_constructor_pattern's "every arg is a pin" rule doesn't apply.
     void detect_dht(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 
-    // MAX7219: "LedControl lc(dataPin, clkPin, csPin[, numDevices])" or
-    // "LedControl lc = LedControl(...)" -- pins are almost always passed as
-    // raw literals or plain const ints straight into the constructor rather
-    // than named/keyword-matched #defines, so the generic MultiPinStrategy
-    // engine above can't find them; same "read the constructor call, not the
-    // pin names" pattern as Keypad/DHT.
+    // MAX7219: pins are almost always raw literals/const ints in the constructor call, not
+    // named #defines, so the generic MultiPinStrategy engine can't find them -- same as Keypad/DHT.
     void detect_max7219(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 
-    // NeoPixel: "Adafruit_NeoPixel strip(count, pin[, type])" or
-    // "Adafruit_NeoPixel strip = Adafruit_NeoPixel(...)" -- same "read the
-    // constructor call, not the pin names" shape as Max7219, except the
-    // pin is the constructor's 2nd arg (1st is LED count) and the optional
-    // 3rd arg (color order/speed flags, e.g. "NEO_GRB + NEO_KHZ800") is
-    // never a plain \w+ token, so it's matched loosely and ignored.
+    // NeoPixel: "Adafruit_NeoPixel strip(count, pin[, type])" -- same constructor-read shape
+    // as Max7219, except pin is the 2nd arg (1st is LED count); optional 3rd arg (color
+    // order/speed flags) is never a plain \w+ token, so it's matched loosely and ignored.
     void detect_neopixel(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 
-    // OLED (SSD1306, I2C): "Adafruit_SSD1306 display(width, height, &Wire,
-    // resetPin)" -- resetPin is very often -1 (no dedicated reset line, the
-    // common case for I2C breakout modules), which means there's no real
-    // GPIO pin to key the canvas item by. When that happens, this falls
-    // back to a fixed sentinel (Adafruit_SSD1306::NO_RESET_PIN_KEY in
-    // ssd1306.inc, kept in sync by hand since detector and injected header
-    // compile completely separately) instead of a real pin -- same "read
-    // the constructor call" shape as Max7219/NeoPixel otherwise.
+    // OLED (SSD1306, I2C): resetPin is often -1 (no reset line on I2C breakouts), leaving no
+    // GPIO to key the canvas item by, so it falls back to a fixed sentinel
+    // (Adafruit_SSD1306::NO_RESET_PIN_KEY in ssd1306.inc, kept in sync by hand).
     void detect_oled(const std::string& source,
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
@@ -127,11 +113,10 @@ private:
 
     std::vector<DetectedComponent> components_;
     std::vector<std::string>       warnings_;
+    int max_pin_ = 69;
 
-    // Next synthetic pin handed to an I2C device with no real GPIO to key
-    // by (see detect_oled) -- increments per assignment so multiple such
-    // devices in one sketch get distinct keys instead of colliding on the
-    // same value and silently dropping each other via pin_already_added.
+    // Synthetic pin for I2C devices with no real GPIO (see detect_oled); increments per
+    // assignment so multiple such devices get distinct keys instead of colliding.
     int next_i2c_bus_pin_ = I2C_BUS_PIN_BASE;
 
     std::map<std::string, std::string> parse_defines(const std::string& source);

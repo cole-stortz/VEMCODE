@@ -6,8 +6,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
-// One entry in templates/manifest.json or examples/manifest.json. `category`
-// is empty for templates -- only the example library groups by component type.
+// One entry in templates/manifest.json or examples/manifest.json; `category` is empty
+// for templates -- only the example library groups by component type.
 struct SketchManifestEntry {
     QString name;
     QString folder;
@@ -16,10 +16,8 @@ struct SketchManifestEntry {
     QString description;
 };
 
-// Reads a manifest.json (an array of {name, folder, file, category?, description})
-// sitting next to a set of "<folder>/<file>" sketch directories. Returns an empty
-// list if the manifest is missing or malformed, callers should treat that as
-// "nothing to offer" rather than an error.
+// Reads a manifest.json sitting next to a set of "<folder>/<file>" sketch directories.
+// Returns an empty list (not an error) if the manifest is missing or malformed.
 inline QList<SketchManifestEntry> loadSketchManifest(const QString& manifestPath) {
     QList<SketchManifestEntry> entries;
 

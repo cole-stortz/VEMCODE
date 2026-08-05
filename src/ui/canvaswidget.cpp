@@ -24,9 +24,7 @@
 #include <qmessagebox.h>
 #include <qnamespace.h>
 
-// Component chrome -- static regardless of app theme, same as every
-// component's own body/fill colors (LED_ACTIVE, wire_color, etc. in
-// src/components/*.cpp).
+// Component chrome -- static regardless of app theme, like every component's own body/fill colors.
 static const QColor COLOR_COMPONENT_SUBLABEL ("#888888");
 
 // Power indicator LED -- fixed colors regardless of board_color, same as a
@@ -39,13 +37,9 @@ static const QColor COLOR_POWER_LED_OFF ("#3a3a3a");
 static const QColor COLOR_MOUNT_HOLE         ("#111111");
 static const QColor COLOR_MOUNT_HOLE_BORDER  ("#606068");
 
-// Board rect, chip, and pin dot colors are all derived from a single base
-// color (profile_.board_color, or boardColorOverride_ if the user picked one)
-// rather than fixed constants -- see drawBoard().
+// Board rect, chip, and pin dot colors are all derived from a single base color (see drawBoard()), not fixed constants.
 
-// Viewport background (the empty area outside the board) is the one thing
-// here that follows the app-wide theme -- everything else on the canvas
-// stays fixed.
+// Viewport background is the one thing here that follows the app-wide theme -- everything else stays fixed.
 static const QColor VIEWPORT_BG_DARK  ("#1a1a1a");
 static const QColor VIEWPORT_BG_LIGHT ("#dcdce2");
 
@@ -72,6 +66,13 @@ void CanvasWidget::setDarkTheme(bool dark) {
     darkTheme_ = dark;
     applyThemeStyle();
     refresh(lastComponents_); // redraws the board with the new theme's colors
+}
+
+void CanvasWidget::setProfile(BoardProfile p) {
+    profile_ = p;
+    BOARD_H = p.pin_count * 14;
+    BOARD_W = p.board_width;
+    refresh(lastComponents_); // redraws the board at the new profile's dimensions
 }
 
 void CanvasWidget::setSketchRunning(bool running) {
@@ -176,13 +177,8 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent* event) {
         draggedItem_->setPos(mapToScene(event->pos()) + dragOffset_);
         updateWires(draggedItem_);
 
-        // Cascade: an I2C chain link's wire depends on the position of the
-        // device it's chained to (see ComponentInfo::chain_prev), not a
-        // fixed board pin, so moving that device leaves any wire *into* it
-        // stale unless its dependents are re-routed too. Chains are a
-        // simple linked list, so repeatedly re-scanning until nothing new
-        // moves is enough -- no need for a precomputed reverse map at the
-        // component counts this canvas deals with.
+        // Cascade: an I2C chain link's wire targets the device it's chained to (chain_prev), not a fixed board
+        // pin, so dependents need re-routing too. Chains are short linked lists, so re-scanning to fixpoint is enough.
         ComponentItem* moved = draggedItem_;
         bool foundDependent = true;
         while (foundDependent) {
@@ -342,9 +338,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
 
     drawBoard();
 
-    // Phase 1: create every item and work out its pin-aligned target Y --
-    // boundingRect() varies per component type (44/54/64px), so heights can
-    // only be known after construction.
+    // Phase 1: create every item and work out its pin-aligned target Y -- heights vary per type, known only post-construction.
     struct Placement {
         const DetectedComponent* comp;
         const ComponentDefinition* def;
@@ -352,10 +346,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
         float comp_x;
         int comp_w, comp_h;
         float target_y;
-        // Set for an I2C daisy-chain link (device after the first on a
-        // shared bus, see i2cbus.h) -- Phase 3 positions it relative to
-        // this item instead of comp_x/target_y above, which are unused
-        // (left zeroed) for chain links.
+        // Set for an I2C daisy-chain link -- Phase 3 positions it relative to this item, comp_x/target_y unused (zeroed).
         ComponentItem* chain_prev;
     };
 
@@ -367,10 +358,8 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     std::vector<Placement> manualPlacements; // user-dragged -- placed as-is, no auto-stacking
     std::vector<Placement> chainPlacements;  // I2C daisy-chain links after the first -- positioned in Phase 3
 
-    // Tracks the previous device on the shared I2C bus, in source order, as
-    // components are visited below -- lets each chain link find its
-    // predecessor without a separate pass, since detect_oled hands out
-    // 900, 901, 902... in the same order they appear in `components`.
+    // Tracks the previous device on the shared I2C bus so each chain link finds its predecessor without a
+    // separate pass -- relies on detect_oled handing out 900, 901, 902... in the same order as `components`.
     ComponentItem* i2c_chain_prev = nullptr;
 
     for (const auto& comp : components) {
@@ -380,9 +369,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
 
         ComponentItem* item = def->create_item(comp.pin, nullptr);
         item->setDarkTheme(darkTheme_);
-        // Must happen before boundingRect() below -- device count changes
-        // the item's rendered size, and this is the only phase where
-        // boundingRect() gets queried for layout math.
+        // Must happen before boundingRect() below -- device count changes the item's rendered size.
         item->configureDeviceCount(comp.num_devices);
         item->configureStripLength(comp.strip_length);
         item->configureDisplaySize(comp.display_width, comp.display_height);
@@ -448,9 +435,7 @@ void CanvasWidget::refresh(const std::vector<DetectedComponent>& components) {
     for (auto& p : manualPlacements)
         placeComponent(*p.comp, p.def, p.item, p.comp_x, p.target_y, p.comp_w, p.comp_h, p.chain_prev);
 
-    // Phase 3: place I2C daisy-chain links adjacent to whichever device
-    // precedes them on the bus, now that every earlier device's actual
-    // on-screen position (auto-placed or dragged) is final.
+    // Phase 3: place I2C daisy-chain links adjacent to their predecessor, now that its final on-screen position is known.
     for (auto& p : chainPlacements) {
         ComponentItem* prev = p.chain_prev;
         float comp_x = prev ? (float)(prev->x() + prev->boundingRect().width() + H_GAP)
@@ -497,11 +482,8 @@ void CanvasWidget::onComponentInput(int pin, int eventType, QVariant value) {
 void CanvasWidget::drawBoard() {
     QColor base = boardColorOverride_.isValid() ? boardColorOverride_ : profile_.board_color;
 
-    // Dark theme: base is used as the (dark) board background, and chip/pin
-    // chrome shades *lighter* off it. Light theme: same hue is instead forced
-    // to a light lightness so the board reads as a light background, and
-    // chrome shades *darker* off it -- fromHsl (not .lighter()) so the result
-    // is a consistent light bg regardless of how dark/light the base itself is.
+    // Dark theme: base is the board bg, chrome shades lighter off it. Light theme: hue forced to a fixed
+    // lightness via fromHsl (not .lighter()) so the board bg stays consistently light regardless of the base color.
     QColor board_bg = base;
     if (!darkTheme_) {
         int h, s, l, a;
@@ -509,10 +491,7 @@ void CanvasWidget::drawBoard() {
         board_bg = QColor::fromHsl(h, s, 175, a);
     }
 
-    // Every color below is a distinct shading step off board_bg, so the chip
-    // and pin dots read as separate elements instead of blurring into the
-    // board rect -- and everything shifts together when board_bg changes
-    // (default, ctrl+click override, or theme).
+    // Every color below is a shading step off board_bg so chip/pin dots stay distinct and shift together with it.
     auto shade = [&](int amount) {
         return darkTheme_ ? board_bg.lighter(amount) : board_bg.darker(amount);
     };
@@ -534,10 +513,8 @@ void CanvasWidget::drawBoard() {
         QBrush(board_bg)
     );
 
-    // Mounting holes -- fixed dark color (exposed substrate under the
-    // drilled hole), same 4-corner placement on every board regardless of
-    // size. Inset far enough from the edges that they never land on a pin
-    // dot, which always sits exactly on the board's x edge.
+    // Fixed dark color (exposed substrate), same 4-corner placement regardless of size.
+    // Inset far enough that they never land on a pin dot, which always sits exactly on the board's x edge.
     {
         int hole_r = 3, hole_inset = 10;
         QPointF holes[4] = {
@@ -560,9 +537,7 @@ void CanvasWidget::drawBoard() {
     int chip_w = BOARD_W - 80;
     int chip_x = BOARD_X + 40;
 
-    // Power indicator LED, near the top-right corner -- lit green with a
-    // soft glow while the sketch is running, dim gray otherwise. Same visual
-    // language as LedItem's glow (src/components/led.cpp).
+    // Lit green with a soft glow while running, dim gray otherwise -- same visual language as LedItem's glow.
     int led_d = 10;
     QPointF led_c(BOARD_X + BOARD_W - 35 + led_d / 2.0, BOARD_Y + 5 + led_d / 2.0);
     QColor led_color = sketchRunning_ ? COLOR_POWER_LED_ON : COLOR_POWER_LED_OFF;
@@ -590,9 +565,7 @@ void CanvasWidget::drawBoard() {
     QGraphicsTextItem* label = scene_->addText(profile_.name);
     label->setDefaultTextColor(board_label);
     label->setFont(labelFont);
-    // Centered on actual rendered text width rather than an assumed width --
-    // "Arduino Mega 2560" and "Arduino Nano" aren't the same length as
-    // "Arduino Uno", and board width now varies per profile too.
+    // Centered on actual rendered text width, not an assumed one -- board names and widths vary per profile.
     int labelTextW = QFontMetrics(labelFont).horizontalAdvance(profile_.name);
     label->setPos(BOARD_X + BOARD_W / 2.0 - labelTextW / 2.0, BOARD_Y + 20);
 
@@ -607,9 +580,7 @@ void CanvasWidget::drawBoard() {
     QGraphicsTextItem* chipLabel = scene_->addText(profile_.chip);
     chipLabel->setDefaultTextColor(chip_label);
     chipLabel->setFont(chipFont);
-    // Narrower boards (Nano, Teensy) don't have room for the full chip name
-    // inside the chip rect at this font size -- rather than truncate it,
-    // drop it just below the chip, centered, so it's still fully readable.
+    // Narrower boards don't fit the full chip name inside the rect at this font size -- drop it below instead of truncating.
     int chipTextW = QFontMetrics(chipFont).horizontalAdvance(profile_.chip);
     if (chipTextW <= chip_w - 16) {
         chipLabel->setPos(chip_x + 8, BOARD_Y + 100);
@@ -657,9 +628,8 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
     item->setPos(comp_x, comp_y);
     scene_->addItem(item);
 
-    // Connect BEFORE anything can emit -- configureMultiPin/emitInitialValue
-    // below may synchronously emit inputChanged, and Qt drops signals emitted
-    // with nothing connected yet rather than buffering them.
+    // Connect BEFORE anything can emit -- configureMultiPin/emitInitialValue below may emit inputChanged
+    // synchronously, and Qt drops signals emitted before a connection exists rather than buffering them.
     connect(item, &ComponentItem::inputChanged, this, &CanvasWidget::onComponentInput);
 
     pinItems_[comp.pin] = item;
@@ -692,13 +662,6 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
             item->configurePolarity(pol.value());
     }
 
-    // Removed to clean bloat off of the canvas    
-    // QGraphicsTextItem* typeText = new QGraphicsTextItem(item);
-    // typeText->setPlainText(QString::fromStdString(comp.label));
-    // typeText->setDefaultTextColor(COLOR_COMPONENT_SUBLABEL);
-    // typeText->setFont(QFont("Courier New", 8));
-    // typeText->setPos(6, -16);
-
     if (!comp.pin_name.empty()) {
         QGraphicsTextItem* nameText = new QGraphicsTextItem(item);
         nameText->setPlainText(QString::fromStdString(comp.pin_name));
@@ -719,9 +682,7 @@ void CanvasWidget::placeComponent(const DetectedComponent& comp, const Component
 
 void CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color,
                              std::vector<QGraphicsLineItem*>& lines) {
-    // Fixed semi-transparent black regardless of theme -- reads as a shadow
-    // under both a dark and light canvas, and is what makes bright wire
-    // colors (yellow, white, etc.) hold up against a light-mode background.
+    // Fixed semi-transparent black regardless of theme -- keeps bright wire colors visible on a light-mode background.
     QGraphicsLineItem* shadow = scene_->addLine(
         from.x() + 1, from.y() + 1, to.x() + 1, to.y() + 1,
         QPen(QColor(0, 0, 0, 90), 2.5, Qt::SolidLine, Qt::RoundCap)
@@ -735,9 +696,7 @@ void CanvasWidget::drawWire(QPointF from, QPointF to, const QColor& color,
     lines.push_back(line);
 }
 
-// Re-derives every wire segment for one component from its current scene
-// position -- used both for the initial placement and to keep wires attached
-// while the component is being dragged in layout mode.
+// Re-derives every wire segment for one component from its current scene position; used for initial placement and dragging.
 void CanvasWidget::updateWires(ComponentItem* item) {
     auto it = componentInfo_.find(item);
     if (it == componentInfo_.end()) return;
@@ -751,12 +710,8 @@ void CanvasWidget::updateWires(ComponentItem* item) {
     float comp_y = item->y();
     int comp_w = (int)item->boundingRect().width();
 
-    // I2C daisy-chain link (device after the first on a shared bus, see
-    // i2cbus.h) -- wired directly to the previous device instead of a
-    // board pin, as one short module-to-module jump rather than the
-    // routed 3-segment board wire below. Right edge of the previous device
-    // to this device's own left-edge lead point (local (0,15), the same
-    // point OledItem::paint() itself draws its lead at).
+    // I2C daisy-chain link: one short module-to-module jump to the previous device instead of the routed
+    // 3-segment board wire below. Lands at local (0,15), the same lead point OledItem::paint() draws at.
     if (info.chain_prev) {
         QPointF comp_edge(comp_x, comp_y + 15.0f);
         QPointF prev_edge(info.chain_prev->x() + info.chain_prev->boundingRect().width(),
@@ -780,9 +735,7 @@ void CanvasWidget::updateWires(ComponentItem* item) {
 
         float inter_x;
         if (isAnalogPin(wpin)) {
-            // Turn near the pin (in the gap before the digital column), not
-            // near the destination -- otherwise the vertical segment cuts
-            // through whatever got stacked between the pin and its component.
+            // Turn near the pin, not near the destination -- otherwise the vertical segment cuts through stacked components.
             inter_x = BOARD_X - 20.0f - i * WIRE_SPACING;
         } else if (info.is_output) {
             // Digital output: component sits on the same side as the pin, so
@@ -820,11 +773,8 @@ int CanvasWidget::digitalPinIndex(int pin) const {
 }
 
 QPointF CanvasWidget::pinLocation(int pin) {
-    // The first device on a shared I2C bus (see i2cbus.h) has no real GPIO
-    // of its own -- anchor it to the board's actual SCL pin instead of
-    // falling through to the generic default below. Devices after the
-    // first (901+) never reach this function for their wire target; they
-    // route to the previous device instead (see updateWires()).
+    // The first device on a shared I2C bus has no real GPIO -- anchor it to the board's SCL pin.
+    // Devices after the first (901+) never reach here; they route to the previous device (see updateWires()).
     if (pin == I2C_BUS_PIN_BASE) return pinLocation(profile_.scl_pin);
 
     if (isAnalogPin(pin)) {

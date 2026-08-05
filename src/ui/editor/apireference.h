@@ -3,9 +3,7 @@
 #include <QMap>
 #include <QStringList>
 
-// Quick-reference data backing the editor's right-click "API Reference" lookup.
-// Content mirrors docs/API_REFERENCE.md -- kept short since this renders in a
-// tooltip, not a full page; see that doc for the complete behavioral notes.
+// Quick-reference data for the editor's API Reference tooltip; trimmed version of docs/API_REFERENCE.md.
 struct ApiFunctionDoc {
     QString signature;
     QString summary;
@@ -117,12 +115,8 @@ inline const QMap<QString, ApiFunctionDoc>& apiReferenceTable() {
         {"EEPROM.update", {"EEPROM.update(address, value)", "Same as write(), but skips the write if the value is already the same.",
             {"address", "value"}, ""}},
 
-        // Library methods below are keyed by bare name rather than "Receiver.name" --
-        // the receiver is a user-chosen variable (myServo, lcd, ...), not a fixed
-        // keyword like Serial/Wire/SPI, so only names unique enough to identify
-        // their class unambiguously are included here. Generic verbs shared across
-        // several classes (write, read, begin, print, ...) are deliberately left
-        // out rather than risk showing the wrong class's docs.
+        // Keyed by bare method name since receivers are user-chosen variables (myServo, lcd, ...);
+        // generic verbs shared across classes (write, read, begin, ...) are omitted to avoid ambiguity.
         {"attach", {"Servo::attach(pin)", "Sets the servo's pin. One-argument form only, no attach(pin, min, max).",
             {"pin"}, ""}},
         {"attached", {"Servo::attached()", "Whether the servo has a pin attached.", {}, "bool"}},
