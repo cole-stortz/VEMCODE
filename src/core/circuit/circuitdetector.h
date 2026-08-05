@@ -78,19 +78,6 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
-    // MAX7219: pins are almost always raw literals/const ints in the constructor call, not
-    // named #defines, so the generic MultiPinStrategy engine can't find them -- same as Keypad/DHT.
-    void detect_max7219(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
-    // NeoPixel: "Adafruit_NeoPixel strip(count, pin[, type])" -- same constructor-read shape
-    // as Max7219, except pin is the 2nd arg (1st is LED count); optional 3rd arg (color
-    // order/speed flags) is never a plain \w+ token, so it's matched loosely and ignored.
-    void detect_neopixel(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
     // OLED (SSD1306, I2C): resetPin is often -1 (no reset line on I2C breakouts), leaving no
     // GPIO to key the canvas item by, so it falls back to a fixed sentinel
     // (Adafruit_SSD1306::NO_RESET_PIN_KEY in ssd1306.inc, kept in sync by hand).

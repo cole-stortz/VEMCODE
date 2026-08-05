@@ -402,96 +402,6 @@ void CircuitDetector::add_detected_component(const DetectedComponent& comp, std:
     for (int p : comp.pins) claimed.insert(p);
 }
 
-void CircuitDetector::detect_max7219(
-    const std::string& source,
-    const std::map<std::string, std::string>& defines,
-    std::set<int>& claimed)
-{
-    if (!ComponentRegistry::instance().find_by_type("Max7219")) return;
-
-    // Matches both "LedControl lc(a,b,c[,d])" and "LedControl lc = LedControl(...)";
-    // args are positional: dataPin, clkPin, csPin, numDevices.
-    static const std::regex ctor_re(
-        R"(\bLedControl\s+(\w+)\s*(?:=\s*LedControl\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
-
-    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
-         it != std::sregex_iterator(); ++it) {
-        std::string obj_name = (*it)[1].str();
-        int dinPin = resolve_pin((*it)[2].str(), defines);
-        int clkPin = resolve_pin((*it)[3].str(), defines);
-        int csPin  = resolve_pin((*it)[4].str(), defines);
-        if (dinPin < 0 || clkPin < 0 || csPin < 0) continue;
-        if (claimed.count(csPin) || pin_already_added(csPin)) continue;
-
-        int num_devices = 1;
-        if (it->size() > 5 && (*it)[5].matched) {
-            std::string tok = (*it)[5].str();
-            try {
-                num_devices = std::stoi(tok);
-            } catch (...) {
-                auto dit = defines.find(tok);
-                if (dit != defines.end()) {
-                    try { num_devices = std::stoi(dit->second); } catch (...) {}
-                }
-            }
-        }
-        num_devices = std::max(1, std::min(8, num_devices));
-
-        DetectedComponent comp;
-        comp.type_name   = "Max7219";
-        comp.pin         = csPin;
-        comp.pins        = {csPin, clkPin, dinPin};
-        comp.pin_name    = obj_name;
-        comp.confirmed   = false;
-        comp.num_devices = num_devices;
-        comp.label = "Max7219 " + obj_name + " (CS=" + std::to_string(csPin) +
-                     ", CLK=" + std::to_string(clkPin) + ", DIN=" + std::to_string(dinPin) +
-                     (num_devices > 1 ? ", devices=" + std::to_string(num_devices) : "") + ")";
-
-        components_.push_back(comp);
-        claimed.insert(csPin);
-        claimed.insert(clkPin);
-        claimed.insert(dinPin);
-    }
-}
-
-void CircuitDetector::detect_neopixel(
-    const std::string& source,
-    const std::map<std::string, std::string>& defines,
-    std::set<int>& claimed)
-{
-    if (!ComponentRegistry::instance().find_by_type("NeoPixel")) return;
-
-    // "Adafruit_NeoPixel strip(count, pin[, type])" -- optional 3rd arg (color order/speed
-    // flags) is matched loosely since it's often an expression like "NEO_GRB + NEO_KHZ800".
-    static const std::regex ctor_re(
-        R"(\bAdafruit_NeoPixel\s+(\w+)\s*(?:=\s*Adafruit_NeoPixel\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*(?:,[^)]*)?\))");
-
-    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
-         it != std::sregex_iterator(); ++it) {
-        std::string obj_name = (*it)[1].str();
-        int count = resolve_pin((*it)[2].str(), defines);
-        int pin   = resolve_pin((*it)[3].str(), defines);
-        if (pin < 0) continue;
-        if (claimed.count(pin) || pin_already_added(pin)) continue;
-
-        int strip_length = count < 1 ? 1 : std::min(count, 256);
-
-        DetectedComponent comp;
-        comp.type_name    = "NeoPixel";
-        comp.pin          = pin;
-        comp.pins         = {pin};
-        comp.pin_name     = obj_name;
-        comp.confirmed    = false;
-        comp.strip_length = strip_length;
-        comp.label = "NeoPixel " + obj_name + " (pin " + std::to_string(pin) +
-                     ", pixels=" + std::to_string(strip_length) + ")";
-
-        components_.push_back(comp);
-        claimed.insert(pin);
-    }
-}
-
 void CircuitDetector::detect_oled(
     const std::string& source,
     const std::map<std::string, std::string>& defines,
@@ -699,8 +609,6 @@ std::set<int> CircuitDetector::detect_multipin(
     detect_generic_multipin(defines, arrays, claimed);
     detect_pattern_matches(source, defines, claimed);
     detect_custom_components(source, defines, arrays, claimed);
-    detect_max7219(source, defines, claimed);
-    detect_neopixel(source, defines, claimed);
     detect_oled(source, defines, claimed);
 
     return claimed;
