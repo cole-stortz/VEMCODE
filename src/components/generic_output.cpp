@@ -16,8 +16,7 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Straight lead on the left edge -- generic outputs are outputs, so
-        // CanvasWidget::updateWires attaches the wire at local (0, 15).
+        // Straight lead on the left edge; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(30, 15), QPointF(0, 15));
 
@@ -55,9 +54,8 @@ public:
     }
 };
 
-// Never matched through the registry's keyword/pattern tiers -- CircuitDetector
-// assigns this type directly as its final fallback when nothing else matches
-// (see infer_type()), so detect_single/detect_multi/detect_pattern stay empty.
+// Never matched through the registry's keyword/pattern tiers -- CircuitDetector assigns
+// this directly as its final fallback (see infer_type()), so detect_* stays empty.
 static bool registered = []() {
     ComponentDefinition def{
         "GenericOutput",

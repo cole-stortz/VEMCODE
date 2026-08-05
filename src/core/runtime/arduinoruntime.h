@@ -40,9 +40,8 @@ struct RuntimeState {
     std::map<int, std::array<unsigned long, 4>> color_channels_; // out_pin → [R,Blue,Clear,G]
     std::map<int, int> color_sensor_s2_; // out_pin → s2_pin
     std::map<int, int> color_sensor_s3_; // out_pin → s3_pin
-    std::mutex color_mtx_; // guards the three maps above -- written from the
-                            // GUI thread (inject_color), read from the sketch
-                            // thread (impl_pulseIn)
+    std::mutex color_mtx_; // guards the three maps above -- written from the GUI thread
+                            // (inject_color), read from the sketch thread (impl_pulseIn)
     std::map<int, int> tone_frequencies_; // pin → frequency
     std::chrono::steady_clock::time_point start_time;
     std::map<int, void(*)()> interrupt_callbacks_; // pin → callback
@@ -71,35 +70,29 @@ struct RuntimeState {
 
     std::map<int, std::vector<uint8_t>> wire_devices_; // address -> configured response bytes
     std::mutex wire_mtx_; // guards wire_devices_ -- written from the GUI thread
-                           // (inject_wire_device), read from the sketch thread
-                           // (impl_wire_request_from)
+                           // (inject_wire_device), read from the sketch thread (impl_wire_request_from)
     int wire_tx_address_ = -1;
     std::vector<uint8_t> wire_tx_buffer_;   // bytes written since beginTransmission
     std::deque<uint8_t> wire_rx_buffer_;    // bytes available to read since requestFrom
 
     std::vector<uint8_t> spi_response_bytes_; // configured response sequence, cycled by transfer()
     size_t spi_response_index_ = 0;
-    std::mutex spi_mtx_; // guards the two fields above -- written from the GUI
-                          // thread (inject_spi_bytes), read from the sketch thread (impl_spi_transfer)
+    std::mutex spi_mtx_; // guards the two fields above -- written from the GUI thread
+                          // (inject_spi_bytes), read from the sketch thread (impl_spi_transfer)
 
-    // Keypad matrix: for each column pin, the row pins it's wired to. The
-    // injected Keypad class does real pinMode/digitalWrite/digitalRead row
-    // scanning on the sketch thread (no race there -- it's reading pin values
-    // it just wrote, sequentially, on the same thread); impl_digitalRead
-    // resolves a column's electrical value from whichever row is currently
-    // driven active plus which (row_pin, col_pin) key is currently held.
+    // Keypad matrix: col_pin -> wired row_pins. Keypad class scans real pins on the sketch
+    // thread (no race, same-thread read-after-write); impl_digitalRead resolves the active row + held key.
     std::map<int, std::vector<int>> keypad_col_rows_; // col_pin -> row_pins
     std::set<std::pair<int, int>> keypad_pressed_;    // (row_pin, col_pin) currently held
-    std::mutex keypad_mtx_; // guards the two maps above -- written from the
-                             // GUI thread (inject_keypad_wiring/inject_keypad_press),
-                             // read from the sketch thread (impl_digitalRead)
+    std::mutex keypad_mtx_; // guards the two maps above -- written from the GUI thread
+                             // (inject_keypad_wiring/inject_keypad_press), read from the sketch thread (impl_digitalRead)
 
     std::map<int, std::pair<float, float>> dht_readings_; // pin -> (tempC, humidity%)
-    std::mutex dht_mtx_; // guards dht_readings_ -- written from the GUI thread
-                          // (inject_dht), read from the sketch thread (impl_dht_read_*)
+    std::mutex dht_mtx_; // guards dht_readings_ -- written from the GUI thread (inject_dht),
+                          // read from the sketch thread (impl_dht_read_*)
 
-    std::mutex timer_mtx_; // guards timer1_/timer2_ -- written from the sketch
-                            // thread (register writes), read from the timer thread (poll_timer)
+    std::mutex timer_mtx_; // guards timer1_/timer2_ -- written from the sketch thread
+                            // (register writes), read from the timer thread (poll_timer)
     AvrTimerState timer1_{65536, 9, 10}; // Timer1: 16-bit, OC1A=pin9, OC1B=pin10
     AvrTimerState timer2_{256, 11, 3};   // Timer2: 8-bit,  OC2A=pin11, OC2B=pin3
 

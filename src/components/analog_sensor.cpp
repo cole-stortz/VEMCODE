@@ -12,8 +12,7 @@ static const QColor TEMPERATURE_SENSOR_FILL("#b8522e");
 static const QColor FORCE_SENSOR_FILL("#5c7ca8");
 static const QColor ANALOG_SENSOR_FILL("#8e7ce8");
 
-// Which pictogram to draw on the sensor's PCB face -- one entry per
-// AnalogSensorItemBase subclass below.
+// Which pictogram to draw on the sensor's PCB face -- one entry per AnalogSensorItemBase subclass.
 enum class SensorIcon { Light, Temp, Force, Chip };
 
 class AnalogSensorItemBase : public ComponentItem {
@@ -48,9 +47,8 @@ public:
         p->setBrush(themedHousing(fill_, isDarkTheme(), 400));
         p->drawRoundedRect(r, 4, 4);
 
-        // Icon sits in the top band, above the QLineEdit proxy that anchors
-        // at y=40 -- the label caption goes above the icon, not the bottom,
-        // since the bottom is reserved for that widget.
+        // Icon sits in the top band, above the QLineEdit proxy anchored at y=40; the label
+        // caption goes above the icon since the bottom is reserved for that widget.
         p->setPen(fill_);
         p->setFont(QFont("Courier New", 7));
         p->drawText(QRectF(r.left(), r.top() + 2, r.width(), 10), Qt::AlignHCenter | Qt::AlignTop, label_);
@@ -97,14 +95,13 @@ public:
             }
         }
 
-        // Straight lead on the right edge -- these sensors are inputs, so
-        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        // Straight lead on the right edge; wire attaches at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 10, 15), QPointF(r.width(), 15));
     }
 
-    // Called by CanvasWidget after inputChanged is connected -- see
-    // DistanceSensorItem for why this can't just happen in the constructor.
+    // Called by CanvasWidget after inputChanged is connected -- see DistanceSensorItem
+    // for why this can't happen in the constructor.
     void emitInitialValue() override {
         input_->setText("0");
     }
@@ -134,10 +131,8 @@ public:
         : AnalogSensorItemBase(p, parent, ANALOG_SENSOR_FILL, "Sensor", SensorIcon::Chip) {}
 };
 
-// Registered before AnalogSensor so its more specific keywords win --
-// registration order across files is unspecified, but within this file
-// it's guaranteed top-to-bottom, and find_by_single_keyword also prefers
-// the longest matching keyword regardless of order.
+// Registered before AnalogSensor so its more specific keywords win -- registration order
+// across files is unspecified, but find_by_single_keyword prefers the longest match regardless.
 static bool reg_light_sensor = []() {
     ComponentDefinition def{
         "LightSensor",

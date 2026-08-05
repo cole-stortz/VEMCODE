@@ -24,9 +24,8 @@ std::string toUpper(const std::string& s) {
     return out;
 }
 
-// Strips a '#' comment and everything after it, whether it starts the line
-// or trails real fields -- but not one that appears inside a quoted string
-// (so `SEND, SERIAL, "text #1"` keeps its '#').
+// Strips a '#' comment and everything after, whether it starts the line or trails real
+// fields -- but not one inside a quoted string (so `SEND, SERIAL, "text #1"` keeps its '#').
 std::string stripComment(const std::string& line) {
     bool inQuotes = false;
     for (size_t i = 0; i < line.size(); ++i) {
@@ -38,9 +37,8 @@ std::string stripComment(const std::string& line) {
     return line;
 }
 
-// Splits a line on commas, respecting double-quoted fields (so a comma or
-// leading/trailing space inside "..." isn't treated as a field separator).
-// Quotes are stripped from the returned field; \" and \\ are unescaped.
+// Splits a line on commas, respecting double-quoted fields (so a comma or leading/trailing
+// space inside "..." isn't a field separator). Quotes are stripped; \" and \\ are unescaped.
 std::vector<std::string> splitFields(const std::string& line) {
     std::vector<std::string> fields;
     std::string current;
@@ -147,14 +145,8 @@ const DetectedComponent* TestRunner::resolve(const std::string& target) const {
 }
 
 void TestRunner::fireDueEvents(double sketchSeconds) {
-    // Fires at most ONE due event per call, not every event that's become due
-    // -- the caller runs host.run_loop() once after each call, so this
-    // guarantees the sketch gets to react (e.g. re-read a just-injected pin
-    // and re-drive an output) between any two consecutive timeline events,
-    // even if both are already due by the same sketchSeconds (which speed=N
-    // makes easy to hit: two events 0.05s apart in sketch-time are only
-    // 0.0125s apart in real time at speed=4). Firing them all in one batch
-    // would let an ASSERT race ahead and check stale pre-action state.
+    // At most one event per call (see header) -- firing a whole batch could let an ASSERT
+    // check stale pre-action state instead of racing behind the sketch's own reaction.
     if (nextEvent_ < events_.size() && events_[nextEvent_].time <= sketchSeconds) {
         const TimelineEvent& ev = events_[nextEvent_];
         try {
@@ -269,9 +261,8 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
     const std::string& type = comp->type_name;
 
     if (type == "Button") {
-        // 0/LOW on PRESS, 1/HIGH on RELEASE -- matches button.cpp's own
-        // mousePressEvent/mouseReleaseEvent (BouncePress, 0 / BouncePress, 1),
-        // i.e. idle-HIGH INPUT_PULLUP wiring where pressing pulls the pin low.
+        // 0/LOW on PRESS, 1/HIGH on RELEASE -- matches button.cpp's mouse handlers
+        // (idle-HIGH INPUT_PULLUP wiring, pressing pulls the pin low).
         if (verb == "PRESS")        host_.inject_button_bounce(comp->pin, 0);
         else if (verb == "RELEASE") host_.inject_button_bounce(comp->pin, 1);
         else throw std::runtime_error("Button only supports PRESS/RELEASE");
@@ -279,14 +270,8 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
     }
 
     if (type == "ButtonClean") {
-        // Unlike Button, ButtonCleanItem emits DigitalPress, not BouncePress
-        // (button.cpp) -- the whole point of the "Clean"/"Ideal" variant is
-        // that it's exempt from bounce simulation. Routing it through
-        // inject_button_bounce() here would give it the same real,
-        // unscaled 10ms random-bounce window Button gets, which it should
-        // never see. Same 0-on-PRESS/1-on-RELEASE polarity as Button, just
-        // via inject_pin() instead -- matches ButtonCleanItem's own
-        // mousePressEvent/mouseReleaseEvent (DigitalPress, 0 / DigitalPress, 1).
+        // Unlike Button, ButtonCleanItem emits DigitalPress, not BouncePress -- it's
+        // exempt from bounce simulation, so this uses inject_pin() (same 0/1 polarity), not inject_button_bounce().
         if (verb == "PRESS")        host_.inject_pin(comp->pin, 0);
         else if (verb == "RELEASE") host_.inject_pin(comp->pin, 1);
         else throw std::runtime_error("ButtonClean only supports PRESS/RELEASE");
@@ -330,9 +315,8 @@ void TestRunner::dispatchAction(const TimelineEvent& ev) {
         try { cm = std::stod(ev.args[0]); }
         catch (...) { throw std::runtime_error("bad SET value '" + ev.args[0] + "'"); }
         if (cm < 0) throw std::runtime_error("distance can't be negative");
-        // Same cm -> pulseIn() microseconds conversion the GUI's distance-sensor
-        // input widget uses (distance_sensor.cpp), so timelines can say "10"
-        // (cm) instead of a pre-computed microsecond value.
+        // Same cm -> pulseIn() microseconds conversion the GUI's distance-sensor widget
+        // uses (distance_sensor.cpp), so timelines can say "10" (cm) instead of raw microseconds.
         unsigned long micros = (unsigned long)std::ceil(cm * 2.0 / 0.034);
         host_.inject_pulse_duration(comp->pin, micros);
         return;

@@ -74,11 +74,7 @@ const AppPalette kLight = [] {
     return p;
 }();
 
-// Substitutes %{field_name} tokens in a stylesheet template with the matching
-// AppPalette color. Field names are looked up by name, not position, so
-// adding/reordering AppPalette members can't silently shift a color onto the
-// wrong selector -- a token left unmatched shows up as literal "%{...}" text
-// in the rendered UI instead of a swapped color.
+// Looks up tokens by name, not position, so reordering AppPalette members can't silently swap colors onto the wrong selector.
 QString substitutePalette(QString qss, const AppPalette& p) {
     struct Token { const char* name; QColor color; };
     const Token tokens[] = {

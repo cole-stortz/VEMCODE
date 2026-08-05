@@ -46,10 +46,8 @@ public:
     // the sketch thread's own loop so reads never race the sketch's writes.
     void setWatchList(std::vector<std::pair<QString, QString>> vars);
 
-    // Arms a .timeline playback for the next run() -- must be called before
-    // startSketch(). Drives the same TestRunner the headless CLI uses, from
-    // inside this thread's own locked loop (see run()), so it gets the same
-    // "sketch always reacts between events" guarantee headless mode has.
+    // Arms a .timeline playback for the next run(); must be called before startSketch(). Drives
+    // the same TestRunner as headless CLI, from this thread's locked loop, for the same event-ordering guarantee.
     void armTimeline(std::vector<DetectedComponent> components, std::vector<TimelineEvent> events);
 
 signals:

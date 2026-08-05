@@ -24,11 +24,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Leads drawn under the body -- the body paints over the overlap, so
-        // the visible stubs always end up flush with the body's edge without
-        // having to keep the two in sync.
-        // H-bridge motors are outputs, so CanvasWidget::updateWires attaches
-        // wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        // Leads drawn under the body so stubs stay flush without keeping in sync; wire i
+        // attaches at local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal ly = 15 + i * 5;
@@ -58,10 +55,8 @@ public:
             qreal spanDeg = dir == "CW" ? -270 : 270;
             p->drawArc(arcRect, 0, spanDeg * 16);
 
-            // Arrowhead at the arc's terminal end -- sampled via arcMoveTo so
-            // the tangent direction always matches whatever drawArc actually
-            // rendered, rather than hand-deriving trig signs for Qt's
-            // arc-angle convention.
+            // Arrowhead sampled via arcMoveTo so the tangent always matches drawArc's actual
+            // rendering, rather than hand-deriving trig signs for Qt's arc-angle convention.
             QPainterPath tipPath, backPath;
             tipPath.arcMoveTo(arcRect, spanDeg);
             backPath.arcMoveTo(arcRect, spanDeg - (spanDeg > 0 ? 15 : -15));
@@ -110,7 +105,7 @@ static bool registered = []() {
             {"ANTI_CWISE", {"ANTI"}},
             {"CWISE",      {"CWISE", "CW", "DIR"}},
         },
-        {},    // detect_pattern — none
+        {},    // detect_pattern -- none
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new HBridgeMotorItem(pin, parent);
@@ -121,10 +116,8 @@ static bool registered = []() {
     def.wire_color = HBRIDGE_ACTIVE;
     ComponentRegistry::instance().register_component(def);
 
-    // Separate entry for the bare ENA/IN1/IN2 wiring style (L298N/L293D
-    // naming with no shared prefix) -- detect_prefix_group requires an
-    // underscore to derive a group key, so this never grouped. Same
-    // type_name/create_item, same tradeoff Stepper's IN1-IN4 entry accepts.
+    // Separate entry for bare ENA/IN1/IN2 wiring (L298N/L293D, no shared prefix) --
+    // detect_prefix_group needs an underscore to derive a group key, so this never grouped.
     ComponentDefinition enaIn{
         "HBridgeMotor",
         {},

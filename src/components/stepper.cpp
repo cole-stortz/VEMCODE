@@ -6,10 +6,8 @@
 
 static const QColor STEPPER_ACTIVE("#8e5c2e");
 
-// Handles two real-world wiring styles with the same class: STEP+DIR (driver
-// boards like A4988/DRV8825) and IN1-IN4 (ULN2003 + 28BYJ-48 style, driven by
-// bit-banging the 4 phase pins directly). configureMultiPin picks the mode
-// from how many pins were detected.
+// Handles two wiring styles: STEP+DIR (driver boards like A4988/DRV8825) and IN1-IN4
+// (ULN2003 + 28BYJ-48, bit-banged). configureMultiPin picks the mode from pin count.
 class StepperItem : public ComponentItem {
     int dirPin_ = -1;
     int phasePins_[4] = {-1, -1, -1, -1};
@@ -28,11 +26,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Leads drawn under the body, extending well past its edge -- the
-        // body paints over the overlap, so the visible stubs always end up
-        // flush with the body's edge regardless of the exact radius.
-        // Steppers are outputs, so CanvasWidget::updateWires attaches wire i
-        // at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        // Leads drawn under the body, extending past its edge, so stubs stay flush regardless
+        // of radius; wire i attaches at local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         int leadCount = fourPhase_ ? 4 : 2;
         for (int i = 0; i < leadCount; ++i) {
@@ -40,10 +35,8 @@ public:
             p->drawLine(QPointF(10, ly), QPointF(0, ly));
         }
 
-        // Matches HBridgeMotor's absolute radius (54 * 0.42) rather than
-        // deriving from this box's own (shorter, 44px) height, so the two
-        // read as the same size despite Stepper's bounding rect being
-        // shorter.
+        // Matches HBridgeMotor's absolute radius (54 * 0.42) rather than deriving from this
+        // box's own shorter 44px height, so the two read as the same size.
         bool dark = isDarkTheme();
         qreal rad = 54.0 * 0.42;
         QPointF c(r.left() + rad + 6, r.center().y());
@@ -55,9 +48,8 @@ public:
         p->setBrush(QColor("#555"));
         p->drawEllipse(c, rad * 0.18, rad * 0.18);
 
-        // Clock-style arm instead of a directional arc -- steppers just
-        // track an accumulated position (15deg/step), not a continuous
-        // spin rate.
+        // Clock-style arm instead of a directional arc -- steppers track accumulated
+        // position (15deg/step), not a continuous spin rate.
         qreal a = qDegreesToRadians((double)(position_ * 15));
         p->setPen(QPen(QColor("#1a1a1a"), 3, Qt::SolidLine, Qt::RoundCap));
         p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));
@@ -88,9 +80,8 @@ public:
             for (int i = 0; i < 4; ++i)
                 if (phaseState_[i]) { highCount++; highIdx = i; }
 
-            // Only advance on a clean single-phase-energized state -- this
-            // naturally ignores half-step transitional states (2 bits on)
-            // without needing to hardcode any particular coil sequence table.
+            // Only advance on a clean single-phase-energized state -- naturally ignores
+            // half-step transitional states (2 bits on) without hardcoding a coil sequence table.
             if (highCount == 1) {
                 if (lastPhaseIdx_ >= 0 && highIdx != lastPhaseIdx_) {
                     if (highIdx == (lastPhaseIdx_ + 1) % 4)      { position_++; dirCW_ = true; }
@@ -133,13 +124,9 @@ static bool registered_stepper = []() {
     stepDir.wire_color = STEPPER_ACTIVE;
     ComponentRegistry::instance().register_component(stepDir);
 
-    // Separate entry for the IN1-IN4 wiring style -- same type_name and
-    // create_item, just a different detect_multi role set. Both entries are
-    // tried independently by CircuitDetector; whichever pin set actually
-    // exists in the sketch wins. Note: bare "IN1".."IN4" substring-match
-    // against any coincidentally similar name (e.g. "PIN1".."PIN4"), same
-    // keyword-collision tradeoff already accepted elsewhere in this registry
-    // (see HBridgeMotor's "IN1" keyword) -- only fires if all four are present.
+    // Separate entry for IN1-IN4 wiring, same type_name/create_item, different detect_multi
+    // role set; CircuitDetector tries both and whichever pin set exists wins. Bare "IN1".."IN4"
+    // substring-matches similar names (e.g. "PIN1"), same tradeoff as HBridgeMotor's "IN1" keyword.
     ComponentDefinition phase4{
         "Stepper",
         {},

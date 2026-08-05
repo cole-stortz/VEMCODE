@@ -64,9 +64,8 @@ public:
         p->setBrush(cap);
         p->drawEllipse(stick, 13, 13);
 
-        // Straight leads on the right edge, one per VRX/VRY/SW pin slot --
-        // joysticks are inputs, so CanvasWidget::updateWires attaches wire i
-        // at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the right edge, one per VRX/VRY/SW slot; wire i attaches at
+        // local (width, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal y = 15 + i * 5;

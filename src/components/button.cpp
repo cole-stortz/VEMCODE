@@ -5,14 +5,11 @@
 
 static const QColor BUTTON_ACTIVE("#e8639c");
 
-// Tactile pushbutton body: a flat dark plastic base plate with a round cap
-// that shrinks and tints on press. Shared by ButtonItem and ButtonCleanItem
-// below -- same physical shape, different pin semantics.
+// Tactile pushbutton body: a flat dark plastic base plate with a round cap that shrinks and
+// tints on press. Shared by ButtonItem and ButtonCleanItem (same shape, different pin semantics).
 static void paintButtonCap(QPainter* p, const QRectF& r, bool pressed, bool dark) {
-    // Lead drawn under the plate, extending past its right edge -- the
-    // plate paints over the overlap, so the visible stub always ends up
-    // flush with the plate's edge without having to keep the two in sync.
-    // CanvasWidget::updateWires attaches the wire at local (width, 15).
+    // Lead drawn under the plate, extending past its right edge, so the stub stays flush
+    // without keeping in sync; wire attaches at local (width, 15).
     p->setPen(QPen(QColor("#999"), 2));
     p->drawLine(QPointF(r.width() - 25, 15), QPointF(r.width(), 15));
 
@@ -96,9 +93,8 @@ public:
     }
 };
 
-// Registered before Button so ambiguous names (e.g. "CLEAN_BUTTON") match
-// ButtonClean first -- registration order across files is unspecified, but
-// within this file it's guaranteed top-to-bottom.
+// Registered before Button so ambiguous names (e.g. "CLEAN_BUTTON") match ButtonClean first
+// -- registration order across files is unspecified, but within this file it's top-to-bottom.
 static bool reg_button_clean = []() {
     ComponentDefinition def{
         "ButtonClean",

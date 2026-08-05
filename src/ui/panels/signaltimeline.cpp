@@ -38,9 +38,7 @@ SignalTimeline::SignalTimeline(QWidget* parent)
 
     headerLayout->addStretch();
 
-    // No child widget below the header -- the waveform area is left empty in
-    // the layout on purpose, so paintEvent (below) can draw directly onto
-    // that region of `this` starting at HEADER_HEIGHT.
+    // No child widget below the header on purpose -- paintEvent draws directly onto that region.
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);

@@ -4,12 +4,9 @@
 
 static const QColor SEVENSEG_DIGIT("#d13a5c");
 
-// Renders the lit segment pattern as the actual digit character (e.g. "7")
-// rather than drawing 7 individual segment rectangles -- much simpler, and
-// still tells you at a glance what the sketch thinks it's displaying.
-// Single-digit only: a multiplexed multi-digit display strobes its
-// digit-select pins far faster than the GUI thread can sample (same
-// cross-thread scanning limitation found with the keypad matrix attempt).
+// Renders the lit pattern as the digit character, not 7 segments -- simpler, and still shows
+// what the sketch thinks it's displaying. Single-digit only: multiplexing strobes faster than
+// the GUI thread can sample (same limit as the keypad matrix attempt).
 class SevenSegItem : public ComponentItem {
     int  segPins_[7]  = {-1, -1, -1, -1, -1, -1, -1}; // A..G
     bool segState_[7] = {false, false, false, false, false, false, false};
@@ -47,9 +44,8 @@ public:
         drawSeg(QRectF(x, y + t * 0.2, t * 0.6, h / 2 - t * 0.4), segState_[5]);                       // F top-left
         drawSeg(QRectF(x + t * 0.3, midY, w - t * 0.6, t * 0.6), segState_[6]);                        // G middle
 
-        // Straight leads on the left edge, one per A-G segment pin slot --
-        // seven-segment displays are outputs, so CanvasWidget::updateWires
-        // attaches wire i at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the left edge, one per A-G segment pin slot; wire i attaches at
+        // local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 7; ++i) {
             qreal ly = 15 + i * 5;

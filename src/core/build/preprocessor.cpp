@@ -4,10 +4,8 @@
 
 namespace {
 
-// Marks each byte of `source` that falls inside a string literal, char
-// literal, or comment, so replace_token can skip matches there instead of
-// rewriting visible debug text (e.g. a Serial.print("delay(1000)") string)
-// or comment prose.
+// Marks bytes inside string/char literals or comments so replace_token skips them
+// (e.g. won't rewrite text inside a Serial.print("delay(1000)") debug string).
 std::vector<bool> mask_non_code(const std::string& source) {
     std::vector<bool> masked(source.size(), false);
     enum class State { Code, LineComment, BlockComment, String, Char };
@@ -48,7 +46,6 @@ std::vector<bool> mask_non_code(const std::string& source) {
 } // namespace
 
 std::string Preprocessor::process(const std::string& source) {
-    // If already in VirtualEmbeddedProgrammer format, pass through unchanged
     if (is_already_transformed(source))
         return source;
 
@@ -56,8 +53,8 @@ std::string Preprocessor::process(const std::string& source) {
     // ISR and asm transforms run first so their output is picked up by replace_api_calls
     result = transform_isr_blocks(result);
     result = transform_asm_blocks(result);
-    // replace_api_calls must run before strip_includes so that API calls injected
-    // by the Servo/library replacements are not double-prefixed with api->
+    // Must run before strip_includes, or API calls injected by the Servo/library
+    // replacements would get double-prefixed with api->
     result = replace_api_calls(result);
     result = strip_includes(result);
 
@@ -76,8 +73,8 @@ std::string Preprocessor::process(const std::string& source) {
 
     int header_lines = (int)std::count(g_injected_header,
                                         g_injected_header + strlen(g_injected_header), '\n');
-    // +1 corrects a boundary miscount verified empirically; +3 accounts for the
-    // #pragma push/ignored/pop lines inject_header() now wraps around the header.
+    // +1 corrects an empirically-verified boundary miscount; +3 for the #pragma
+    // push/ignored/pop lines inject_header() wraps around the header.
     injected_lines_ = header_lines + fwd_lines + 1 + 3;
     return result;
 }
@@ -88,10 +85,8 @@ bool Preprocessor::is_already_transformed(const std::string& source) {
 }
 
 std::string Preprocessor::normalize_call_whitespace(const std::string& source) {
-    // Mask-aware like replace_token below -- a blind regex_replace here would
-    // also collapse "word (" inside string literals and comments (e.g. a
-    // Serial.print("oob read (expect...") debug string), not just real call
-    // sites.
+    // Mask-aware like replace_token -- a blind regex_replace would also collapse
+    // "word (" inside string literals and comments, not just real call sites.
     std::vector<bool> masked = mask_non_code(source);
     static const std::regex pattern(R"((\w)\s+\()");
     std::string result;
@@ -118,9 +113,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     // Arduino binary literals: B00101 → 0b00101 (must run before other replacements)
     s = std::regex_replace(s, std::regex("\\bB([01]{1,8})\\b"), "0b$1");
 
-    // Serial -- must do println before print to avoid partial match.
-    // replace_token skips matches preceded by a word char so "mySerial.println"
-    // is not incorrectly rewritten as "mySerial_println".
+    // Serial -- println before print to avoid partial match; replace_token's word-char
+    // check keeps "mySerial.println" from being rewritten too.
     s = replace_token(s, "Serial.println(", "Serial_println(");
     s = replace_token(s, "Serial.printf(",  "Serial_printf(");
     s = replace_token(s, "Serial.print(",   "Serial_print(");
@@ -165,9 +159,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Serial2.print(",   "api->Serial2_print(");
     s = replace_token(s, "Serial2.println(", "api->Serial2_println(");
 
-    // Wire (I2C) -- begin/write/endTransmission/requestFrom route through inline
-    // wrappers in injected_header.inc (not directly to api->) since they have
-    // optional/overloaded arguments that a bare function pointer can't express.
+    // Wire (I2C) -- begin/write/endTransmission/requestFrom route through inline wrappers
+    // (not api->) since they have optional/overloaded args a bare function pointer can't express.
     s = replace_token(s, "Wire.beginTransmission(", "api->wire_begin_transmission(");
     s = replace_token(s, "Wire.available(",         "api->wire_available(");
     s = replace_token(s, "Wire.read(",              "api->wire_read(");
@@ -176,9 +169,8 @@ std::string Preprocessor::replace_api_calls(const std::string& source) {
     s = replace_token(s, "Wire.endTransmission(",    "wire_end_transmission(");
     s = replace_token(s, "Wire.requestFrom(",        "wire_request_from(");
 
-    // SPI -- same shape as Wire above: begin/transfer/beginTransaction/
-    // endTransaction route through inline wrappers since transfer() is
-    // overloaded (byte vs. buffer) and beginTransaction() takes a SPISettings.
+    // SPI -- same shape as Wire above: transfer() is overloaded (byte vs. buffer) and
+    // beginTransaction() takes a SPISettings, so these route through inline wrappers too.
     s = replace_token(s, "SPI.beginTransaction(", "spi_begin_transaction(");
     s = replace_token(s, "SPI.endTransaction(",   "spi_end_transaction(");
     s = replace_token(s, "SPI.begin(",            "spi_begin(");
@@ -247,7 +239,6 @@ std::string Preprocessor::strip_includes(const std::string& source) {
         // Only warn about .h includes (Arduino-style libraries); C++ std headers have no .h
         if (header.size() < 2 || header.substr(header.size() - 2) != ".h")
             continue;
-        // Skip known-good C standard headers
         bool is_std = false;
         for (const char* std_h : kStdHeaders) {
             if (header == std_h) { is_std = true; break; }
@@ -287,12 +278,10 @@ std::string mask_aware_replace(const std::string& source, const std::regex& patt
 std::string Preprocessor::wrap_functions(const std::string& source) {
     std::string s = source;
 
-    // Match: void setup() with optional whitespace
-    // Replace with export decorator + vb_setup
+    // Export as vb_setup()/vb_loop() -- the host dlsym's these exact symbol names.
     static const std::regex setup_re(R"(void\s+setup\s*\(\s*\))");
     s = mask_aware_replace(s, setup_re, "extern \"C\" VB_EXPORT\nvoid vb_setup()");
 
-    // Match: void loop() with optional whitespace
     static const std::regex loop_re(R"(void\s+loop\s*\(\s*\))");
     s = mask_aware_replace(s, loop_re, "extern \"C\" VB_EXPORT\nvoid vb_loop()");
 
@@ -300,11 +289,8 @@ std::string Preprocessor::wrap_functions(const std::string& source) {
 }
 
 std::string Preprocessor::inject_header(const std::string& source) {
-    // The header declares the full AVR register/API surface unconditionally for every
-    // sketch (e.g. every timer register, whether or not this sketch uses that timer),
-    // so with -Wall most of it reads as unused. It's boilerplate the user didn't write
-    // and can't fix, so silence unused-variable warnings for just this block --
-    // warnings from the user's own code (appended after the pop) are unaffected.
+    // Header declares the full AVR surface unconditionally, so most reads as unused under
+    // -Wall; silence just this block (code after the pop, the user's own, is unaffected).
     return std::string(
         "#pragma GCC diagnostic push\n"
         "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n")
@@ -366,11 +352,8 @@ std::string Preprocessor::inject_safety_delay(const std::string& source) {
 
     bool has_delay = result.find("api->delay(") != std::string::npos;
     if (!has_delay) {
-        // No delay anywhere — inject one just before vb_loop()'s closing brace,
-        // found by brace-counting from vb_loop()'s own opening brace (same
-        // approach as inject_while_delays below) rather than rfind('}') over
-        // the whole file, which would grab a later helper function's closing
-        // brace instead if one is defined after loop().
+        // Brace-count from vb_loop()'s opening brace to find its close (rfind('}') over
+        // the whole file would grab a later helper function's brace instead).
         size_t fn = result.find("vb_loop(");
         if (fn != std::string::npos) {
             size_t open = result.find('{', fn);
@@ -421,12 +404,10 @@ std::string Preprocessor::inject_while_delays(const std::string& source) {
             continue;
         }
 
-        // Skip whitespace after 'while', then expect '('
         size_t cp = w + 5;
         while (cp < s.size() && std::isspace((unsigned char)s[cp])) ++cp;
         if (cp >= s.size() || s[cp] != '(') { pos = cp; continue; }
 
-        // Find the matching ')' closing the condition
         int depth = 1;
         ++cp;
         while (cp < s.size() && depth > 0) {
@@ -435,11 +416,9 @@ std::string Preprocessor::inject_while_delays(const std::string& source) {
             ++cp;
         }
 
-        // Skip whitespace, then expect '{' opening the body
         while (cp < s.size() && std::isspace((unsigned char)s[cp])) ++cp;
         if (cp >= s.size() || s[cp] != '{') { pos = cp; continue; }
 
-        // Find the matching '}' closing the body
         size_t body_open = cp;
         int bdepth = 1;
         size_t bp = body_open + 1;
@@ -467,9 +446,8 @@ std::string Preprocessor::inject_while_delays(const std::string& source) {
 }
 
 std::string Preprocessor::generate_forward_declarations(const std::string& source) {
-    // Match top-level (non-indented) function definitions with common Arduino return types.
-    // This mimics what the Arduino IDE does automatically -- allows calling functions
-    // before they are defined in the source file.
+    // Matches top-level function definitions with common Arduino return types; mimics what
+    // the Arduino IDE does automatically, letting functions be called before they're defined.
     std::regex func_re(
         R"(^((?:void|int|float|double|bool|long|char|byte|String)\s+(\w+)\s*\([^)]*\))\s*\{)",
         std::regex::multiline
@@ -507,19 +485,16 @@ std::string Preprocessor::transform_isr_blocks(const std::string& source) {
     size_t pos = 0;
 
     while (pos < s.size()) {
-        // Skip line comments
         if (pos + 1 < s.size() && s[pos] == '/' && s[pos+1] == '/') {
             size_t nl = s.find('\n', pos + 2);
             pos = (nl == std::string::npos) ? s.size() : nl + 1;
             continue;
         }
-        // Skip block comments
         if (pos + 1 < s.size() && s[pos] == '/' && s[pos+1] == '*') {
             size_t end = s.find("*/", pos + 2);
             pos = (end == std::string::npos) ? s.size() : end + 2;
             continue;
         }
-        // Skip string literals
         if (s[pos] == '"') {
             ++pos;
             while (pos < s.size() && s[pos] != '"') {
@@ -529,7 +504,6 @@ std::string Preprocessor::transform_isr_blocks(const std::string& source) {
             if (pos < s.size()) ++pos;
             continue;
         }
-        // Check for ISR( at current position
         if (s.size() - pos < 4 || s[pos] != 'I' || s[pos+1] != 'S' || s[pos+2] != 'R' || s[pos+3] != '(') {
             ++pos;
             continue;
@@ -548,7 +522,6 @@ std::string Preprocessor::transform_isr_blocks(const std::string& source) {
         if (close_paren == std::string::npos) break;
 
         std::string vect_name = s.substr(name_start, close_paren - name_start);
-        // Trim whitespace
         size_t vs = vect_name.find_first_not_of(" \t\n\r");
         size_t ve = vect_name.find_last_not_of(" \t\n\r");
         if (vs == std::string::npos) { pos = close_paren + 1; continue; }
@@ -568,12 +541,10 @@ std::string Preprocessor::transform_isr_blocks(const std::string& source) {
             warnings_.push_back(
                 "WARNING: ISR vector '" + vect_name + "' is not simulated — the handler will never fire");
 
-        // Find the opening { of the body
         size_t brace_pos = close_paren + 1;
         while (brace_pos < s.size() && std::isspace((unsigned char)s[brace_pos])) ++brace_pos;
         if (brace_pos >= s.size() || s[brace_pos] != '{') { pos = brace_pos; continue; }
 
-        // Find matching }
         int depth = 1;
         size_t bp = brace_pos + 1;
         while (bp < s.size() && depth > 0) {
@@ -632,8 +603,7 @@ std::string Preprocessor::transform_asm_blocks(const std::string& source) {
         { nullptr,  nullptr               }
     };
 
-    // Match: (asm|__asm__) (volatile|__volatile__)? ( "single_instruction" anything );
-    // Captures the instruction string in group 1
+    // Matches (asm|__asm__) (volatile)? ("instr" ...); captures the instruction in group 1
     std::regex asm_re(
         R"((?:__asm__|asm)\s*(?:__volatile__|volatile)?\s*\(\s*"([^"\\]*)(?:\\[ntr])?"[^;\n]*\)\s*;)"
     );

@@ -35,11 +35,8 @@
 #include <QDialogButtonBox>
 #include "src/ui/sketchmanifest.h"
 
-// Font size intentionally left out of the editor's styling -- it's set via
-// setFont() below so QPlainTextEdit::zoomIn()/zoomOut() (which adjust the
-// widget's QFont directly) aren't fought by a QSS-cascaded font-size.
-// Was "font-size: 13px" in the old stylesheet -- points render larger than the
-// same numeric pixel value, so this is 13px converted to points (13 * 0.75).
+// Font size intentionally left out of the QSS -- set via setFont() below so zoomIn()/zoomOut() (which adjust
+// the QFont directly) aren't fought by a cascaded font-size. Was "13px" in the old stylesheet, converted to points.
 static const int DEFAULT_EDITOR_FONT_SIZE = 10;
 
 MainWindow::MainWindow(QWidget* parent)
@@ -178,12 +175,8 @@ MainWindow::MainWindow(QWidget* parent)
     });
     keybinds_.registerShortcut("run", run_shortcut);
 
-    // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- the platform
-    // standard key for ZoomIn resolves to the same sequence as literal "Ctrl+=" on this
-    // setup, and two QShortcuts sharing one sequence make Qt treat it as ambiguous
-    // (neither fires). Bind both the unshifted "=" and shifted "+" explicitly instead;
-    // only the unshifted one is user-remappable, the shifted one is a fixed convenience
-    // alias so layouts where "+" is easier to reach than bare "=" still work.
+    // Explicit key sequences instead of QKeySequence::ZoomIn/ZoomOut -- its platform-standard key collides with
+    // literal "Ctrl+=" here, and two QShortcuts sharing a sequence go ambiguous (neither fires). "+" is a fixed alias.
     QShortcut* zoom_in_shortcut = new QShortcut(keybinds_.load(settings, "editor_zoom_in", QKeySequence(Qt::CTRL | Qt::Key_Equal)), this);
     connect(zoom_in_shortcut, &QShortcut::activated, this, [this]() { adjustEditorZoom(1); });
     keybinds_.registerShortcut("editor_zoom_in", zoom_in_shortcut);
@@ -214,10 +207,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect(find_shortcut, &QShortcut::activated, findReplaceBar_, &FindReplaceBar::showBar);
     keybinds_.registerShortcut("find", find_shortcut);
 
-    // code_completion, duplicate_line, and comment_toggle have no QShortcut of
-    // their own -- they're raw key comparisons in EditorWithLines::keyPressEvent
-    // (scoped to codeEditor_ only), so just seed keybindSeq_ with their current
-    // sequence and push it down to the editor.
+    // code_completion, duplicate_line, and comment_toggle have no QShortcut -- they're raw key comparisons in
+    // EditorWithLines::keyPressEvent, so just seed keybindSeq_ and push the sequence down to the editor.
     keybinds_.load(settings, "code_completion", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Space));
     keybinds_.load(settings, "duplicate_line", QKeySequence(Qt::CTRL | Qt::Key_D));
     keybinds_.load(settings, "comment_toggle", QKeySequence(Qt::CTRL | Qt::Key_Slash));
@@ -256,9 +247,8 @@ MainWindow::~MainWindow() {
         sketchThread_->stopSketch();
 }
 
-// A clean exit with nothing unsaved means nothing to recover -- drop any
-// pending autosave. If there ARE unsaved changes, leave it so
-// checkForAutosaveRecovery can offer it back next time this sketch is opened.
+// Nothing unsaved on exit means nothing to recover -- drop any pending autosave. Otherwise leave it for
+// checkForAutosaveRecovery to offer back next time this sketch is opened.
 void MainWindow::closeEvent(QCloseEvent* event) {
     bool has_real_path = !currentSketchPath_.isEmpty()
         && !currentSketchPath_.startsWith(QDir::tempPath());
@@ -350,12 +340,13 @@ void MainWindow::setupMenuBar() {
     debugPanelAction_  = addPanelToggle("Debug Panel", debugPanel_, "window/panel_debug");
 
     windowMenu->addSeparator();
-    for (DebugTabEntry& entry : debugTabToggles_) {
+    for (int i = 0; i < debugTabToggles_.size(); ++i) {
+        DebugTabEntry& entry = debugTabToggles_[i];
         QAction* action = windowMenu->addAction(entry.label);
         action->setCheckable(true);
         action->setChecked(debugTabs_->indexOf(entry.widget) != -1);
-        connect(action, &QAction::toggled, this, [this, &entry](bool visible) {
-            setDebugTabVisible(entry, visible);
+        connect(action, &QAction::toggled, this, [this, i](bool visible) {
+            setDebugTabVisible(debugTabToggles_[i], visible);
         });
         entry.action = action;
     }
@@ -517,7 +508,6 @@ QWidget* MainWindow::buildEditorPanel() {
     editorFont.setStyleHint(QFont::Monospace);
     codeEditor_->setFont(editorFont);
 
-    // Tab width = 4 spaces
     QFontMetrics metrics(codeEditor_->font());
     codeEditor_->setTabStopDistance(4 * metrics.horizontalAdvance(' '));
     codeEditor_->installEventFilter(this);
@@ -545,8 +535,7 @@ QWidget* MainWindow::buildEditorPanel() {
             this, &MainWindow::insertCompletion);
     completer_->popup()->installEventFilter(this);
 
-    // Auto-popup: after typing >= 3 characters of a word, wait 5s idle then
-    // show the same completion popup Ctrl+Shift+Space triggers manually.
+    // Auto-popup: after typing >= 3 characters of a word, wait 1.5s idle then show the same popup Ctrl+Shift+Space does.
     idleCompletionTimer_ = new QTimer(this);
     idleCompletionTimer_->setSingleShot(true);
     idleCompletionTimer_->setInterval(1500);
@@ -566,9 +555,7 @@ QWidget* MainWindow::buildEditorPanel() {
         tc.select(QTextCursor::WordUnderCursor);
         QString word = tc.selectedText();
 
-        // Popup already open (either the flat list or a member-narrowed one from
-        // showMemberCompletionPopup) -- just refine its prefix as more is typed,
-        // rather than re-triggering the idle timer or resetting the model.
+        // Popup already open (flat list or member-narrowed) -- just refine its prefix, don't retrigger the idle timer.
         if (completer_->popup()->isVisible()) {
             idleCompletionTimer_->stop();
             completer_->setCompletionPrefix(word);
@@ -752,9 +739,7 @@ void MainWindow::rebuildSerialMonitors() {
     }
 }
 
-// Position for re-inserting entry -- count how many entries ahead of it in
-// debugTabToggles_ are currently visible, so it lands back in the same
-// relative order rather than always at the end.
+// Counts how many entries ahead of `entry` in debugTabToggles_ are currently visible, so it reinserts in relative order.
 int MainWindow::debugTabInsertIndex(const DebugTabEntry& entry) const {
     int index = 0;
     for (const DebugTabEntry& e : debugTabToggles_) {
@@ -943,10 +928,8 @@ void MainWindow::onLoadFailed(QString reason) {
 
 // Button handlers
 void MainWindow::onRunClicked() {
-    // If no file is open, save editor content to a temp file and run that.
-    // Uses its own subfolder rather than tempPath() directly -- the compiler scans
-    // the sketch's folder for extra .cpp files to link in (multi-file sketch
-    // support), and raw /tmp can contain unrelated .cpp files from other processes.
+    // If no file is open, save to a temp file and run that. Uses its own subfolder rather than tempPath()
+    // directly -- the compiler scans the sketch's folder for extra .cpp files to link in (multi-file support).
     if (currentSketchPath_.isEmpty()) {
         QString temp_dir = QDir::tempPath() + "/vemcode_unsaved_sketch";
         QDir().mkpath(temp_dir);
@@ -1273,9 +1256,8 @@ void MainWindow::openSketchFile(const QString& path) {
 }
 
 void MainWindow::onSaveClicked() {
-    // Silently overwrite the already-open sketch -- but a path under the OS temp
-    // dir (see onRunClicked's unsaved-scratch-file fallback) doesn't count as
-    // "already open", so that case still prompts for a real name below.
+    // Silently overwrite the already-open sketch -- but a path under the OS temp dir (the unsaved-scratch-file
+    // fallback from onRunClicked) doesn't count as "already open", so that case still prompts for a real name.
     bool has_real_path = !currentSketchPath_.isEmpty()
         && !currentSketchPath_.startsWith(QDir::tempPath());
     if (!has_real_path) {
@@ -1386,9 +1368,6 @@ void MainWindow::resetEditorZoom() {
     codeEditor_->setFont(f);
 }
 
-// Toggles "// " on every line touched by the selection (or just the current line
-// with no selection). Uncomments if every non-blank line in range already starts
-// with "//", otherwise comments every non-blank line.
 void MainWindow::refreshExtraSelections() {
     codeEditor_->setExtraSelections(compileSelections_ + bracketSelections_ + findSelections_);
 }
@@ -1563,9 +1542,7 @@ void MainWindow::showCompletionPopup() {
 }
 
 void MainWindow::showMemberCompletionPopup() {
-    // Only the globals/objects VEMCODE actually implements in simulation --
-    // see Preprocessor::replace_api_calls (Serial/Serial1/Serial2/Wire/SPI/EEPROM)
-    // and src/core/build/libs/*.inc (Servo/LiquidCrystal/SoftwareSerial) --
+    // Only globals/objects VEMCODE actually implements (Preprocessor::replace_api_calls, src/core/build/libs/*.inc),
     // so this never suggests a real-Arduino method that would silently no-op here.
     static const QStringList kFixedGlobals = {
         "Serial", "Serial1", "Serial2", "Wire", "SPI", "EEPROM"
@@ -1748,9 +1725,7 @@ void MainWindow::onNewSketch() {
         "void loop() {\n"
         "}\n";
 
-    // Shipped starters live next to the executable, not the user's (possibly
-    // relocated) default save folder -- that folder is where new sketches get
-    // written, not where the app's own bundled content lives.
+    // Shipped starters live next to the executable, not the user's (possibly relocated) default save folder.
     QString templatesDir = QCoreApplication::applicationDirPath() + "/sketches/templates";
     QList<SketchManifestEntry> templates = loadSketchManifest(templatesDir + "/manifest.json");
 
@@ -1882,19 +1857,7 @@ void MainWindow::populateRecentMenu(QMenu* menu) {
                 statusBar()->showMessage("File not found: " + path);
                 return;
             }
-            currentSketchPath_ = path;
-            canvasWidget_->loadLayout(path);
-            QFile file(path);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                codeEditor_->setPlainText(QString::fromUtf8(file.readAll()));
-                codeEditor_->document()->setModified(false);
-                file.close();
-            }
-            windowTitleBase_ = "VEMCODE — " + QFileInfo(path).fileName();
-            updateWindowTitle();
-            checkForAutosaveRecovery(path);
-            statusBar()->showMessage("Opened: " + path);
-            addToRecentSketches(path);
+            openSketchFile(path);
         });
     }
 }
@@ -1909,12 +1872,8 @@ void MainWindow::addToRecentSketches(const QString& path) {
     settings.setValue("recent/sketches", recent);
 }
 
-// Slider range 1-25 is unchanged (same drag distance/step count as before),
-// but the value->speed mapping is now two log-scaled segments joined at
-// 1.0x (dead center, tick 13): 1..13 spans 0.1x-1.0x, 13..25 spans 1.0x-5.0x.
-// Equal slider distance means equal *ratio* change in speed either side of
-// 1x, not a flat +/-0.1x -- matches how a speed multiplier is actually
-// perceived (0.1x -> 0.2x is huge; 4x -> 4.1x is nothing).
+// Two log-scaled segments joined at 1.0x (tick 13): 1..13 spans 0.1x-1.0x, 13..25 spans 1.0x-5.0x, so equal
+// slider distance means equal *ratio* change in speed, matching how a multiplier is actually perceived.
 static float speedForSliderValue(int value) {
     if (value <= 13)
         return 0.1f * std::pow(10.0f, (value - 1) / 12.0f);

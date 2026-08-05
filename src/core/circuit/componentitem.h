@@ -59,37 +59,28 @@ public:
     // knows where to split its pins vector into row pins vs. column pins.
     virtual void configureRowsCols(int rows, int cols);
 
-    // Max7219 only: called once, right after construction and before the
-    // layout phase queries boundingRect() -- device count changes the
-    // item's rendered size (N stacked 8x8 squares), so it must be known
-    // before layout math runs, unlike configureRowsCols/configureMultiPin
-    // which only affect pin wiring.
+    // Max7219 only: called once after construction, before layout queries boundingRect() --
+    // device count changes rendered size (N stacked 8x8), unlike configureRowsCols/configureMultiPin.
     virtual void configureDeviceCount(int count);
 
-    // NeoPixel only: called once, right after construction and before the
-    // layout phase queries boundingRect() -- same timing requirement as
-    // configureDeviceCount, since pixel count changes the item's rendered
-    // size.
+    // NeoPixel only: called once after construction, before layout queries boundingRect()
+    // -- pixel count changes rendered size (same timing requirement as configureDeviceCount).
     virtual void configureStripLength(int count);
 
-    // NeoPixel only: whole-strip color update, sent once per show(). rgb is
-    // count*3 interleaved bytes (r,g,b per pixel), same order the runtime
-    // hook hands off.
+    // NeoPixel only: whole-strip update sent once per show(); rgb is count*3 interleaved
+    // bytes (r,g,b per pixel).
     virtual void updateStripPixels(const QByteArray& rgb);
 
-    // OLED only: called once, right after construction and before the
-    // layout phase queries boundingRect() -- same timing requirement as
-    // configureDeviceCount/configureStripLength, since display size changes
-    // the item's rendered size.
+    // OLED only: called once after construction, before layout queries boundingRect() --
+    // same timing requirement as configureDeviceCount/configureStripLength.
     virtual void configureDisplaySize(int width, int height);
 
-    // OLED only: whole-framebuffer update, sent once per display(). pixels
-    // is width*height bytes, one per pixel (0/1), row-major.
+    // OLED only: whole-framebuffer update sent once per display(); pixels is width*height
+    // bytes, one per pixel (0/1), row-major.
     virtual void updateOledFramebuffer(const QByteArray& pixels, int width, int height);
 
-    // Called once by CanvasWidget after inputChanged is connected. Emitting
-    // from the constructor or configureMultiPin instead silently drops it --
-    // both run before the caller can connect to a freshly-created item.
+    // Called once by CanvasWidget after inputChanged is connected -- emitting from the
+    // constructor or configureMultiPin instead silently drops it (both run before connect).
     virtual void emitInitialValue();
 
     // Set fresh on each newly-built item -- a theme change triggers a full

@@ -6,12 +6,9 @@ static const QColor MATRIX_BG    ("#1a1a1a");
 static const QColor MATRIX_LIT   ("#dc4a4a");
 static const QColor MATRIX_UNLIT ("#3a1414");
 
-// Single device: a square whose side length matches the long side (100px)
-// every other component's rectangle uses -- an 8x8 dot grid reads better in
-// a square than squeezed into the standard 100x44 rectangle. Daisy-chained
-// devices (LedControl's 4th constructor arg) stack as additional 100x100
-// bands, tallest at the bottom of the chain the same order LedControl
-// addresses them (addr 0 on top).
+// Single device: a square (100px, matching every other component's long side) since an
+// 8x8 dot grid reads better square than in the standard 100x44 rect. Daisy-chained devices
+// stack as additional 100x100 bands, addr 0 on top (LedControl's addressing order).
 class Max7219Item : public ComponentItem {
     static constexpr int MAX_DEVICES = 8;
     int clkPin_ = -1;
@@ -68,9 +65,9 @@ public:
             for (int row = 0; row < N; ++row) {
                 for (int col = 0; col < N; ++col) {
                     int srcRow, srcCol;
-                    rotatedSource(row, col, srcRow, srcCol);   // <-- add this
+                    rotatedSource(row, col, srcRow, srcCol);
 
-                    p->setBrush(lit_[dev][srcRow][srcCol] ? MATRIX_LIT : MATRIX_UNLIT); // <-- use srcRow/srcCol, not row/col
+                    p->setBrush(lit_[dev][srcRow][srcCol] ? MATRIX_LIT : MATRIX_UNLIT);
                     float cx = MARGIN + col * cell + cell / 2.0f;
                     float cy = bandY + MARGIN + row * cell + cell / 2.0f;
                     p->drawEllipse(QPointF(cx, cy), dotD / 2.0f, dotD / 2.0f);
@@ -78,9 +75,8 @@ public:
             }
         }
 
-        // Straight leads on the left edge, one per CS/CLK/DIN pin slot --
-        // MAX7219 is an output, so CanvasWidget::updateWires attaches wire i
-        // at local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the left edge, one per CS/CLK/DIN slot; wire i attaches at
+        // local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             float ly = 15.0f + i * 5.0f;
@@ -93,11 +89,9 @@ public:
         if (pins.size() > 2) dinPin_ = pins[2];
     }
 
-    // Row updates arrive keyed by this item's own pin (CS) once LedControl.h
-    // has fully latched a row byte -- CLK/DIN never toggle a visible state on
-    // their own, so there's no per-bit GUI-thread sampling to worry about
-    // (the same cross-thread scanning limit that ruled out multi-digit
-    // seven-segment multiplexing never comes up here).
+    // Row updates arrive keyed by this item's own pin (CS) once LedControl.h latches a row
+    // byte -- CLK/DIN never toggle visible state, so there's no per-bit GUI-thread sampling
+    // issue (same limit that ruled out seven-segment multiplexing).
     void updateMatrixRow(int addr, int row, int bits) override {
         if (addr < 0 || addr >= numDevices_ || row < 0 || row > 7) return;
         for (int col = 0; col < 8; ++col)
@@ -134,8 +128,7 @@ static bool registered_max7219 = []() {
     prefixed.wire_color = MATRIX_LIT;
     ComponentRegistry::instance().register_component(prefixed);
 
-    // Bare CS/CLK/DIN defines with no shared prefix -- same tradeoff
-    // HBridgeMotor's bare ENA/IN1/IN2 entry accepts.
+    // Bare CS/CLK/DIN defines with no shared prefix -- same tradeoff as HBridgeMotor's bare ENA/IN1/IN2 entry.
     ComponentDefinition bare{
         "Max7219",
         {},

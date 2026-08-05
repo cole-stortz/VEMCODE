@@ -31,11 +31,8 @@ public:
 
         QRectF r = boundingRect();
 
-        // Leads drawn under the bulb, extending well past its edge -- the
-        // bulb paints over the overlap, so the visible stubs always end up
-        // flush with the bulb regardless of the exact radius.
-        // RGB LEDs are outputs, so CanvasWidget::updateWires attaches wire i
-        // at local (0, 15 + i*5), same spacing as WIRE_SPACING in canvaswidget.h.
+        // Leads drawn under the bulb, extending past its edge, so stubs stay flush
+        // regardless of radius; wire i attaches at local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 3; ++i) {
             qreal y = 15 + i * 5;
@@ -92,7 +89,7 @@ static bool registered = []() {
             {"GREEN", {"GREENPIN", "GPIN","GREEN_PIN", "G_PIN"}},
             {"BLUE",  {"BLUEPIN", "BPIN", "BLUE_PIN","B_PIN"}},
         },
-        {},    // detect_pattern — none
+        {},    // detect_pattern -- none
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new RGBLedItem(pin, parent);

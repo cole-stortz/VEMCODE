@@ -41,8 +41,7 @@ public:
         p->setFont(QFont("Courier New", 7));
         p->drawText(r, Qt::AlignHCenter | Qt::AlignBottom, "IR");
 
-        // Straight lead on the right edge -- IR sensors are inputs, so
-        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        // Straight lead on the right edge; wire attaches at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 5, 15), QPointF(r.width(), 15));
     }

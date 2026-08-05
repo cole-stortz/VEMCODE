@@ -63,12 +63,8 @@ static const std::string TMP_SUFFIX = ".tmp.dylib";
 static const std::string TMP_SUFFIX = ".tmp.so";
 #endif
 
-// Each load() already removes its own immediate predecessor via
-// last_tmp_path_, but a process that never destructs cleanly (crash,
-// force-kill, an old GUI session left running) orphans its temp copy
-// forever. This sweeps a sketch's directory on every successful load and
-// keeps only the kMaxTmpFiles most recent, self-healing any pileup over
-// time without needing per-process bookkeeping across separate processes.
+// load() cleans up its own predecessor, but a crash/force-kill orphans the temp file
+// forever; this sweeps the sketch's directory each load, keeping only the kMaxTmpFiles newest.
 static constexpr int kMaxTmpFiles = 8;
 
 static void cleanup_old_tmp_files(const std::string& dll_path) {
@@ -112,7 +108,6 @@ SketchHost::~SketchHost() {
 bool SketchHost::load(const std::string& dll_path) {
     dll_path_ = dll_path;
 
-    // Free any previously loaded library
     if (dll_.handle) {
         lib_close(dll_.handle);
         dll_.handle   = nullptr;
@@ -121,27 +116,15 @@ bool SketchHost::load(const std::string& dll_path) {
         dll_.vb_loop  = nullptr;
     }
 
-    // Now that the old handle (if any) is closed, it's safe to remove its
-    // temp file.
+    // Safe to remove the old temp file now that its handle is closed.
     if (!last_tmp_path_.empty()) {
         std::error_code ec;
         std::filesystem::remove(last_tmp_path_, ec);
         last_tmp_path_.clear();
     }
 
-    // Copy to a temp file so the compiler can overwrite the original (the
-    // original is locked while loaded on Windows). PID-scoped so two VEMCODE
-    // processes running the same sketch never overwrite each other's mapped
-    // file -- doing so while it's still dlopen'd elsewhere causes a SIGBUS.
-    // Also counter-scoped so a *second* load() within the same process (Stop
-    // then Run again, or an auto-recompile hot-reload) never reuses the same
-    // path either: dlclose() doesn't guarantee the dynamic linker forgets
-    // that (device, inode) pair, so overwriting and re-dlopen-ing the same
-    // path afterward can crash dlsym() on the next load with a SIGSEGV deep
-    // inside the dynamic linker's own symbol lookup -- reproduced in
-    // isolation with a 30-line dlopen/dlclose/overwrite/dlopen repro, no
-    // threads involved. A fresh name every load sidesteps the identity reuse
-    // entirely instead of relying on dlclose() to fully undo it.
+    // PID + load-counter scoped temp copy: a reused path can SIGBUS if still mapped
+    // elsewhere, or SIGSEGV in the linker's symbol lookup even after dlclose() (reproduced in isolation).
     std::string tmp_path = dll_path + "." + std::to_string(current_pid()) +
                             "." + std::to_string(load_count_++) + TMP_SUFFIX;
     lib_copy(dll_path, tmp_path);

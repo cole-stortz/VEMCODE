@@ -38,8 +38,7 @@ public:
         p->setBrush(themedHousing(DISTANCE_SENSOR_ACCENT, isDarkTheme(), 600));
         p->drawRoundedRect(r, 4, 4);
 
-        // "Eyes" live in the top band only -- the bottom is reserved for the
-        // cm QLineEdit proxy, which is the actual human-readable readout.
+        // "Eyes" live in the top band only; the bottom is reserved for the cm QLineEdit proxy.
         qreal eyeR = 16.0;
         QPointF c1(r.center().x() - eyeR * 1.25, r.top() + 22);
         QPointF c2(r.center().x() + eyeR * 1.25, r.top() + 22);
@@ -52,9 +51,8 @@ public:
             p->drawEllipse(c, eyeR * 0.8, eyeR * 0.8);
         }
 
-        // Straight leads on the right edge, one per TRIG/ECHO pin slot --
-        // distance sensors are inputs, so CanvasWidget::updateWires attaches
-        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the right edge, one per TRIG/ECHO slot; wire i attaches at
+        // local (width, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 2; ++i) {
             qreal y = 15 + i * 5;
@@ -62,9 +60,8 @@ public:
         }
     }
 
-    // Called by CanvasWidget after inputChanged is connected -- setting this
-    // in the constructor would fire textChanged before anything outside this
-    // object could possibly be connected yet, silently dropping the signal.
+    // Called by CanvasWidget after inputChanged is connected -- setting this in the
+    // constructor would fire textChanged before anything could be connected, silently dropping it.
     void emitInitialValue() override {
         input_->setText("10");
     }

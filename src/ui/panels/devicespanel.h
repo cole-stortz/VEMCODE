@@ -5,16 +5,14 @@
 #include <vector>
 
 // Virtual I2C device panel: a table of 7-bit address -> response byte sequence.
-// When the sketch calls Wire.requestFrom(addr, n), the runtime looks up addr
-// here and returns the configured bytes. Editable at runtime.
+// Wire.requestFrom(addr, n) looks up addr here and returns the configured bytes.
 class DevicesPanel : public QWidget {
     Q_OBJECT
 
 public:
     explicit DevicesPanel(QWidget* parent = nullptr);
 
-    // Re-emits deviceChanged for every configured row -- used to repopulate
-    // the runtime's device table after a sketch reload wipes RuntimeState.
+    // Re-emits deviceChanged for every row; repopulates the runtime's table after a sketch reload wipes RuntimeState.
     void pushAll();
 
 signals:

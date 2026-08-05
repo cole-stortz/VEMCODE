@@ -39,12 +39,8 @@ void SerialPlotter::parseLine(const QString& line, qint64 time_ms) {
     bool any_added = false;
 
     if (trimmed.contains(':')) {
-        // Handles both the tight Arduino IDE Serial Plotter format
-        // ("Wave1:50.0,Wave2:20.0") and the far more common tutorial-sketch
-        // style ("x position: 35", "Sensor 1 - Red: 120 | Green: 130") --
-        // the label is whatever run of letters/digits/spaces sits directly
-        // before a colon, so "Sensor 1 - " (broken by the '-') is dropped
-        // but "x position" (no break before the colon) is kept whole.
+        // Label is whatever run of letters/digits/spaces sits directly before a colon, so it
+        // handles both "Wave1:50.0" and tutorial-style "Sensor 1 - Red: 120 | Green: 130".
         static const QRegularExpression label_re(
             R"(([A-Za-z_][\w ]*?)\s*:\s*(-?\d+(?:\.\d+)?))");
         auto it = label_re.globalMatch(trimmed);
@@ -60,10 +56,7 @@ void SerialPlotter::parseLine(const QString& line, qint64 time_ms) {
     }
 
     if (!any_added) {
-        // No label found (or no colon at all) -- fall back to Serial
-        // Plotter's simplest form: bare numbers separated by whitespace/
-        // commas, defaulting to "Value"/"Value 2"/... Tolerates a trailing
-        // unit suffix like "35cm" by taking just the leading numeric run.
+        // Fall back to bare numbers ("Value"/"Value 2"/...); tolerates a trailing unit like "35cm".
         static const QRegularExpression sep_re("[\\s,]+");
         static const QRegularExpression lead_num_re(R"(^-?\d+(?:\.\d+)?)");
         QStringList tokens = trimmed.split(sep_re, Qt::SkipEmptyParts);
@@ -138,8 +131,7 @@ void SerialPlotter::paintEvent(QPaintEvent*) {
     int plot_w      = plot_right - plot_left;
     if (plot_h <= 0 || plot_w <= 0) return;
 
-    // Y axis range only grows to fit new samples (see range_min_/range_max_
-    // comment in the header) -- no per-frame rescan of visible samples here.
+    // Y axis range only grows (see range_min_/range_max_ in the header); no per-frame rescan here.
     double min_v = has_range_ ? range_min_ : 0;
     double max_v = has_range_ ? range_max_ : 1;
     if (qFuzzyCompare(min_v + 1.0, max_v + 1.0)) { min_v -= 1; max_v += 1; } // flat-line padding

@@ -33,11 +33,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Leads drawn under the knob, extending well past its edge -- the
-        // knob paints over the overlap, so the visible stubs always end up
-        // flush with the knob regardless of the exact radius.
-        // Rotary encoders are inputs, so CanvasWidget::updateWires attaches
-        // wire i at local (width, 15 + i*5), same spacing as WIRE_SPACING.
+        // Leads drawn under the knob, extending past its edge, so stubs stay flush regardless
+        // of radius; wire i attaches at local (width, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 2; ++i) {
             qreal ly = 15 + i * 5;
@@ -60,9 +57,8 @@ public:
             p->drawLine(p1, p2);
         }
 
-        // No clamping on the angle -- unlike the potentiometer's bounded
-        // 270deg sweep, an encoder spins freely, so the needle just keeps
-        // going around as value_ accumulates past 360deg.
+        // No clamping on the angle -- unlike the potentiometer's bounded 270deg sweep, an
+        // encoder spins freely past 360deg.
         qreal a = qDegreesToRadians(value_ * 30.0);
         p->setPen(QPen(QColor("#1a1a1a"), 2));
         p->drawLine(c, c + QPointF(std::cos(a) * rad * 0.8, std::sin(a) * rad * 0.8));

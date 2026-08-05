@@ -12,22 +12,15 @@ struct BoardProfile {
     int pwm_resolution;
     int serial_count;  // number of hardware serial ports (capped at runtime support: Serial + Serial1 + Serial2)
 
-    // Default board fill color, shared by every profile below -- balanced
-    // lightness so it reads against both the dark and light canvas viewport
-    // background. Overridable per-sketch via ctrl+click on the board (see
-    // CanvasWidget::boardColorOverride_), saved in .vblayout.
+    // Default board fill color, balanced to read against both dark/light canvas backgrounds.
+    // Overridable per-sketch via ctrl+click (CanvasWidget::boardColorOverride_), saved in .vblayout.
     QColor board_color = QColor("#303030");
 
-    // Board width in canvas px (height already scales with pin_count) --
-    // gives boards a distinct footprint instead of every board rendering at
-    // the same 200px width.
+    // Board width in canvas px (height already scales with pin_count) -- gives each board a distinct footprint.
     int board_width = 200;
 
-    // The board's fixed hardware I2C pins (Wire's default bus) -- matches
-    // real silicon: Uno/Nano/Teensy 4.1 dual-purpose SDA/SCL with A4/A5,
-    // Mega/Due have dedicated SDA/SCL pins outside the analog block. Used
-    // to anchor the first I2C device on canvas to a real pin instead of a
-    // generic fallback point -- see CanvasWidget::refresh().
+    // Fixed hardware I2C pins (Wire's default bus), matching real silicon (Uno/Nano/Teensy
+    // dual-purpose with A4/A5; Mega/Due dedicated). Anchors the first I2C device on canvas -- see CanvasWidget::refresh().
     int sda_pin = 18;
     int scl_pin = 19;
 };

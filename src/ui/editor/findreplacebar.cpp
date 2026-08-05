@@ -72,10 +72,7 @@ FindReplaceBar::FindReplaceBar(QPlainTextEdit* editor, QWidget* parent)
     findInput_->installEventFilter(this);
     replaceInput_->installEventFilter(this);
 
-    // Keeps findMatches_ correct if the document is edited while the bar is
-    // open -- previously this only re-ran on findInput_ changes or after our
-    // own replace actions, so typing directly in the editor with the bar
-    // open left findMatches_ pointing at stale positions.
+    // Re-run search on editor edits too, not just findInput_ changes, so findMatches_ doesn't go stale.
     connect(editor_, &QPlainTextEdit::textChanged, this, [this]() {
         if (isVisible()) runSearch();
     });
@@ -107,8 +104,7 @@ void FindReplaceBar::hideBar() {
     editor_->setFocus();
 }
 
-// Re-scans the whole document for findInput_'s text, highlights every match, and
-// jumps to whichever match is nearest the current cursor position.
+// Re-scans the document, highlights every match, and jumps to the one nearest the cursor.
 void FindReplaceBar::runSearch() {
     QString needle = findInput_->text();
     findMatches_.clear();

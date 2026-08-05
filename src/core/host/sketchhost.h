@@ -81,11 +81,8 @@ private:
     ArduinoAPI     api_;
     std::string    dll_path_;
 
-    // Every load() gets its own uniquely-named temp copy (PID + a monotonic
-    // counter) rather than reusing one fixed name -- see the comment in
-    // load() for why reusing a path across reloads isn't safe even after
-    // dlclose(). last_tmp_path_ is what the destructor (and the next load())
-    // clean up once it's no longer mapped.
+    // Every load() gets its own uniquely-named temp copy (PID + monotonic counter); see
+    // load() for why reusing a path isn't safe. Cleaned up by the destructor / next load() once unmapped.
     std::string    last_tmp_path_;
     unsigned long  load_count_ = 0;
 

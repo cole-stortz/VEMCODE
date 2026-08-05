@@ -10,8 +10,8 @@ class LedItem : public ComponentItem {
     bool active_;
     QColor baseColor_ = LED_ACTIVE; // configurable -- the "on" color
 
-    // Derives a dimmed "off" color from the current base color, same
-    // proportions as the original hardcoded LED_ACTIVE/LED_INACTIVE pair.
+    // Derives a dimmed "off" color from the base color, same proportions as the original
+    // hardcoded LED_ACTIVE/LED_INACTIVE pair.
     static QColor dimmed(const QColor& c, bool dark) {
         return themedHousing(c, dark, 400);
     }
@@ -25,11 +25,8 @@ public:
     void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override {
         QRectF r = boundingRect();
 
-        // Lead drawn under the bulb, extending well past its edge -- the
-        // bulb paints over the overlap, so the visible stub always ends up
-        // flush with the bulb regardless of the exact radius.
-        // LEDs are outputs, so CanvasWidget::updateWires attaches the wire
-        // at local (0, 15).
+        // Lead drawn under the bulb, extending past its edge, so the stub stays flush
+        // regardless of radius; wire attaches at local (0, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(35, 15), QPointF(0, 15));
 
@@ -70,8 +67,8 @@ static bool registered = []() {
     ComponentDefinition def{
         "LED",
         {"LED", "LAMP", "DIODE", "INDICATOR"},
-        {},    // detect_multi — none
-        {},    // detect_pattern — none
+        {},    // detect_multi -- none
+        {},    // detect_pattern -- none
         true,  // is_output
         [](int pin, QGraphicsItem* parent) -> ComponentItem* {
             return new LedItem(pin, parent);

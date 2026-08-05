@@ -32,9 +32,8 @@ public:
         p->drawText(QRectF(screen.left() + 4, screen.top() + screen.height() / 2, screen.width() - 8, screen.height() / 2 - 2),
                     Qt::AlignLeft | Qt::AlignVCenter, row1_.left(16));
 
-        // Straight leads on the left edge, one per RS/EN/D4-D7 pin slot --
-        // LCDs are outputs, so CanvasWidget::updateWires attaches wire i at
-        // local (0, 15 + i*5), same spacing as WIRE_SPACING.
+        // Straight leads on the left edge, one per RS/EN/D4-D7 slot; wire i attaches at
+        // local (0, 15 + i*5), matching WIRE_SPACING.
         p->setPen(QPen(QColor("#999"), 2));
         for (int i = 0; i < 6; ++i) {
             qreal ly = 15 + i * 5;

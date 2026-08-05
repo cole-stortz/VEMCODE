@@ -16,9 +16,7 @@ struct KeybindEntry {
     QKeySequence defaultSeq;
 };
 
-// Single source of truth for every remappable action's id/label/default --
-// shared by MainWindow (to create/rebind QShortcuts) and SettingsDialog (to
-// build the Keybinds tab), so the two can't drift out of sync.
+// Single source of truth shared by MainWindow (QShortcuts) and SettingsDialog (Keybinds tab), so they can't drift.
 const QVector<KeybindEntry>& defaultKeybinds();
 
 class SettingsDialog : public QDialog {
@@ -48,9 +46,7 @@ public:
     void setKeybinds(const QMap<QString, QKeySequence>& current);
     QMap<QString, QKeySequence> keybinds() const;
 
-    // Best-effort g++ + project-root detection, shared by GUI first-run and
-    // headless mode. False if g++ isn't on PATH (or /usr/bin/g++) or
-    // arduinoapi.h can't be found relative to the running binary.
+    // Shared by GUI first-run and headless mode; false if g++ or arduinoapi.h can't be located.
     static bool autoDetectCompiler(QString& compilerPath, QString& projectRoot);
 
 private slots:

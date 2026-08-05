@@ -40,10 +40,8 @@ public:
         p->setBrush(base);
         p->drawRoundedRect(r, 5, 5);
 
-        // Grille fills the top band only -- the bottom third is left clear for
-        // the temp_in_/humid_in_ QLineEdit proxies, which double as the
-        // human-readable readout (no point painting a duplicate screen
-        // underneath widgets that would just cover it).
+        // Grille fills the top band only; the bottom third is left clear for the
+        // temp_in_/humid_in_ QLineEdit proxies, which double as the readout.
         QRectF grille = r.adjusted(6, 6, -6, -r.height() * 0.42);
         p->setPen(QPen(base.darker(160), 1));
         p->setBrush(base.darker(500));
@@ -53,8 +51,7 @@ public:
             for (int col = 0; col < cols; ++col)
                 p->drawRect(QRectF(grille.x() + col * cw + 1, grille.y() + row * ch + 1, cw - 2, ch - 2));
 
-        // Straight lead on the right edge -- DHT is an input, so
-        // CanvasWidget::updateWires attaches the wire at local (width, 15).
+        // Straight lead on the right edge; wire attaches at local (width, 15).
         p->setPen(QPen(QColor("#999"), 2));
         p->drawLine(QPointF(r.width() - 3, 15), QPointF(r.width() + 1, 15));
     }
