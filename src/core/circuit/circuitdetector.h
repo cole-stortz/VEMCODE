@@ -46,6 +46,16 @@ public:
     const std::vector<std::string>&       warnings()   const { return warnings_; }
     void reset();
 
+    // Available to ComponentDefinition::detect_custom callbacks.
+    int resolve_pin(const std::string& token,
+                    const std::map<std::string, std::string>& defines,
+                    int depth = 0);
+    bool contains_any(const std::string& str,
+                      const std::vector<std::string>& keywords);
+    bool pin_already_added(int pin) const;
+    std::string to_upper(const std::string& str);
+    void add_detected_component(const DetectedComponent& comp, std::set<int>& claimed);
+
 private:
     std::map<std::string, std::vector<int>> parse_arrays(const std::string& source);
     std::set<int> detect_multipin(
@@ -67,13 +77,6 @@ private:
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
-
-    // Keypad: row/col pin counts are read straight from the sketch, not fixed, so it can't
-    // use the fixed-role-count MultiPinStrategy engine and is handled on its own.
-    void detect_keypad_matrix(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        const std::map<std::string, std::vector<int>>& arrays,
-        std::set<int>& claimed);
 
     // DHT: "DHT dht(DHTPIN, DHTTYPE)" -- 2nd arg is a sensor-type selector, not a pin, so
     // detect_constructor_pattern's "every arg is a pin" rule doesn't apply.
@@ -101,6 +104,10 @@ private:
         const std::map<std::string, std::string>& defines,
         std::set<int>& claimed);
 
+    void detect_custom_components(const std::string& source,
+        const std::map<std::string, std::string>& defines,
+        const std::map<std::string, std::vector<int>>& arrays,
+        std::set<int>& claimed);
     void detect_pattern_matches(const std::string& source,
         const std::map<std::string, std::string>& defines, std::set<int>& claimed);
     void detect_method_call_pattern(const ComponentDefinition& def, const std::string& pattern,
@@ -131,11 +138,4 @@ private:
         const std::map<std::string, std::string>& defines);
 
     std::string infer_type(const std::string& name, const std::string& mode);
-    int resolve_pin(const std::string& token,
-                    const std::map<std::string, std::string>& defines,
-                    int depth = 0);
-    bool contains_any(const std::string& str,
-                      const std::vector<std::string>& keywords);
-    bool pin_already_added(int pin) const;
-    std::string to_upper(const std::string& str);
 };

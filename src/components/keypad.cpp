@@ -1,9 +1,13 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
+#include "src/core/circuit/circuitdetector.h"
 #include <QPainter>
 #include <QCursor>
 #include <QGraphicsSceneMouseEvent>
 #include <QVariantList>
+#include <regex>
+#include <sstream>
+#include <algorithm>
 
 static const QColor KEY_ACTIVE  ("#e0822e");
 static constexpr int CELL = 26;
@@ -138,6 +142,96 @@ static bool reg_keypad = []() {
         }
     };
     def.wire_color = KEY_ACTIVE;
+
+    // Row/col counts are read straight from the sketch, not fixed, so this can't use the
+    // fixed-role-count MultiPinStrategy engine.
+    def.detect_custom = [](CircuitDetector& ctx, const std::string& source,
+                            const std::map<std::string, std::string>& defines,
+                            const std::map<std::string, std::vector<int>>&,
+                            std::set<int>& claimed) {
+        constexpr int MIN_LINES = 2, MAX_LINES = 4;
+        if (source.find("Keypad") == std::string::npos) return;
+
+        auto has_role_keyword = [](const std::string& upper, const char* kw) {
+            return upper.find(kw) != std::string::npos;
+        };
+
+        // Preferred: rowPins[]/colPins[] arrays, the shape every real Keypad.h tutorial uses.
+        auto scan_pin_array = [&](const char* keyword) -> std::vector<int> {
+            static const std::regex arr_re(
+                R"((?:const\s+)?(?:byte|int|uint8_t)\s+(\w+)\s*\[[^\]]*\]\s*=\s*\{([^}]+)\})");
+            for (auto it = std::sregex_iterator(source.begin(), source.end(), arr_re);
+                 it != std::sregex_iterator(); ++it) {
+                std::string name = (*it)[1].str();
+                if (!has_role_keyword(ctx.to_upper(name), keyword)) continue;
+                std::vector<int> pins;
+                std::stringstream ss((*it)[2].str());
+                std::string token;
+                while (std::getline(ss, token, ',')) {
+                    token.erase(0, token.find_first_not_of(" \t\r\n"));
+                    token.erase(token.find_last_not_of(" \t\r\n") + 1);
+                    int pin = ctx.resolve_pin(token, defines);
+                    if (pin < 0) return {};
+                    pins.push_back(pin);
+                }
+                return pins;
+            }
+            return {};
+        };
+
+        std::vector<int> row_pins = scan_pin_array("ROW");
+        std::vector<int> col_pins = scan_pin_array("COL");
+
+        // Fallback: grouped #defines -- #define ROW1 9 / ROW2 8 ... (same for COL).
+        auto scan_defines = [&](const char* keyword) -> std::vector<int> {
+            static const std::regex num_re(R"((\d+)$)");
+            std::vector<std::pair<int,int>> numbered; // (suffix number, pin)
+            for (const auto& d : defines) {
+                std::string upper = ctx.to_upper(d.first);
+                if (!has_role_keyword(upper, keyword)) continue;
+                std::smatch m;
+                if (!std::regex_search(upper, m, num_re)) continue;
+                int pin = ctx.resolve_pin(d.second, defines);
+                if (pin < 0) continue;
+                numbered.push_back({std::stoi(m[1].str()), pin});
+            }
+            std::sort(numbered.begin(), numbered.end());
+            std::vector<int> pins;
+            for (auto& np : numbered) pins.push_back(np.second);
+            return pins;
+        };
+
+        if (row_pins.empty()) row_pins = scan_defines("ROW");
+        if (col_pins.empty()) col_pins = scan_defines("COL");
+
+        int rows = (int)row_pins.size();
+        int cols = (int)col_pins.size();
+        if (rows < MIN_LINES || rows > MAX_LINES || cols < MIN_LINES || cols > MAX_LINES) return;
+
+        for (int p : row_pins) if (claimed.count(p)) return;
+        for (int p : col_pins) if (claimed.count(p)) return;
+
+        DetectedComponent comp;
+        comp.type_name = "Keypad";
+        comp.pin       = row_pins[0];
+        comp.pins      = row_pins;
+        comp.pins.insert(comp.pins.end(), col_pins.begin(), col_pins.end());
+        comp.rows      = rows;
+        comp.cols      = cols;
+        comp.pin_name  = "Keypad";
+        comp.confirmed = false;
+
+        std::string label = "Keypad (ROW=";
+        for (size_t i = 0; i < row_pins.size(); ++i) label += (i ? "," : "") + std::to_string(row_pins[i]);
+        label += " COL=";
+        for (size_t i = 0; i < col_pins.size(); ++i) label += (i ? "," : "") + std::to_string(col_pins[i]);
+        label += ")";
+        comp.label = label;
+
+        if (ctx.pin_already_added(comp.pin)) return;
+        ctx.add_detected_component(comp, claimed);
+    };
+
     ComponentRegistry::instance().register_component(def);
     return true;
 }();

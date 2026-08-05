@@ -3,7 +3,11 @@
 #include <QColor>
 #include <vector>
 #include <string>
+#include <map>
+#include <set>
 #include <functional>
+
+class CircuitDetector;
 
 struct PinRole {
     std::string name;
@@ -28,6 +32,12 @@ struct ComponentDefinition {
     MultiPinStrategy multi_pin_strategy = MultiPinStrategy::None;
     std::string representative_role;
     QColor wire_color = QColor("#888888");
+
+    // Escape hatch for detection syntax the generic engine can't express.
+    std::function<void(CircuitDetector& ctx, const std::string& source,
+                        const std::map<std::string, std::string>& defines,
+                        const std::map<std::string, std::vector<int>>& arrays,
+                        std::set<int>& claimed)> detect_custom;
 };
 
 class ComponentRegistry {

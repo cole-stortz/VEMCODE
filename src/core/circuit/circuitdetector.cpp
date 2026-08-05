@@ -386,98 +386,18 @@ void CircuitDetector::detect_generic_multipin(
     }
 }
 
-void CircuitDetector::detect_keypad_matrix(
+void CircuitDetector::detect_custom_components(
     const std::string& source,
     const std::map<std::string, std::string>& defines,
     const std::map<std::string, std::vector<int>>& arrays,
     std::set<int>& claimed)
 {
-    (void)arrays; // rowPins[]/colPins[] use byte/int, not the const-int-only shared array parser
-    static constexpr int MIN_LINES = 2, MAX_LINES = 4;
+    for (const auto& def : ComponentRegistry::instance().all()) {
+        if (def.detect_custom) def.detect_custom(*this, source, defines, arrays, claimed);
+    }
+}
 
-    // Require actual keypad usage, not just ROW/COL-named pins, so this doesn't fire on
-    // unrelated matrix/grid sketches.
-    if (source.find("Keypad") == std::string::npos) return;
-    if (!ComponentRegistry::instance().find_by_type("Keypad")) return;
-
-    auto has_role_keyword = [](const std::string& upper, const char* kw) {
-        return upper.find(kw) != std::string::npos;
-    };
-
-    // Preferred: rowPins[]/colPins[] arrays, the shape every real Keypad.h tutorial sketch uses.
-    auto scan_pin_array = [&](const char* keyword) -> std::vector<int> {
-        static const std::regex arr_re(
-            R"((?:const\s+)?(?:byte|int|uint8_t)\s+(\w+)\s*\[[^\]]*\]\s*=\s*\{([^}]+)\})");
-        for (auto it = std::sregex_iterator(source.begin(), source.end(), arr_re);
-             it != std::sregex_iterator(); ++it) {
-            std::string name = (*it)[1].str();
-            if (!has_role_keyword(to_upper(name), keyword)) continue;
-            std::vector<int> pins;
-            std::stringstream ss((*it)[2].str());
-            std::string token;
-            while (std::getline(ss, token, ',')) {
-                token.erase(0, token.find_first_not_of(" \t\r\n"));
-                token.erase(token.find_last_not_of(" \t\r\n") + 1);
-                int pin = resolve_pin(token, defines);
-                if (pin < 0) return {};
-                pins.push_back(pin);
-            }
-            return pins;
-        }
-        return {};
-    };
-
-    std::vector<int> row_pins = scan_pin_array("ROW");
-    std::vector<int> col_pins = scan_pin_array("COL");
-
-    // Fallback: grouped #defines -- #define ROW1 9 / ROW2 8 ... (same for COL).
-    auto scan_defines = [&](const char* keyword) -> std::vector<int> {
-        static const std::regex num_re(R"((\d+)$)");
-        std::vector<std::pair<int,int>> numbered; // (suffix number, pin)
-        for (const auto& d : defines) {
-            std::string upper = to_upper(d.first);
-            if (!has_role_keyword(upper, keyword)) continue;
-            std::smatch m;
-            if (!std::regex_search(upper, m, num_re)) continue;
-            int pin = resolve_pin(d.second, defines);
-            if (pin < 0) continue;
-            numbered.push_back({std::stoi(m[1].str()), pin});
-        }
-        std::sort(numbered.begin(), numbered.end());
-        std::vector<int> pins;
-        for (auto& np : numbered) pins.push_back(np.second);
-        return pins;
-    };
-
-    if (row_pins.empty()) row_pins = scan_defines("ROW");
-    if (col_pins.empty()) col_pins = scan_defines("COL");
-
-    int rows = (int)row_pins.size();
-    int cols = (int)col_pins.size();
-    if (rows < MIN_LINES || rows > MAX_LINES || cols < MIN_LINES || cols > MAX_LINES) return;
-
-    for (int p : row_pins) if (claimed.count(p)) return;
-    for (int p : col_pins) if (claimed.count(p)) return;
-
-    DetectedComponent comp;
-    comp.type_name = "Keypad";
-    comp.pin       = row_pins[0];
-    comp.pins      = row_pins;
-    comp.pins.insert(comp.pins.end(), col_pins.begin(), col_pins.end());
-    comp.rows      = rows;
-    comp.cols      = cols;
-    comp.pin_name  = "Keypad";
-    comp.confirmed = false;
-
-    std::string label = "Keypad (ROW=";
-    for (size_t i = 0; i < row_pins.size(); ++i) label += (i ? "," : "") + std::to_string(row_pins[i]);
-    label += " COL=";
-    for (size_t i = 0; i < col_pins.size(); ++i) label += (i ? "," : "") + std::to_string(col_pins[i]);
-    label += ")";
-    comp.label = label;
-
-    if (pin_already_added(comp.pin)) return;
-
+void CircuitDetector::add_detected_component(const DetectedComponent& comp, std::set<int>& claimed) {
     components_.push_back(comp);
     for (int p : comp.pins) claimed.insert(p);
 }
@@ -817,7 +737,7 @@ std::set<int> CircuitDetector::detect_multipin(
 
     detect_generic_multipin(defines, arrays, claimed);
     detect_pattern_matches(source, defines, claimed);
-    detect_keypad_matrix(source, defines, arrays, claimed);
+    detect_custom_components(source, defines, arrays, claimed);
     detect_dht(source, defines, claimed);
     detect_max7219(source, defines, claimed);
     detect_neopixel(source, defines, claimed);
