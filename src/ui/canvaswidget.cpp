@@ -74,6 +74,13 @@ void CanvasWidget::setDarkTheme(bool dark) {
     refresh(lastComponents_); // redraws the board with the new theme's colors
 }
 
+void CanvasWidget::setProfile(BoardProfile p) {
+    profile_ = p;
+    BOARD_H = p.pin_count * 14;
+    BOARD_W = p.board_width;
+    refresh(lastComponents_); // redraws the board at the new profile's dimensions
+}
+
 void CanvasWidget::setSketchRunning(bool running) {
     if (sketchRunning_ == running) return;
     sketchRunning_ = running;

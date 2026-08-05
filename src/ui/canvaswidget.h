@@ -24,7 +24,7 @@ public:
     void updateMatrixRow(int pin, int addr, int row, int bits);
     void updateNeopixelShow(int pin, QByteArray rgb);
     void updateOledDisplay(int pin, QByteArray pixels, int width, int height);
-    void setProfile(BoardProfile p) { profile_ = p; BOARD_H = p.pin_count * 14; BOARD_W = p.board_width; }
+    void setProfile(BoardProfile p);
 
     // Layout mode: components become draggable instead of receiving their
     // normal interactive mouse events (button press, slider drag, etc).
