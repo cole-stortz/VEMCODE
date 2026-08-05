@@ -204,7 +204,7 @@ std::string Compiler::run_command(const std::string& cmd) {
 std::vector<CompileError> Compiler::parse_errors(const std::string& output) {
     std::vector<CompileError> errors;
 
-    std::regex pattern(R"(([^:]+):(\d+):(\d+):\s*(error|warning):\s*(.+))");
+    std::regex pattern(R"(((?:[A-Za-z]:)?[^:]+):(\d+):(\d+):\s*(error|warning):\s*(.+))");
     std::istringstream stream(output);
     std::string line;
 
