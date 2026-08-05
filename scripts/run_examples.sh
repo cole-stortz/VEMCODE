@@ -11,7 +11,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 cmake --build build
 
 EXAMPLES_DIR="app/sketches/examples"
-TIMEOUT_SECS=4
+TIMEOUT_SECS=1
 
 VEMCODE_BIN="./app/VEMCODE"
 [ -f "$VEMCODE_BIN" ] || VEMCODE_BIN="${VEMCODE_BIN}.exe"
