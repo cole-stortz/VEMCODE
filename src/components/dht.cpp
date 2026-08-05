@@ -1,8 +1,10 @@
 #include "src/core/circuit/componentitem.h"
 #include "src/core/circuit/componentregistry.h"
+#include "src/core/circuit/circuitdetector.h"
 #include <QPainter>
 #include <QLineEdit>
 #include <QGraphicsProxyWidget>
+#include <regex>
 
 static const QColor DHT_FILL("#5c8ee8");
 
@@ -78,6 +80,42 @@ static bool reg_dht = []() {
         }
     };
     def.wire_color = DHT_FILL;
+
+    // "DHT dht(DHTPIN, DHTTYPE)" -- 2nd arg is a sensor-type selector, not a pin, so the
+    // generic "every arg is a pin" constructor-pattern engine can't be used.
+    def.detect_custom = [](CircuitDetector& ctx, const std::string& source,
+                            const std::map<std::string, std::string>& defines,
+                            const std::map<std::string, std::vector<int>>&,
+                            std::set<int>& claimed) {
+        static const std::regex ctor_re(
+            R"(\bDHT\s+(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
+        auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+        auto end_it = std::sregex_iterator();
+        if (it == end_it) return;
+
+        std::string obj_name  = (*it)[1].str();
+        std::string pin_token = (*it)[2].str();
+        std::string type_token = it->size() > 3 ? (*it)[3].str() : "";
+
+        int pin = ctx.resolve_pin(pin_token, defines);
+        if (pin < 0 || claimed.count(pin) || ctx.pin_already_added(pin)) return;
+
+        std::string type_label;
+        auto type_it = defines.find(type_token);
+        if (type_it != defines.end()) type_label = type_it->second;
+
+        DetectedComponent comp;
+        comp.type_name = "DHT";
+        comp.pin       = pin;
+        comp.pins      = {pin};
+        comp.pin_name  = obj_name;
+        comp.confirmed = false;
+        comp.label = "DHT" + (type_label.empty() ? "" : " " + type_label) +
+                     " " + obj_name + " (pin " + std::to_string(pin) + ")";
+
+        ctx.add_detected_component(comp, claimed);
+    };
+
     ComponentRegistry::instance().register_component(def);
     return true;
 }();

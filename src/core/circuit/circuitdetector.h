@@ -78,12 +78,6 @@ private:
     void add_multipin_component(const ComponentDefinition& def,
         const std::vector<int>& pins, const std::string& group_label, std::set<int>& claimed);
 
-    // DHT: "DHT dht(DHTPIN, DHTTYPE)" -- 2nd arg is a sensor-type selector, not a pin, so
-    // detect_constructor_pattern's "every arg is a pin" rule doesn't apply.
-    void detect_dht(const std::string& source,
-        const std::map<std::string, std::string>& defines,
-        std::set<int>& claimed);
-
     // MAX7219: pins are almost always raw literals/const ints in the constructor call, not
     // named #defines, so the generic MultiPinStrategy engine can't find them -- same as Keypad/DHT.
     void detect_max7219(const std::string& source,

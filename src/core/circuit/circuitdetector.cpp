@@ -402,45 +402,6 @@ void CircuitDetector::add_detected_component(const DetectedComponent& comp, std:
     for (int p : comp.pins) claimed.insert(p);
 }
 
-void CircuitDetector::detect_dht(
-    const std::string& source,
-    const std::map<std::string, std::string>& defines,
-    std::set<int>& claimed)
-{
-    if (!ComponentRegistry::instance().find_by_type("DHT")) return;
-
-    // "DHT dht(DHTPIN, DHTTYPE)" -- DHTTYPE only needs to resolve for the label, not
-    // placement, so it needn't be a pin.
-    static const std::regex ctor_re(
-        R"(\bDHT\s+(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\w+)\s*)?\))");
-    auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
-    auto end_it = std::sregex_iterator();
-    if (it == end_it) return;
-
-    std::string obj_name  = (*it)[1].str();
-    std::string pin_token = (*it)[2].str();
-    std::string type_token = it->size() > 3 ? (*it)[3].str() : "";
-
-    int pin = resolve_pin(pin_token, defines);
-    if (pin < 0 || claimed.count(pin) || pin_already_added(pin)) return;
-
-    std::string type_label;
-    auto type_it = defines.find(type_token);
-    if (type_it != defines.end()) type_label = type_it->second;
-
-    DetectedComponent comp;
-    comp.type_name = "DHT";
-    comp.pin       = pin;
-    comp.pins      = {pin};
-    comp.pin_name  = obj_name;
-    comp.confirmed = false;
-    comp.label = "DHT" + (type_label.empty() ? "" : " " + type_label) +
-                 " " + obj_name + " (pin " + std::to_string(pin) + ")";
-
-    components_.push_back(comp);
-    claimed.insert(pin);
-}
-
 void CircuitDetector::detect_max7219(
     const std::string& source,
     const std::map<std::string, std::string>& defines,
@@ -738,7 +699,6 @@ std::set<int> CircuitDetector::detect_multipin(
     detect_generic_multipin(defines, arrays, claimed);
     detect_pattern_matches(source, defines, claimed);
     detect_custom_components(source, defines, arrays, claimed);
-    detect_dht(source, defines, claimed);
     detect_max7219(source, defines, claimed);
     detect_neopixel(source, defines, claimed);
     detect_oled(source, defines, claimed);
