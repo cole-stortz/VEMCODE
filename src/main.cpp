@@ -236,7 +236,7 @@ static int run_headless(int argc, char* argv[]) {
     }
 
     CircuitDetector detector;
-    detector.detect(source);
+    detector.detect(source, profile.pin_count - 1);
     std::cout << "=== Components detected ===\n";
     for (const auto& comp : detector.components())
         std::cout << comp.to_string() << "\n";

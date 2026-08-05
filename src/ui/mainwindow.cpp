@@ -1095,7 +1095,7 @@ void MainWindow::onRunClicked() {
     sketchThread_->stopSketch();
     sketchThread_->resetRuntimeState();
 
-    detector_.detect(codeEditor_->toPlainText().toStdString());
+    detector_.detect(codeEditor_->toPlainText().toStdString(), activeProfile_.pin_count - 1);
     canvasWidget_->refresh(detector_.components());
     devicesPanel_->pushAll(); // re-inject the Devices table into the freshly reset runtime
     spiPanel_->pushAll(); // re-inject the SPI response sequence into the freshly reset runtime

@@ -8,8 +8,9 @@
 #include <map>
 #include <string>
 
-void CircuitDetector::detect(const std::string& source) {
+void CircuitDetector::detect(const std::string& source, int max_pin) {
     reset();
+    max_pin_ = max_pin;
 
     auto defines  = parse_defines(source);
     auto arrays   = parse_arrays(source);                         
@@ -281,7 +282,6 @@ void CircuitDetector::detect_prefix_group(
     const std::map<std::string, std::string>& defines,
     std::set<int>& claimed)
 {
-    static constexpr int MAX_PIN = 53;
     std::vector<std::string> all_keywords;
     for (const auto& role : def.detect_multi)
         for (const auto& kw : role.keywords)
@@ -291,7 +291,7 @@ void CircuitDetector::detect_prefix_group(
     for (const auto& d : defines) {
         std::string upper = to_upper(d.first);
         int pin = resolve_pin(d.second, defines);
-        if (pin < 0 || pin > MAX_PIN) continue;
+        if (pin < 0 || pin > max_pin_) continue;
         if (!contains_any(upper, all_keywords)) continue;
         size_t pos = upper.find('_');
         if (pos == std::string::npos) continue;

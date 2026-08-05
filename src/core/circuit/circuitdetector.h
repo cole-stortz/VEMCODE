@@ -40,7 +40,12 @@ struct DetectedComponent {
 // Parses Arduino sketch source to infer what components are connected to which pins.
 class CircuitDetector {
 public:
-    void detect(const std::string& source);
+    // max_pin: highest valid pin index for the active board (BoardProfile::
+    // pin_count - 1), used to reject non-pin numeric #defines that share a
+    // keyword prefix with a real pin #define -- see detect_prefix_group.
+    // Defaults to the Mega's range (the largest supported board) so callers
+    // that don't know the board yet still get a real bound instead of none.
+    void detect(const std::string& source, int max_pin = 69);
     void confirm_pin(int pin);
     const std::vector<DetectedComponent>& components() const { return components_; }
     const std::vector<std::string>&       warnings()   const { return warnings_; }
@@ -127,6 +132,7 @@ private:
 
     std::vector<DetectedComponent> components_;
     std::vector<std::string>       warnings_;
+    int max_pin_ = 69;
 
     // Next synthetic pin handed to an I2C device with no real GPIO to key
     // by (see detect_oled) -- increments per assignment so multiple such
