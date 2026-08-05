@@ -261,19 +261,40 @@ std::string Preprocessor::strip_includes(const std::string& source) {
     return s;
 }
 
+namespace {
+// Like std::regex_replace but skips matches inside comments/strings.
+std::string mask_aware_replace(const std::string& source, const std::regex& pattern,
+                                const std::string& replacement) {
+    std::vector<bool> masked = mask_non_code(source);
+    std::string result;
+    result.reserve(source.size());
+    size_t pos = 0;
+    auto begin = std::sregex_iterator(source.begin(), source.end(), pattern);
+    auto end = std::sregex_iterator();
+    for (auto it = begin; it != end; ++it) {
+        std::smatch m = *it;
+        size_t match_pos = (size_t)m.position(0);
+        if (masked[match_pos]) continue;
+        result.append(source, pos, match_pos - pos);
+        result.append(m.format(replacement));
+        pos = match_pos + (size_t)m.length(0);
+    }
+    result.append(source, pos, std::string::npos);
+    return result;
+}
+} // namespace
+
 std::string Preprocessor::wrap_functions(const std::string& source) {
     std::string s = source;
 
     // Match: void setup() with optional whitespace
     // Replace with export decorator + vb_setup
-    std::regex setup_re(R"(void\s+setup\s*\(\s*\))");
-    s = std::regex_replace(s, setup_re,
-        "extern \"C\" VB_EXPORT\nvoid vb_setup()");
+    static const std::regex setup_re(R"(void\s+setup\s*\(\s*\))");
+    s = mask_aware_replace(s, setup_re, "extern \"C\" VB_EXPORT\nvoid vb_setup()");
 
     // Match: void loop() with optional whitespace
-    std::regex loop_re(R"(void\s+loop\s*\(\s*\))");
-    s = std::regex_replace(s, loop_re,
-        "extern \"C\" VB_EXPORT\nvoid vb_loop()");
+    static const std::regex loop_re(R"(void\s+loop\s*\(\s*\))");
+    s = mask_aware_replace(s, loop_re, "extern \"C\" VB_EXPORT\nvoid vb_loop()");
 
     return s;
 }
@@ -375,10 +396,16 @@ std::string Preprocessor::inject_safety_delay(const std::string& source) {
 std::string Preprocessor::inject_while_delays(const std::string& source) {
     std::string s = source;
     size_t pos = 0;
+    std::vector<bool> masked = mask_non_code(s);
 
     while (pos < s.size()) {
         size_t w = s.find("while", pos);
         if (w == std::string::npos) break;
+
+        if (masked[w]) {
+            pos = w + 5;
+            continue;
+        }
 
         // Must be a whole-word match
         if (w > 0 && (std::isalnum((unsigned char)s[w - 1]) || s[w - 1] == '_')) {
@@ -448,12 +475,14 @@ std::string Preprocessor::generate_forward_declarations(const std::string& sourc
         std::regex::multiline
     );
 
+    std::vector<bool> masked = mask_non_code(source);
     std::string decls;
     auto begin = std::sregex_iterator(source.begin(), source.end(), func_re);
     auto end_it = std::sregex_iterator();
 
     for (auto it = begin; it != end_it; ++it) {
         std::smatch m = *it;
+        if (masked[(size_t)m.position(0)]) continue;
         std::string name = m[2].str();
         // setup and loop are renamed by wrap_functions -- skip them
         if (name == "setup" || name == "loop") continue;
@@ -609,6 +638,7 @@ std::string Preprocessor::transform_asm_blocks(const std::string& source) {
         R"((?:__asm__|asm)\s*(?:__volatile__|volatile)?\s*\(\s*"([^"\\]*)(?:\\[ntr])?"[^;\n]*\)\s*;)"
     );
 
+    std::vector<bool> masked = mask_non_code(source);
     std::string result;
     result.reserve(source.size());
     size_t last_pos = 0;
@@ -618,6 +648,7 @@ std::string Preprocessor::transform_asm_blocks(const std::string& source) {
 
     for (auto it = begin; it != end_it; ++it) {
         const std::smatch& m = *it;
+        if (masked[(size_t)m.position(0)]) continue;
         result.append(source, last_pos, m.position() - last_pos);
 
         std::string instr = m[1].str();
