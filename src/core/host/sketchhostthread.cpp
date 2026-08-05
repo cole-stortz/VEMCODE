@@ -242,11 +242,13 @@ void SketchThread::run() {
 }
 void SketchThread::injectPin(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_pin(pin, value);
 }
 
 void SketchThread::injectButtonBounce(int pin, int value) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_button_bounce(pin, value);
 }
 
@@ -275,6 +277,7 @@ void SketchThread::armTimeline(std::vector<DetectedComponent> components, std::v
 
 void SketchThread::injectSerial(const QString& data) {
     QMutexLocker lock(&inject_mutex_);
+    std::lock_guard<std::mutex> exec_lock(host_.runtime().exec_mutex());
     host_.inject_serial(data.toStdString());
 }
 
