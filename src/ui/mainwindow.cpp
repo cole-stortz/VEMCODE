@@ -740,8 +740,10 @@ void MainWindow::rebuildSerialMonitors() {
     int  savedTab   = debugTabs_->currentIndex();
     int  oldIndex   = debugTabs_->indexOf(serialEntry.widget);
     bool wasVisible = oldIndex != -1;
+    QWidget* oldWidget = serialEntry.widget;
 
     if (wasVisible) debugTabs_->removeTab(oldIndex);
+    oldWidget->deleteLater();
     serialEntry.widget = buildSerialPanel();
     serialEntry.widget->setParent(debugTabs_->parentWidget());
     if (wasVisible) {
