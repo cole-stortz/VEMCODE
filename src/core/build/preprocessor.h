@@ -5,6 +5,7 @@
 extern const char* g_injected_header;
 extern const char* g_servo_lib;
 extern const char* g_liquidcrystal_lib;
+extern const char* g_liquidcrystal_i2c_lib;
 extern const char* g_softwareserial_lib;
 extern const char* g_wire_lib;
 extern const char* g_spi_lib;

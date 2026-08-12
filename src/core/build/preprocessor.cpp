@@ -197,6 +197,7 @@ std::string Preprocessor::strip_includes(const std::string& source) {
     static const LibEntry kLibs[] = {
         { "Servo",          g_servo_lib         },
         { "LiquidCrystal",  g_liquidcrystal_lib },
+        { "LiquidCrystal_I2C", g_liquidcrystal_i2c_lib },
         { "SoftwareSerial", g_softwareserial_lib },
         { "Wire",            g_wire_lib },
         { "SPI",             g_spi_lib },

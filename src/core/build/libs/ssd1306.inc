@@ -55,19 +55,6 @@ inline const uint8_t* lookup(char c) {
 }
 } // namespace vb_font3x5
 
-// Shared in spirit with CircuitDetector::I2C_BUS_PIN_BASE (see
-// src/core/circuit/i2cbus.h) -- the canvas key used when there's no real
-// reset pin wired (rst_pin < 0, extremely common for I2C breakout modules
-// with no dedicated RST line). Can't #include that header here (detector
-// and this injected header compile completely separately), so this stays a
-// hand-kept-in-sync base value -- but the *sequence* it produces is kept in
-// sync automatically: global objects in one translation unit construct in
-// declaration order, so this counter increments in the same order the
-// detector's regex sees the matching Adafruit_SSD1306 constructors, and the
-// two sides agree on 900, 901, 902... without either one being told the
-// other's count.
-static int g_next_i2c_bus_pin = 900;
-
 class Adafruit_SSD1306 {
 public:
     static constexpr int MAX_W = 128;

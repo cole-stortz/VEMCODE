@@ -17,6 +17,10 @@ typedef uint16_t word;
 
 static ArduinoAPI* api = nullptr;
 
+// Shared canvas key for I2C devices with no real GPIO pin -- lives here, not per-lib, so
+// sketches combining two such devices share one sequence instead of colliding at 900.
+static int g_next_i2c_bus_pin = 900;
+
 extern "C" VB_EXPORT
 void vb_init(ArduinoAPI* a) { api = a; }
 
