@@ -44,6 +44,7 @@ The Components are detected through a system of reading through the `#defines`, 
 - `pinMode(LED, OUTPUT)` >> detects a LED as an output
 - `myServo.attach(9);`     >> detects a servo at pin 9, labeled `myServo`
 - `LiquidCrystal lcd(8, 9, 10, 11, 12, 13)` >> detects a LCD at specified pins
+- `LiquidCrystal_I2C lcd(0x27, 20, 4)` >> detects an I2C LCD sized 20x4
 ### Naming Conventions That Work
 VEMCODE matches keywords against your pin names (case-insensitive). Any pin name containing one of these words will be detected as that component:
 
@@ -73,7 +74,7 @@ VEMCODE matches keywords against your pin names (case-insensitive). Any pin name
 | OLED (SSD1306) | `OLED`, `SSD1306`, `DISPLAY`, `SCREEN` | detected via `Adafruit_SSD1306` constructor instead; no dedicated pin (I2C) |
 | Seven-Segment Display | | `SEG_A`..`SEG_G` (or `SEGA`..`SEGG`) |
 | RGB LED | | `REDPIN`/`R_PIN`, `GREENPIN`/`G_PIN`, `BLUEPIN`/`B_PIN` (suffix-paired) |
-| LCD | `LCD` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor |
+| LCD | `LCD` | `RS`, `EN`, `D4`-`D7`, or via `LiquidCrystal` constructor; or via `LiquidCrystal_I2C` constructor (no dedicated pin) |
 | IR Sensor | `IR`, `IRSENSOR`, `IR_SENSOR`, `IR_OUT`, `INFRARED` | |
 
 - **Keypad**: detected from a `byte`/`int`/`uint8_t` array named with `ROW`/`COL` in it (`byte rowPins[4] = {9,8,7,6};`), or from numbered defines like `ROW1..ROW4`/`COL1..COL4`. Needs 2-4 rows and 2-4 columns.
@@ -81,6 +82,7 @@ VEMCODE matches keywords against your pin names (case-insensitive). Any pin name
 - **MAX7219**: detected from `LedControl lc(dataPin, clkPin, csPin[, numDevices]);`.
 - **NeoPixel**: detected from `Adafruit_NeoPixel strip(count, pin[, type]);`.
 - **OLED**: detected from `Adafruit_SSD1306 display(width, height[, &Wire, resetPin]);`. I2C has no dedicated pin, so the canvas item keys off `resetPin` when given, or an internal fallback slot when it's `-1` (very common for breakout modules with no RST line).
+- **LCD (I2C)**: detected from `LiquidCrystal_I2C lcd(addr[, cols, rows]);`. I2C has no dedicated pin either, so it's keyed the same way as the OLED.
 
 If a pin name matches more than one component's keywords, the longest matching keyword wins.
 ### Hardcoded Pin Numbers
@@ -207,7 +209,7 @@ The preprocessor just strips this in the code because the watchdog library is ba
 - `void wdt_reset()` : resets the countdown, call this periodically or the watchdog will fire
 
 ### LiquidCrystal
-The Liquid Crystal library is a helper for working with an LCD screen, and it's always modeled as a 16x2 display internally regardless of what size you tell it, larger displays (20x4, etc.) aren't actually simulated at that size.
+The Liquid Crystal library is a helper for working with an LCD screen. The parallel-wired `LiquidCrystal` class is always modeled as a fixed 16x2 display regardless of what size you tell it.
 - `LiquidCrystal(rs, en, d4, d5, d6, d7)` : only this one 6-pin constructor form exists, unlike real Arduino's several overloads (8-bit mode, with an RW pin)
 - `void begin(cols, rows)` : `cols`/`rows` are accepted for compile compatibility but don't change the fixed 16x2 buffer
 - `void clear()` : clears the display
@@ -215,6 +217,16 @@ The Liquid Crystal library is a helper for working with an LCD screen, and it's 
 - `void write(char c)` : writes one character; non-printable bytes render as `*`
 - `void print(x)` : prints `const char*`, `String`, `int`, `long`, `unsigned long`, or `float`
 - `void createChar(uint8_t, uint8_t*)` : accepted but does nothing, custom glyphs aren't rendered
+
+### LiquidCrystal_I2C
+The I2C-wired variant, used for breakout modules that talk over `Wire` instead of six parallel pins. Unlike the parallel `LiquidCrystal` class, it actually simulates the size you ask for, up to 20 columns x 4 rows.
+- `LiquidCrystal_I2C(addr, cols = 16, rows = 2)` : `addr` is accepted but ignored (there's no I2C address collision simulation); `cols`/`rows` are clamped to 20/4
+- `void init()` : no-op, accepted for compile compatibility
+- `void begin(cols = -1, rows = -1)` : passing a value re-clamps and resizes the display; `-1` (the default) leaves the constructor's size in place
+- `void backlight()` / `void noBacklight()` : no-ops
+- `void clear()`, `void setCursor(col, row)`, `void write(char c)`, `void print(x)`, `void createChar(uint8_t, uint8_t*)` : same behavior as `LiquidCrystal`, just bounded by the instance's own `cols`/`rows` instead of the fixed 16x2
+
+Since I2C has no dedicated GPIO pin, the canvas item is keyed off a synthetic bus pin shared with the other I2C devices on the sketch (same daisy-chain mechanism the OLED uses).
 
 ---
 ## Interrupts
@@ -316,7 +328,7 @@ Hardware timer interrupts (`TIMER1_*`/`TIMER2_*` vectors) are checked by a backg
 - Timer0, or any AVR register outside ports B/C/D and Timer1/Timer2.
 - Board-accurate AVR register layouts on Mega/Due/Teensy, `DDRx`/`PORTx`/`PINx` always use the Uno pin mapping regardless of selected board.
 - EEPROM persistence across runs.
-- LCD sizes other than 16x2, and custom LCD characters (`createChar()` is a no-op).
+- The parallel-wired `LiquidCrystal` class is fixed at 16x2 regardless of what size you request; only `LiquidCrystal_I2C` actually simulates larger sizes (up to 20x4). Custom LCD characters are unsupported either way (`createChar()` is a no-op).
 - `Servo.writeMicroseconds()`.
 - Real audio output for `tone()`, it's visual-only on the canvas.
 

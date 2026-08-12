@@ -11,6 +11,7 @@ This is a guide for adding a new simulated component to VEMCODE, a sensor, an ac
     - [Keyword Matching](#keyword-matching)
     - [Multi-Pin Groups](#multi-pin-groups)
     - [Paired Defines](#paired-defines)
+    - [Custom Detection](#custom-detection)
     - [Detection Priority](#detection-priority)
   - [Component Source File](#component-source-file)
     - [File Anatomy](#file-anatomy)
@@ -38,6 +39,12 @@ struct ComponentDefinition {
     MultiPinStrategy multi_pin_strategy = MultiPinStrategy::None;
     std::string representative_role;
     QColor wire_color = QColor("#888888");
+
+    // Escape hatch for detection syntax the generic engine can't express.
+    std::function<void(CircuitDetector& ctx, const std::string& source,
+                        const std::map<std::string, std::string>& defines,
+                        const std::map<std::string, std::vector<int>>& arrays,
+                        std::set<int>& claimed)> detect_custom;
 };
 ```
 ```c++
@@ -94,11 +101,29 @@ ComponentDefinition def{
 ```
 A sketch with `#define TRIG_PIN 9` and `#define ECHO_PIN 10` gets grouped because both strip down to the same `_PIN` suffix, and `ECHO` becomes the component's primary pin since that's the `representative_role`.
 
+### Custom Detection
+When a component's constructor or naming shape doesn't fit any `MultiPinStrategy`, set `detect_custom` instead of (or alongside) `detect_multi`: a lambda that gets the raw source, the parsed `#define`s/arrays, and the `claimed` set, and calls `ctx.add_detected_component(comp, claimed)` directly. This is how Keypad, DHT, MAX7219/LedControl, NeoPixel, the OLED, and the I2C LCD variant handle detection, cases with independent row/col counts, a non-pin constructor argument, positional-literal constructor args, or (for I2C devices) no dedicated GPIO pin at all, they key off a synthetic bus pin from `ctx.next_i2c_bus_pin()` instead. Real example, `lcd.cpp`'s `LiquidCrystal_I2C` handling:
+```c++
+def.detect_custom = [](CircuitDetector& ctx, const std::string& source,
+                        const std::map<std::string, std::string>& defines,
+                        const std::map<std::string, std::vector<int>>&,
+                        std::set<int>& claimed) {
+    static const std::regex ctor_re(
+        R"(\bLiquidCrystal_I2C\s+(\w+)\s*(?:=\s*LiquidCrystal_I2C\s*)?\(\s*(\w+)\s*(?:,\s*(\w+)\s*,\s*(\w+)\s*)?\))");
+    for (auto it = std::sregex_iterator(source.begin(), source.end(), ctor_re);
+         it != std::sregex_iterator(); ++it) {
+        // ... resolve cols/rows, build a DetectedComponent, ...
+        int pin_key = ctx.next_i2c_bus_pin();
+        ctx.add_detected_component(comp, claimed);
+    }
+};
+```
+
 ### Detection Priority
 `CircuitDetector::detect()` runs, in this exact order, and a pin claimed by an earlier step is skipped by every later one:
 1. **Multi-pin groups** (`detect_generic_multipin`), all four strategies above.
 2. **Pattern matches** (`detect_pattern_matches`): a `.method(`-style call (e.g. `myServo.attach(9)`), a wrapper-function call (e.g. anything that calls `pulseIn(...)`), or a constructor call (e.g. `LiquidCrystal lcd(8,9,...)`), depending on the shape of the pattern string in `detect_pattern`.
-3. **Hand-written special cases**: Keypad matrices, `DHT` sensors, and `LedControl`/MAX7219 chains, these don't fit the generic strategies above (independent row/col counts, a non-pin constructor argument, positional-literal constructor args) so they get their own regex-based detectors instead of a registry entry.
+3. **`detect_custom` callbacks**: Keypad matrices, `DHT` sensors, `LedControl`/MAX7219 chains, NeoPixel, the OLED, and the I2C LCD, see [Custom Detection](#custom-detection) above; these live in each component's own `.cpp` via the `detect_custom` field rather than in `circuitdetector.cpp`.
 4. **Single-keyword fallback**, from whatever `pinMode()`/`analogRead()` calls are left.
 
 If two components would still end up claiming the same pin, the first one to claim it wins and a warning is surfaced rather than the second one silently overwriting it.

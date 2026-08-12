@@ -45,6 +45,7 @@ This document covers a more in depth viewpoint about how VEMCODE actually works 
   - [Board Profiles](#board-profiles)
   - [Adding Components](#adding-components)
   - [Headless Mode](#headless-mode)
+  - [GUI Timeline Recording \& Playback](#gui-timeline-recording--playback)
   - [Building \& Testing](#building--testing)
     - [Build Scripts](#build-scripts)
     - [Test Suite](#test-suite)
@@ -429,7 +430,7 @@ long long avr_count_crossings(long long prevRaw, long long currRaw, long long ta
 
 1. **`detect_multi`**: pin-role grouping for multi-pin components, dispatched by a `MultiPinStrategy` enum (`Suffix`, `Prefix`, `Array`, `Singleton`, `None`) on each `ComponentDefinition`.
 2. **`detect_pattern`**: source-pattern matching (`.method(`, plain `func(`, or `ClassName ctor(` shapes) via `detect_method_call_pattern`/`detect_wrapper_function_pattern`/`detect_constructor_pattern`; each of these explicitly checks the `claimed` set before matching, so a pin the multi-pin pass already grabbed is skipped here.
-3. **Hand-written special cases**: Keypad matrices, DHT sensors, and MAX7219 chains, these sit alongside the two generic tiers above rather than fitting their strategy enums (independent row/col counts, a non-pin second constructor argument, positional-literal constructor args).
+3. **`detect_custom`**: a `std::function` escape hatch on `ComponentDefinition` for detection syntax the generic strategies/patterns above can't express (independent row/col counts, a non-pin second constructor argument, positional-literal constructor args, synthetic I2C bus pins). Keypad matrices, DHT sensors, MAX7219/LedControl chains, NeoPixel strips, the OLED, and the I2C LCD all register their own `detect_custom` callback in their component `.cpp` instead of living in `circuitdetector.cpp`.
 4. **`detect_single`**: keyword fallback against remaining `pinMode()` calls, via `ComponentRegistry::find_by_single_keyword()`, falling back further to a generic `"GenericOutput"`/`"GenericInput"` if nothing matches.
 
 - Conflicts are resolved by this priority order and first-claim.
@@ -460,7 +461,7 @@ Compile and runtime errors surface through three separate channels, with no `QMe
 
 - Unconditional injection: `injected_header.inc` (base runtime shims, String class, Serial helpers, `map`/`constrain`, sleep/WDT macros) plus the AVR GPIO and Timer register files are concatenated into every sketch's generated header regardless of `#include`s.
 	- Sketches rarely include `avr/io.h` explicitly even though they use `DDRx`/`PORTx`, it normally arrives transitively through `Arduino.h`.
-- Conditional injection: `Wire.h`, `SPI.h`, `Servo.h`, `LiquidCrystal.h`, `SoftwareSerial.h`, `Keypad.h`, `DHT.h`, and `LedControl.h` each have a dedicated `.inc` file only spliced in when the sketch's own source includes the matching header.
+- Conditional injection: `Wire.h`, `SPI.h`, `Servo.h`, `LiquidCrystal.h`, `LiquidCrystal_I2C.h`, `SoftwareSerial.h`, `Keypad.h`, `DHT.h`, `LedControl.h`, `Adafruit_NeoPixel.h`, and `Adafruit_SSD1306.h` each have a dedicated `.inc` file only spliced in when the sketch's own source includes the matching header (`Adafruit_GFX.h` is accepted alongside `Adafruit_SSD1306.h` but stripped with no content of its own, since the SSD1306 implementation is self-contained rather than deriving from a GFX base).
 	- Their optional-argument/overloaded APIs don't map onto a bare function-pointer table and would otherwise bloat every sketch's generated header for no reason.
 ```c++
 std::string Preprocessor::strip_includes(const std::string& source) {
@@ -471,12 +472,16 @@ std::string Preprocessor::strip_includes(const std::string& source) {
     static const LibEntry kLibs[] = {
         { "Servo",          g_servo_lib         },
         { "LiquidCrystal",  g_liquidcrystal_lib },
+        { "LiquidCrystal_I2C", g_liquidcrystal_i2c_lib },
         { "SoftwareSerial", g_softwareserial_lib },
         { "Wire",           g_wire_lib },
         { "SPI",            g_spi_lib },
         { "Keypad",         g_keypad_lib },
         { "DHT",            g_dht_lib },
         { "LedControl",     g_ledcontrol_lib },
+        { "Adafruit_NeoPixel", g_neopixel_lib },
+        { "Adafruit_SSD1306", g_ssd1306_lib },
+        { "Adafruit_GFX",     nullptr }, // Adafruit_SSD1306 here is self-contained, doesn't derive from a GFX base
         { "EEPROM",          nullptr },
         { "Arduino",         nullptr },
         { "avr/pgmspace",    nullptr },
@@ -790,6 +795,15 @@ Running `vemcode <sketch.cpp>` (any args after the sketch path) builds a `QCoreA
 	- `Button` goes through `inject_button_bounce()` (the same ~10ms random-bounce window a real click gets).
 	- `ButtonClean` uses `inject_pin()` directly, exempt from bounce, consistent with how the canvas's mouse handlers treat the two component types differently.
 - `printSummary()` reports passed/total assertions and warns if events never fired (ran out of time).
+
+## GUI Timeline Recording & Playback
+The GUI can both write and replay `.timeline` files itself, on top of the same format/reader headless mode uses above.
+
+- **Recording** (`TimelineRecorder`, `src/ui/timelinerecorder.h/.cpp`): a pure writer owned by `MainWindow` (`timelineRecorder_`). While `setActive(true)`, `recordComponentInput()` and `recordSerialSend()` translate live canvas events and Serial sends into `.timeline` lines, then `exportToFile()` writes them out.
+	- Only component types with a matching verb in `TestRunner::dispatchAction` get recorded (buttons, switches, joystick moves, analog/color/distance sets, Serial sends); Keypad and DHT events are silently skipped since there's no playback verb for them yet.
+	- A joystick's two axis pins share one `MOVE x y` line (the format has no per-axis `SET`), so the recorder tracks each axis's last known value and re-emits both on every move.
+- **Playback**: `SketchThread::armTimeline()` (`sketchhostthread.h/.cpp`) hands the GUI's sketch thread the same `TestRunner` the headless CLI drives, must be called before `startSketch()`. Inside the thread's normal locked loop, each iteration accumulates sketch-time from real elapsed time scaled by the speed slider, then calls `fireDueEvents()` before `host_.run_loop()`, the same one-event-per-iteration pairing headless mode uses, so the "sketch always reacts between events" guarantee holds in the GUI too.
+	- `assertResult`/`timelineFinished` signals carry `TestRunner::on_assert_result` and the final pass/fail counts back to `MainWindow`.
 
 ## Building & Testing
 ### Build Scripts
