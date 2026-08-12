@@ -45,91 +45,27 @@ configure_file(
     @ONLY
 )
 
-# Embed injectable library .inc files as C strings at configure time.
-# Each one's content replaces that library's #include line in the sketch
-# (see Preprocessor::strip_includes), so it's only ever present in sketches
-# that actually use it.
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/dht.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ledcontrol.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel.inc"
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ssd1306.inc")
+# Embed injectable library .inc files as C strings at configure time. Each one's content
+# replaces that library's #include line in the sketch (see Preprocessor::strip_includes), so
+# it's only ever present in sketches that actually use it. Drop a <name>.inc into
+# src/core/build/libs/ and its g_<name>_lib symbol is generated automatically -- still needs
+# an extern decl in preprocessor.h and a strip_includes() map entry to actually be used.
+file(GLOB LIB_INC_FILES "${CMAKE_SOURCE_DIR}/src/core/build/libs/*.inc")
+# avr_registers.inc/avr_timers.inc are unconditional (concatenated into every sketch above),
+# not one of these #include-triggered optional libs -- excluded so their content isn't embedded twice.
+list(REMOVE_ITEM LIB_INC_FILES
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_registers.inc"
+    "${CMAKE_SOURCE_DIR}/src/core/build/libs/avr_timers.inc")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${LIB_INC_FILES})
 
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo.inc" SERVO_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/servo_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/servo_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal.inc" LIQUIDCRYSTAL_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/liquidcrystal_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial.inc" SOFTWARESERIAL_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/softwareserial_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire.inc" WIRE_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/wire_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/wire_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi.inc" SPI_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/spi_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/spi_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad.inc" KEYPAD_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/keypad_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/keypad_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/dht.inc" DHT_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/dht_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/dht_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/ledcontrol.inc" LEDCONTROL_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ledcontrol_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/ledcontrol_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel.inc" NEOPIXEL_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/neopixel_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/neopixel_lib.cpp"
-    @ONLY
-)
-
-file(READ "${CMAKE_SOURCE_DIR}/src/core/build/libs/ssd1306.inc" SSD1306_LIB_CONTENT)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/core/build/libs/ssd1306_lib.cpp.in"
-    "${CMAKE_BINARY_DIR}/generated/ssd1306_lib.cpp"
-    @ONLY
-)
+set(GENERATED_LIB_SOURCES "")
+foreach(lib_inc ${LIB_INC_FILES})
+    get_filename_component(lib_name "${lib_inc}" NAME_WE)
+    file(READ "${lib_inc}" lib_content)
+    set(gen_cpp "${CMAKE_BINARY_DIR}/generated/${lib_name}_lib.cpp")
+    file(WRITE "${gen_cpp}" "const char* g_${lib_name}_lib = R\"VBLIB(\n${lib_content}\n)VBLIB\";\n")
+    list(APPEND GENERATED_LIB_SOURCES "${gen_cpp}")
+endforeach()
 
 # Component plugin files — drop a .cpp into src/components/ and it's picked up automatically
 file(GLOB COMPONENT_SOURCES "${CMAKE_SOURCE_DIR}/src/components/*.cpp")
@@ -164,16 +100,7 @@ set(SOURCES
     src/lsan_suppressions.cpp
     docs/resources.qrc
     ${CMAKE_BINARY_DIR}/generated/injected_header.cpp
-    ${CMAKE_BINARY_DIR}/generated/servo_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/liquidcrystal_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/wire_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/spi_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/softwareserial_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/keypad_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/dht_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/ledcontrol_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/neopixel_lib.cpp
-    ${CMAKE_BINARY_DIR}/generated/ssd1306_lib.cpp
+    ${GENERATED_LIB_SOURCES}
     ${COMPONENT_SOURCES}
 )
 
